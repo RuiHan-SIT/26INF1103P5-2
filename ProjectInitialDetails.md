@@ -3,6 +3,8 @@ Link to Code Repository: https://github.com/RuiHan-SIT/26INF1103P5-2
 1. Problem Statement and Target Users
 
 Problem Statement:
+"Employee handover documents may contain missing or unclear critical information, making it difficult for the receiving employee to understand and continue outstanding work effectively.”
+
 When an employee resigns, goes on temporary reassignment, or takes extended leave, they may need to prepare a handover document for the person taking over their responsibilities. However, handovers are often written in templates or unstructured notes, which may cause important information such as outstanding tasks, deadlines, responsible persons, dependencies, or relevant resources to be missed or unclear.
 
 Target Users:
