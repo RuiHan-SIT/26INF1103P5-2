@@ -37,3 +37,24 @@ Employees preparing work handovers and colleagues taking over their tasks and re
     -   Output Validation:
         a.	Ensure AI returns a properly formatted JSON response. 
         b.	Ensure the LLM did not invent new tasking and responsibility.
+
+
+```text
+26INF1103P5-2/
+├── .env.example                # Template for environment variables (e.g., API keys)
+├── .gitignore                  # Git ignore file (cache, virtualenv, secrets, env)
+├── requirements.txt            # Python package dependencies
+│
+├── src/                        # Main application source code
+│   ├── main.py                 # Application entry point 
+│   │
+│   ├── modules/                # Core business logic and external integrations
+│   │   ├── ai_extractor.py     # LLM communication, prompts, and schema enforcement
+│   │   ├── handover_rules.py   # Business rule evaluation (readiness score, sorting)
+│   │   └── validator.py        # Input sanitization, file checks, and PII/NRIC detection
+│   │
+│   ├── models/                 # Data storage and models
+│   │   └── data.json           # Handover Summary and documents
+│   │
+└── tests/                      # Automated unit and integration test suite
+```
