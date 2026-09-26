@@ -65,4 +65,13 @@ def validate_bau_task(task):
 
     return True
 
+def validate_handover(data):
+    for task in data["outstanding_tasks"]:
+        if validate_outstanding_task(task) == False:
+            return False
 
+    for task in data["bau_tasks"]:
+        if validate_bau_task(task) == False:
+            return False
+
+    return True
