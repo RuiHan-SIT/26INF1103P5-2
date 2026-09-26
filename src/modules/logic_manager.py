@@ -25,53 +25,74 @@ def validate_department(department):
     return has_letter
 
 def validate_outstanding_task(task):
+    errors = []
+
     task_name = task["task"]
     description = task["description"]
     owners = task["owners"]
     deadline = task["deadline"]
 
     if task_name.strip() == "":
-        return False
+        errors.append("task")
     
     if description.strip() == "":
-        return False
+        errors.append("description")
     
     if len(owners) == 0:
-        return False
+        errors.append("owners")
     
     if deadline.strip() == "":
-        return False
+        errors.append("missing_deadline")
+    else:
+        try:
+            datetime.strptime(deadline, "%Y-%m-%d")
+        except ValueError:
+            errors.append("invalid_deadline")
 
-    try:
-        datetime.strptime(deadline, "%Y-%m-%d")
-    except ValueError:
-        return False
-
-    return True
+    return errors
 
 def validate_bau_task(task):
+    errors = []
+
     task_name = task["task"]
     description = task["description"]
     owners = task["owners"]
 
     if task_name.strip() == "":
-        return False
+        errors.append("task")
         
     if description.strip() == "":
-        return False
+        errors.append("description")
         
     if len(owners) == 0:
-        return False
+        errors.append("owners")
 
-    return True
+    return errors
 
 def validate_handover(data):
-    for task in data["outstanding_tasks"]:
-        if validate_outstanding_task(task) == False:
-            return False
+    errors = []
 
-    for task in data["bau_tasks"]:
-        if validate_bau_task(task) == False:
-            return False
+    for index, task in enumerate(data["outstanding_tasks"], start=1):
+        task_errors = validate_outstanding_task(task)
 
-    return True
+        if len(task_errors) > 0:
+            errors.append({
+                "type": "outstanding",
+                "index": index,
+                "task": task["task"],
+                "errors": task_errors
+            })
+
+    for index, task in enumerate(data["bau_tasks"], start=1):
+        task_errors = validate_bau_task(task)
+
+        if len(task_errors) > 0:
+            errors.append({
+                "type": "bau",
+                "index": index,
+                "task": task["task"],
+                "errors": task_errors
+            })
+
+    return errors
+
