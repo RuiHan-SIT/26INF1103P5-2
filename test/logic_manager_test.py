@@ -1,37 +1,16 @@
 import src.modules.logic_manager as logic_manager
 
-handover_errors = {
-    "outstanding_tasks": [
-        {
-            "task": "Complete security report",
-            "description": "Prepare September report.",
-            "owners": [],
-            "deadline": ""
-        },
-        {
-            "task": "Review access requests",
-            "description": "",
-            "owners": ["Sarah"],
-            "deadline": "2026-02-30"
-        }
-    ],
+# Handover Status Tests
 
-    "bau_tasks": [
-        {
-            "task": "Review security alerts",
-            "description": "Review new alerts.",
-            "owners": ["John"]
-        },
-        {
-            "task": "",
-            "description": "",
-            "owners": []
-        }
-    ],
+errors_1 = []
+errors_2 = [
+    {
+        "type": "outstanding",
+        "index": 1,
+        "task": "Complete security report",
+        "errors": ["owners"]
+    }
+]
 
-    "important_information": [
-        "Reports are stored in the shared drive."
-    ]
-}
-
-print(logic_manager.validate_handover(handover_errors))
+print("Status Test 1:", logic_manager.get_handover_status(errors_1))
+print("Status Test 2:", logic_manager.get_handover_status(errors_2))

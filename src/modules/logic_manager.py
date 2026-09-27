@@ -96,3 +96,8 @@ def validate_handover(data):
 
     return errors
 
+def get_handover_status(errors):
+    if len(errors) != 0:
+        return "Incomplete"
+    else:
+        return "Complete"
