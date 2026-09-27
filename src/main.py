@@ -66,10 +66,12 @@ def main():
         if handover_info is None:
             return None
 
+        #to pass data to LLM
         print("Input is successfully validated.")
         return name, department, handover_role, handover_info
 
     elif handover_role == "Taking over":
+        #to be handle by logic manager or and additional user input
         print("No handover input required.")
         return name, department, handover_role
 

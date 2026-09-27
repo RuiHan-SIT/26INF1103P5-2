@@ -1,3 +1,38 @@
+## Project Structure
+
+```text
+26INF1103P5-2/
+├── .env                        # Local environment variables (API keys) — not committed
+├── .env.example                # Template for environment variables
+├── .gitignore                  # Git ignore file (cache, virtualenv, secrets, env)
+├── requirements.txt            # Python package dependencies
+├── README.me                   # Project documentation
+├── ProjectInitialDetails.md    # Problem statement, users, and business rules
+│
+├── src/                        # Main application source code
+│   ├── main.py                 # Application entry point / main flow orchestration
+│   │
+│   ├── modules/                # Core building-block functions and integrations
+│   │   ├── input_handler.py    # User input, file validation, and PII detection helpers
+│   │   ├── logic_manager.py    # Handover business-rule validation
+│   │   ├── nvdia_router.py      # LLM (OpenRouter/NVIDIA) communication
+│   │   └── llm_prompt.py       # LLM prompt templates
+│   │
+│   ├── utils/                  # Shared utilities
+│   │   ├── __init__.py
+│   │   └── logger.py           # Application logger
+│   │
+│   └── model/                  # Data storage and models
+│
+├── data/                       # Runtime data
+│   └── handovers/              # Handover .txt files loaded by the app
+│       └── handover.txt
+│
+└── test/                       # Automated unit tests
+    ├── logic_manager_test.py   # Tests for logic_manager
+    └── ai_manager_test.py      # Tests for the AI/LLM portion
+```
+
 #installing of library from requirement.txt
 - Any library or package you want to use please put into requirement.txt 
 so it doesnt break each of our eniviornment when we are trying to intergrate 
