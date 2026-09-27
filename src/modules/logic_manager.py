@@ -1,6 +1,7 @@
 from datetime import datetime
 
-def validate_name(name):
+# Validate user's name
+def validate_name(name): 
     if name.strip() == "":
         return False
     
@@ -12,7 +13,8 @@ def validate_name(name):
 
     return has_letter
 
-def validate_department(department):
+# Validate user's department
+def validate_department(department): 
     if department.strip() == "":
         return False
 
@@ -24,7 +26,8 @@ def validate_department(department):
     
     return has_letter
 
-def validate_outstanding_task(task):
+# Check required info in outstanding tasks
+def validate_outstanding_task(task): 
     errors = []
 
     task_name = task["task"]
@@ -51,7 +54,8 @@ def validate_outstanding_task(task):
 
     return errors
 
-def validate_bau_task(task):
+# Check required info for BAU tasks
+def validate_bau_task(task): 
     errors = []
 
     task_name = task["task"]
@@ -69,6 +73,7 @@ def validate_bau_task(task):
 
     return errors
 
+# Check all tasks and collect errors 
 def validate_handover(data):
     errors = []
 
@@ -96,8 +101,25 @@ def validate_handover(data):
 
     return errors
 
+# Determine if handover needs re-prompt/clarifications
 def get_handover_status(errors):
     if len(errors) != 0:
-        return "Incomplete"
+        return "incomplete"
     else:
-        return "Complete"
+        return "complete"
+
+# Get task deadline for sorting
+def get_deadline(task):
+    return task["deadline"]
+
+# Sort outstanding tasks by earliest to latest deadline
+def sort_outstanding_tasks(data):
+    outstanding_tasks = data["outstanding_tasks"]
+
+    sorted_tasks = sorted(outstanding_tasks, key=get_deadline)
+    return sorted_tasks
+
+# Format deadline as DD MMM YYYY
+def format_deadline(deadline):
+    date = datetime.strptime(deadline, "%Y-%m-%d")
+    return date.strftime("%d %b %Y")
