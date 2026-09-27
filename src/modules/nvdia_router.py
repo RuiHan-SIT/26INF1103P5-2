@@ -3,7 +3,6 @@ import json
 import os
 from pathlib import Path
 from dotenv import load_dotenv
-from openai import OpenAI
 
 
 
@@ -27,14 +26,14 @@ api_key = os.getenv("NVDIA_API_KEY")
 if not api_key:
     raise ValueError("API_KEY is not set. Check your .env file!")
 
-client = OpenAI(
-  base_url = api_base_url,
-  api_key = api_key
-)
+
 
 completion = client.chat.completions.create(
   model="nvidia/nemotron-3.5-lightning-30b-a3b",
-  messages=[{"role":"user","content":"Write a limerick about the wonders of GPU computing."}],
+  messages=[{"role":"user",
+  "content":
+  "Write a limerick about the wonders of GPU computing."
+  }],
   temperature=1,
   max_tokens=16384,
   extra_body={"chat_template_kwargs":{"enable_thinking":True},"reasoning_budget":16384},
