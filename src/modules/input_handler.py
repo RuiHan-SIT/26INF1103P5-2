@@ -1,30 +1,52 @@
-import os #allows interaction with files in user device
+from utils.logger import logger
+from pathlib import Path
 
-def load_txt_file(filename): #function to load the txt file as an input
+# Anchor to the project root (../../ up from src/modules/) so the path
+# works no matter which directory the program is launched from.
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+handover_dir = BASE_DIR / "data" / "handovers"
 
-    if not filename.lower().endswith(".txt"): #checks if the file is in the correct format
-        print("Invalid file format. Please provide a .txt file.")
-        return None
-    if not os.path.exists(filename): #checks if the file exists in the user device
-        print("File not found.")
-        return None
-    if os.path.getsize(filename) == 0: #checks if the file is empty
-        print("File is empty")    
-        return None
+def validate_txt_file(filename):
+    # accept both str and Path, work with a Path internally
+    path = Path(filename)
+
+    # checks if the file is in the correct format
+    if path.suffix.lower() != ".txt":
+        raise ValueError(f"Invalid file type for '{filename}'. Expected a .txt file.")
+
+    # checks if the file exists
+    if not path.exists():
+        raise FileNotFoundError(f"File not found: '{filename}'")
+
+    # checks if the file is empty
+    if path.stat().st_size == 0:
+        raise ValueError(f"File is empty: '{filename}'")
+
     
+
+def read_txt_file(filename: str):
     try:
+        validate_txt_file(filename)
+
         with open(filename, 'r', encoding='utf-8') as file:
             handover_info = file.read()
 
-        if handover_info.strip() == "": #checks if file has no information/blank
-            print("File does not contain any information.")
+        if not handover_info.strip():
+            logger.error(f"File '{filename}' contains only whitespace or blank lines.")
             return None
 
         return handover_info
-    
-    except UnicodeDecodeError:
-        print ("File could not be read. Please ensure it is a valid text file.")
+
+    except (FileNotFoundError, ValueError) as err:
+        # Use logger.error for handled validation failures
+        logger.error(f"Validation failed for '{filename}': {err}")
         return None
+
+    except UnicodeDecodeError:
+        # Use logger.exception to log the full decode stack trace
+        logger.exception(f"Encoding error: '{filename}' could not be decoded as UTF-8.")
+        return None
+
 
 def sensitive_info(text): #function to check if there is any sensitive information in the file
     sensitive_keywords = ["password", "credit card", "bank account", "nric", "passport", "driver's license", "confidential", "secret", "private", "restricted"]
@@ -37,7 +59,8 @@ def sensitive_info(text): #function to check if there is any sensitive informati
 
     return False
     
-def get_user_details(): #function to get user details
+#function to get user details
+def get_user_details(): 
     name = input("Enter your name: ") #employee name
     department = input("Enter your department: ") #employee department
 
@@ -96,6 +119,7 @@ def get_handover_info(): #list of details for the handover task, kept the inform
             }
 
         return task_info
+
 def handover_input():  #allows user to enter more than one task at a time
     while True:
         print("\nEnter the information for handover: ")
@@ -128,8 +152,9 @@ def handover_input():  #allows user to enter more than one task at a time
 
         elif choice == "2":
             filename = input("Enter the .txt filename: ")
-            handover_info = load_txt_file(filename)
+            input_file = handover_dir / filename
 
+            handover_info = read_txt_file(input_file)
             if handover_info is None:
                 continue
 

@@ -1,0 +1,24 @@
+Handover Notes - Project Ops & Floor Management (WIP)
+Leaving this here since my flight is early Monday and I didn't get to finish the Notion board.
+
+First off, the inventory reconciliation for Q3 is about 85% done. The raw count sheet is sitting on the clipboard next to the label printer in warehouse 2, but the pallet in bay 14 has three unmarked boxes of thermal rolls that weren't added to the auditor file. Ask Priya before entering those into the system—she mentioned the supplier sent a split batch because the courier ran out of space on Tuesday.
+
+Pending supplier stuff:
+- Alpha Logistics: their driver (Ken, mobile +65 9123 4567) only delivers before 10 AM on weekdays. If he arrives after that, security won't let the lorry dock at Gate 3 without a manual clearance chit from Dave.
+- The packaging tape order is delayed until next Thursday. We have roughly 12 rolls left in the mezzanine rack, which should last until Tuesday if packing doesn't go crazy over the weekend.
+- Invoices: Brenda from finance flagged two duplicate PO numbers from August (PO-88219 and PO-88220). Do not approve the payment run on Wednesday until she confirms which one is void.
+
+Key & Access cards:
+The spare keycard for the backup server cabinet isn't in the usual keybox. I handed it to Marcus on Thursday because the network switch in comms closet B had a failing fan that was throwing intermittent thermal warnings. Make sure to collect it back from his desk drawer (top left, key is taped underneath). The master padlock code for the rear loading bay roll-up shutter was rotated to 7392 on the 15th after the lock replacement.
+
+Ongoing issues / watchouts:
+1. The label applicator machine on line 2 jams whenever using the matte synthetic stock. Engineering knows about it, but the replacement roller won't arrive until mid-October. Keep it on semi-gloss or adjust the feed speed down to 60% if you get an error 404 on the feed sensor.
+2. Building management is running a fire alarm pressure test next Friday at 2:30 PM. The loading bay doors will auto-seal for about twenty minutes, so pause any pallet transfers around 2:15 PM so the forklifts don't get trapped outside.
+3. Don't touch the thermostat setting in the sample archive room—the sensor calibration is offset by -3 degrees, so setting it to 22C actually drops the room to 19C, which makes condensation form on the metal shelving.
+
+Routine contact list:
+- Facility manager: Mr. Tan (office extension 4022)
+- Waste disposal vendor: GreenCycle dispatch (+65 6789 0123, account code GC-4490)
+- Cleaning supervisor: Madam Halimah (she comes in at 6 PM, leaves the sanitiser restock logs on the breakroom noticeboard)
+
+Good luck, ping me on Slack if anything completely catches fire during your first week!
