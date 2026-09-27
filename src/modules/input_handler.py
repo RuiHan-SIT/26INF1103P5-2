@@ -1,5 +1,9 @@
 from utils.logger import logger
 from pathlib import Path
+import scrubadub
+
+# Build the Scrubber once and reuse it across calls (construction is not free).
+_scrubber = scrubadub.Scrubber()
 
 # Anchor to the project root (../../ up from src/modules/) so the path
 # works no matter which directory the program is launched from.
@@ -48,14 +52,27 @@ def read_txt_file(filename: str):
         return None
 
 
-def sensitive_info(text): #function to check if there is any sensitive information in the file
-    sensitive_keywords = ["password", "credit card", "bank account", "nric", "passport", "driver's license", "confidential", "secret", "private", "restricted"]
-    text_lower = text.lower()
+def validate_user_input(text: str):  
+    # scrubadub detects structured PII: emails, phone numbers, credit cards, etc.
+    detected_types = {filth.type for filth in _scrubber.iter_filth(text)}
 
+    # keyword check for domain-sensitive words scrubadub does not model as PII
+    sensitive_keywords = [
+        "password", "credit card", "bank account", "nric", "passport",
+        "driver's license", "confidential", "secret", "private", "restricted",
+    ]
+    text_lower = text.lower()
     for keyword in sensitive_keywords:
         if keyword in text_lower:
-            print("Sensitive information detected. Please remove any sensitive information before proceeding.")
-            return True
+            detected_types.add(keyword)
+
+    if detected_types:
+        print(
+            "Sensitive information detected: "
+            f"{', '.join(sorted(detected_types))}. "
+            "Please remove any sensitive information before proceeding."
+        )
+        return True
 
     return False
     
@@ -85,6 +102,7 @@ def required_input(prompt): #this is to ensure manually added information for re
         value = input(prompt).strip()
 
         if value == "":
+            
             print("This field is required. Please enter a value.")
         else:
             return value
@@ -107,7 +125,7 @@ def get_handover_info(): #list of details for the handover task, kept the inform
         )
 
 
-        if sensitive_info(text_check):
+        if validate_user_input(text_check):
             print("Please re-enter the task. \n")
         else:
             task_info = {
@@ -120,72 +138,20 @@ def get_handover_info(): #list of details for the handover task, kept the inform
 
         return task_info
 
-def handover_input():  #allows user to enter more than one task at a time
-    while True:
-        print("\nEnter the information for handover: ")
-        print("1. Enter the information manually")
-        print("2. Load a .txt file")
 
-        choice = input("Select an option: ")
+def handover_from_file(filename):
+    """Read and validate a handover .txt file by name (looked up in handover_dir).
 
-        if choice == "1":
-            tasks = []
+    Returns the file text if valid and clean, otherwise None so the caller can
+    decide how to proceed (e.g. re-prompt).
+    """
+    input_file = handover_dir / filename
 
-            while True:
-                task_info = get_handover_info()
-                tasks.append(task_info)
+    handover_info = read_txt_file(input_file)
+    if handover_info is None:
+        return None
 
-                while True:
-                    more = input(
-                        "\nDo you want to add more tasks? (yes/no): "
-                    ).lower()
+    if validate_user_input(handover_info):
+        return None
 
-                    if more == "yes" or more == "no":
-                        break
-                    else:
-                        print("Invalid input. Please enter yes or no")
-
-                if more == "no":
-                    break
-
-            return tasks
-
-        elif choice == "2":
-            filename = input("Enter the .txt filename: ")
-            input_file = handover_dir / filename
-
-            handover_info = read_txt_file(input_file)
-            if handover_info is None:
-                continue
-
-            if sensitive_info(handover_info):
-                continue
-
-            return handover_info
-
-        else:
-            print("Invalid option. Please select 1 or 2.")
-
-def main():   #mainflow
-    user_details = get_user_details()
-
-    if user_details is None:
-        return
-
-    name, department, handover_role = user_details
-
-    if handover_role == "Handing over":
-        handover_info = handover_input()
-
-        if handover_info is None:
-            return
-
-        print("Input is successfully validated.")
-
-        return name, department, handover_role, handover_info
-
-    elif handover_role == "Taking over":
-        print("No handover input required.")
-
-        return name, department, handover_role
-main()
+    return handover_info
