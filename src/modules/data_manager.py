@@ -32,3 +32,18 @@ def load_records(filepath=DEFAULT_DATA_FILE):
         return[]
     
     return data
+
+
+def save_records(records, filepath=DEFAULT_DATA_FILE):
+    """Save the full list of handover records to the JSON file
+    Overwrites whatever was previously saved"""
+    #2.1 Writing the records to disk as JSON. "w" mode overwrites the whole file
+    #2.1 (unlike "a" which appends) — that matches what "save the full list" means
+    try:
+        with open(filepath, "w", encoding="utf-8") as f:
+            json.dump(records, f, indent=2, sort_keys=True)
+    except OSError:
+        #2.2 Don't crash if the write fails (e.g. disk full, no permission)
+        return False
+
+    return True
