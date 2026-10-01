@@ -1,6 +1,7 @@
 #Importing of the relevant modules
 import json
 import os
+from datetime import date 
 
 DEFAULT_DATA_FILE = "handovers.json"
 
@@ -47,3 +48,19 @@ def save_records(records, filepath=DEFAULT_DATA_FILE):
         return False
 
     return True
+
+def add_record(record, filepath=DEFAULT_DATA_FILE):
+    """Add a new handover record to the JSON file. Auto generates the record's id and date, and saves the updated list."""
+    # Loads the existing records, so we can add to them, not overwrite them"
+    records = load_records(filepath)
+    
+    #3.1 Figuring out the next id: highest existing id + 1, or 1 if there are no records yet
+    if records:
+        next_id = max(r["id"] for r in records) + 1
+    else:
+        next_id = 1
+    #3.2 Stamp the new record with its id and today's date
+    record["id"] = next_id
+    record["date"] = date.today().isoformat()
+    records.append(record)
+    return save_records(records, filepath)
