@@ -48,7 +48,7 @@ def validate_outstanding_task(task):
         errors.append("missing_deadline")
     else:
         try:
-            datetime.strptime(deadline, "%Y-%m-%d")
+            datetime.strptime(deadline, "%d/%m/%Y")
         except ValueError:
             errors.append("invalid_deadline")
 
@@ -119,7 +119,7 @@ def sort_outstanding_tasks(data):
     sorted_tasks = sorted(outstanding_tasks, key=get_deadline)
     return sorted_tasks
 
-# Format deadline as DD MMM YYYY
+# Format deadline as DD/MMM/YYYY
 def format_deadline(deadline):
-    date = datetime.strptime(deadline, "%Y-%m-%d")
+    date = datetime.strptime(deadline, "%d/%m/%Y")
     return date.strftime("%d %b %Y")
