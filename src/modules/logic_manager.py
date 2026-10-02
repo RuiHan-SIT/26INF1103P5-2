@@ -99,6 +99,12 @@ def validate_handover(data):
                 "errors": task_errors
             })
 
+    if len(data["outstanding_tasks"]) == 0 and len(data["bau_tasks"]) == 0:
+        errors.append({
+            "type": "handover",
+            "errors": ["no_tasks"]
+        })
+
     return errors
 
 # Determine if handover needs re-prompt/clarifications
@@ -113,7 +119,7 @@ def get_handover_status(data, errors):
 
 # Get task deadline for sorting
 def get_deadline(task):
-    return task["deadline"]
+    return datetime.strptime(task["deadline"], "%d/%m/%Y")
 
 # Sort outstanding tasks by earliest to latest deadline
 def sort_outstanding_tasks(data):
@@ -126,3 +132,26 @@ def sort_outstanding_tasks(data):
 def format_deadline(deadline):
     date = datetime.strptime(deadline, "%d/%m/%Y")
     return date.strftime("%d %b %Y")
+
+# Return completed handover data
+def process_handover(data):
+    errors = validate_handover(data)
+    status = get_handover_status(data, errors)
+
+    if status == "incomplete":
+        return {
+            "status": status,
+            "errors": errors
+        }
+
+    sorted_tasks = sort_outstanding_tasks(data)
+
+    for task in sorted_tasks:
+        task["deadline"] = format_deadline(task["deadline"])
+
+    return {
+    "status": status,
+    "outstanding_tasks": sorted_tasks,
+    "bau_tasks": data["bau_tasks"],
+    "important_information": data["important_information"]
+    }
