@@ -26,31 +26,36 @@ IMPORTANT: Main.py should check for exisitng data than fill in the blanks.
 input = "what is 67"
 
 def send_message(user_input: str):
-  try:
-    completion = client.chat.completions.create(
-    model="nvidia/nemotron-3.5-lightning-30b-a3b",
-    messages=[{"role":"user",
-    "content":
-    input
-    }],
-    temperature=1,
-    max_tokens=16384,
-    extra_body={"chat_template_kwargs":{"enable_thinking":True},"reasoning_budget":16384},
-    stream=False
-  )
+    # Rough placeholder prompt — to be replaced by llm_prompt.py in Step 4.
+    system_prompt = (
+        "Business rules to come"
+        )
 
-    for chunk in completion:
-      if not chunk.choices:
-        continue
-      reasoning = getattr(chunk.choices[0].delta, "reasoning_content", None)
-      if reasoning:
-        print(reasoning, end="")
-      if chunk.choices[0].delta.content is not None:
-        print(chunk.choices[0].delta.content, end="")
-  except:
-    print(EOFError)
+    MODEL = "nvidia/nemotron-3.5-lightning-30b-a3b"
+    REQUEST_TIMEOUT = 60  # seconds; overrides the SDK's long default
+    completion = (
+        client.with_options(timeout=REQUEST_TIMEOUT, max_retries=0).chat.completions.create(
+            model=MODEL,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_input},
+                ],
+            temperature=1,
+            max_tokens=8192,
+            extra_body={
+                "chat_template_kwargs": {"enable_thinking": True},
+                "reasoning_budget": 2048,
+                },
+            stream=False,
+          )
+      )
+  
+    content = completion.choices[0].message.content
+    return content
 
-send_message(input)
+
+
+
 
 
 
