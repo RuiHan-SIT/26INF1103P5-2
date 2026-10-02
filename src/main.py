@@ -80,3 +80,19 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
+
+# error handling done by nvidia file 
+
+# result = analyze_handover_safe(file_text)
+
+# if not result["success"]:
+#     print(f"\n[!] Failed to process handover: {result['error_message']}\n")
+# else:
+#     handover = result["data"]
+#     print(f"\n[+] Successfully Analyzed: {handover.summary}")
+#     print("Action Items:")
+#     for task in handover.action_items:
+#         print(f" - {task}")

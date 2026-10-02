@@ -2,6 +2,7 @@ import requests
 import json
 from utils.openai_client import client 
 from utils.logger import logger
+import openai
 
 """ 
 1)i want to throw completion or watever ( done )
@@ -31,6 +32,9 @@ IMPORTANT: Main.py should check for exisitng data than fill in the blanks.
 # What it means: Network drops, DNS issues, or the server took too long to complete generation.
 #openai.InternalServerError (HTTP 500 / 502 / 503 / 504) 
 
+
+#OpenAI does not handle the following
+# - 
 user_input = "what is 67"
 #input can be either string or Array
 def send_message(user_input: str):
@@ -62,7 +66,33 @@ def send_message(user_input: str):
         content = completion.choices[0].message.content
         return content
 
+#400 - bad request exceeding context of 128k
+#401 - Invalid Authentication or api key rejected
+#401 - incorrect api key 
+#404 - model not found
+#429 rate limit openai.APITimeoutError / APIConnectionError
+# What it means: Network drops, DNS issues, or the server took too long to complete generation.
+#openai.InternalServerError (HTTP 500 / 502 / 503 / 504) 
 
+    # --- Specific OpenAI API Errors ---
+    except openai.BadRequestError as e:
+        logger.error("Bad Request parameters: %s", e)
+        return {
+            "success": False,
+            "data": None,
+            "error_message": "Invalid request sent to AI service. Check parameter constraints or file size.",
+        }
+    except openai.AuthenticationError as e: 
+
+
+    # --- Final Safety Catch-All ---
+    except Exception as e:
+        logger.exception("Unexpected unhandled exception in LLM pipeline: %s", e)
+        return {
+            "success": False,
+            "data": None,
+            "error_message": f"An unexpected system error occurred: {str(e)}",
+        }
 
 
 
