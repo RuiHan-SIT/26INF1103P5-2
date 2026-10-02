@@ -102,8 +102,11 @@ def validate_handover(data):
     return errors
 
 # Determine if handover needs re-prompt/clarifications
-def get_handover_status(errors):
-    if len(errors) != 0:
+def get_handover_status(data, errors):
+    outstanding_tasks = data["outstanding_tasks"]
+    bau_tasks = data["bau_tasks"]
+
+    if len(errors) != 0 or (len(outstanding_tasks) == 0 and len(bau_tasks) == 0):
         return "incomplete"
     else:
         return "complete"
