@@ -23,35 +23,44 @@ IMPORTANT: Main.py should check for exisitng data than fill in the blanks.
 6) data manager saves data tagged to the hoto 
 """
 
-input = "what is 67"
+#400 - bad request exceeding context of 128k
+#401 - Invalid Authentication or api key rejected
+#401 - incorrect api key 
+#404 - model not found
+#429 rate limit openai.APITimeoutError / APIConnectionError
+# What it means: Network drops, DNS issues, or the server took too long to complete generation.
+#openai.InternalServerError (HTTP 500 / 502 / 503 / 504) 
 
+user_input = "what is 67"
+#input can be either string or Array
 def send_message(user_input: str):
-    # Rough placeholder prompt — to be replaced by llm_prompt.py in Step 4.
-    system_prompt = (
-        "Business rules to come"
-        )
+    try: 
+        # Rough placeholder prompt — to be replaced by llm_prompt.py in Step 4.
+        system_prompt = (
+            "Business rules to come"
+            )
 
-    MODEL = "nvidia/nemotron-3.5-lightning-30b-a3b"
-    REQUEST_TIMEOUT = 60  # seconds; overrides the SDK's long default
-    completion = (
-        client.with_options(timeout=REQUEST_TIMEOUT, max_retries=0).chat.completions.create(
-            model=MODEL,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_input},
-                ],
-            temperature=1,
-            max_tokens=8192,
-            extra_body={
-                "chat_template_kwargs": {"enable_thinking": True},
-                "reasoning_budget": 2048,
-                },
-            stream=False,
-          )
-      )
-  
-    content = completion.choices[0].message.content
-    return content
+        MODEL = "nvidia/nemotron-3.5-lightning-30b-a3b"
+        REQUEST_TIMEOUT = 60  # seconds; overrides the SDK's long default
+        completion = (
+            client.with_options(timeout=REQUEST_TIMEOUT, max_retries=0).chat.completions.create(
+                model=MODEL,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_input},
+                    ],
+                temperature=1,
+                max_tokens=8192,
+                extra_body={
+                    "chat_template_kwargs": {"enable_thinking": True},
+                    "reasoning_budget": 2048,
+                    },
+                stream=False,
+            )
+        )
+    
+        content = completion.choices[0].message.content
+        return content
 
 
 
