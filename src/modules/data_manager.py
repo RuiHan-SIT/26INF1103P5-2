@@ -6,8 +6,8 @@ from datetime import date
 DEFAULT_DATA_FILE = "handovers.json"
 
 def load_records(filepath=DEFAULT_DATA_FILE):
-    #Load all handover records from the JSON file 
-    #Returns an empty  list if the file doesn't exist yet
+    """Load all handover records from the JSON file
+    Returns an empty  list if the file doesn't exist yet"""
     #1.1 The first requirement to prevent crashing: 
     if not os.path.exists(filepath):
         return[]
@@ -36,8 +36,8 @@ def load_records(filepath=DEFAULT_DATA_FILE):
 
 
 def save_records(records, filepath=DEFAULT_DATA_FILE):
-    #Save the full list of handover records to the JSON file
-    #Overwrites whatever was previously saved
+    """Save the full list of handover records to the JSON file
+    Overwrites whatever was previously saved"""
     #2.1 Writing the records to disk as JSON. "w" mode overwrites the whole file
     #2.1 (unlike "a" which appends) — that matches what "save the full list" means
     try:
@@ -50,8 +50,8 @@ def save_records(records, filepath=DEFAULT_DATA_FILE):
     return True
 
 def add_record(record, filepath=DEFAULT_DATA_FILE):
-    #Add a new handover record to the JSON file. Auto generates the record's id and date, and saves the updated list."""
-    #Loads the existing records, so we can add to them, not overwrite them
+    """Add a new handover record to the JSON file. Auto generates the record's id and date, and saves the updated list."""
+    # Loads the existing records, so we can add to them, not overwrite them
     records = load_records(filepath)
 
     #3.1 Figuring out the next id: highest existing id + 1, or 1 if there are no records yet
@@ -67,9 +67,9 @@ def add_record(record, filepath=DEFAULT_DATA_FILE):
 
 
 def update_record(record_id, updates, filepath=DEFAULT_DATA_FILE):
-    #Update an existing handover record identified by its id.
-    #'updates' is a dict of the fields to change (e.g. {"task": "New task name"}).
-    #Returns True if the record was found and saved, False otherwise.
+    """Update an existing handover record identified by its id.
+    'updates' is a dict of the fields to change (e.g. {"task": "New task name"}).
+    Returns True if the record was found and saved, False otherwise."""
 
     #4.1 Reject updates that are not a dictionary of fields
     if not isinstance(updates, dict):
