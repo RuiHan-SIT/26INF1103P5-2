@@ -55,7 +55,6 @@ def clean_llm_json(raw_text: str | None) -> dict[str, Any]:
     return json.loads(json_str, strict=False)
 
 
-#input can be either string or Array
 def send_to_llm(user_input: str):
     try: 
 
