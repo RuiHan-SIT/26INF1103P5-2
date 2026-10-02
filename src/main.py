@@ -96,3 +96,19 @@ if __name__ == "__main__":
 #     print("Action Items:")
 #     for task in handover.action_items:
 #         print(f" - {task}")
+
+
+
+"""
+- idempotent handling (  Idempotent = doing something more than once gives the same result as doing it once.)
+- ai able to call data.json and verify but asking for user input. 
+
+Business Logic:
+IMPORTANT: Main.py should check for exisitng data than fill in the blanks.
+1) input 
+2) validate user input 
+3) pass to llm to organise the data with my system prompt and user prompt ( stream disable not needed for now )
+4) llm output is pass to logic manager 
+5) logic maanger passes then it will call data manager to save data
+6) data manager saves data tagged to the hoto 
+"""

@@ -3,3 +3,4 @@ python-dotenv
 openai
 scrubadub
 pydantic
+json-repair
