@@ -30,9 +30,5 @@ data = {
 
 result = logic_manager.process_handover(data)
 
-print(result)
-
-result = logic_manager.process_handover(data)
-
 with open("temp_result.json", "w") as file:
     json.dump(result, file, indent=4)
