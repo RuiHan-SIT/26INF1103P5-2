@@ -1,7 +1,7 @@
 import requests
 import json
-from utils.openai_client import client 
-from utils.logger import logger
+from src.utils.openai_client import client 
+from src.utils.logger import logger
 import openai
 
 """ 
@@ -24,20 +24,13 @@ IMPORTANT: Main.py should check for exisitng data than fill in the blanks.
 6) data manager saves data tagged to the hoto 
 """
 
-#400 - bad request exceeding context of 128k
-#401 - Invalid Authentication or api key rejected
-#401 - incorrect api key 
-#404 - model not found
-#429 rate limit openai.APITimeoutError / APIConnectionError
-# What it means: Network drops, DNS issues, or the server took too long to complete generation.
-#openai.InternalServerError (HTTP 500 / 502 / 503 / 504) 
 
+# Validate the data from the response and handle errors 
+def validate_llm_ouput():
+    
 
-#OpenAI does not handle the following
-# - 
-user_input = "what is 67"
 #input can be either string or Array
-def send_message(user_input: str):
+def send_to_llm(user_input: str):
     try: 
         # Rough placeholder prompt — to be replaced by llm_prompt.py in Step 4.
         system_prompt = (
@@ -45,9 +38,8 @@ def send_message(user_input: str):
             )
 
         MODEL = "nvidia/nemotron-3.5-lightning-30b-a3b"
-        REQUEST_TIMEOUT = 60  # seconds; overrides the SDK's long default
         completion = (
-            client.with_options(timeout=REQUEST_TIMEOUT, max_retries=0).chat.completions.create(
+            client.with_options(timeout=300, max_retries=3).chat.completions.create(
                 model=MODEL,
                 messages=[
                     {"role": "system", "content": system_prompt},
@@ -64,15 +56,16 @@ def send_message(user_input: str):
         )
     
         content = completion.choices[0].message.content
-        return content
+        print(content)
 
-#400 - bad request exceeding context of 128k
-#401 - Invalid Authentication or api key rejected
-#401 - incorrect api key 
-#404 - model not found
-#429 rate limit openai.APITimeoutError / APIConnectionError
-# What it means: Network drops, DNS issues, or the server took too long to complete generation.
-#openai.InternalServerError (HTTP 500 / 502 / 503 / 504) 
+    #400 - bad request exceeding context of 128k
+    #401 - Invalid Authentication or api key rejected
+    #401 - incorrect api key 
+    #404 - model not found
+    #429 rate limit openai.APITimeoutError / APIConnectionError
+    # What it means: Network drops, DNS issues, or the server took too long to complete generation.
+    #openai.InternalServerError (HTTP 500 / 502 / 503 / 504) 
+
 
     # --- Specific OpenAI API Errors ---
     except openai.BadRequestError as e:
@@ -82,7 +75,38 @@ def send_message(user_input: str):
             "data": None,
             "error_message": "Invalid request sent to AI service. Check parameter constraints or file size.",
         }
-    except openai.AuthenticationError as e: 
+    except openai.AuthenticationError as e:
+        logger.critical("Auth failed: %s", e)
+        return {
+            "success": False,
+            "data": None,
+            "error_message": "Authentication failed: NVIDIA API key is missing, invalid, or expired.",
+        }
+    except openai.NotFoundError as e:
+        logger.error("Model not found: %s", e)
+        return {
+            "success": False,
+            "data": None,
+            "error_message": "The requested AI model name was not recognized or is temporarily unhosted.",
+        }
+    except openai.RateLimitError as e:
+        logger.warning("Rate limit hit: %s", e)
+        return {
+            "success": False,
+            "data": None,
+            "error_message": "Rate limit exceeded (40 RPM limit). Please wait 30 seconds before trying again.",
+        }
+
+    except (openai.APITimeoutError, openai.APIConnectionError) as e:
+        logger.error("Network connection error: %s", e)
+        return {
+            "success": False,
+            "data": None,
+            "error_message": "Network timeout: Unable to reach NVIDIA servers. Check your internet connection.",
+        }
+
+
+    # --- Pydantic Validation Errors ---
 
 
     # --- Final Safety Catch-All ---
@@ -99,18 +123,7 @@ def send_message(user_input: str):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
+send_to_llm("what is 67")
 
 
 
