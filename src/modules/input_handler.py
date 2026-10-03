@@ -1,6 +1,7 @@
 from utils.logger import logger
 from pathlib import Path
 import scrubadub
+from datetime import datetime
 
 # Build the Scrubber once and reuse it across calls (construction is not free).
 _scrubber = scrubadub.Scrubber()
@@ -75,27 +76,59 @@ def validate_user_input(text: str):
         return True
 
     return False
-    
-#function to get user details
-def get_user_details(): 
-    name = input("Enter your name: ") #employee name
-    department = input("Enter your department: ") #employee department
 
-    print("\n Are you:")
-    print("1. Handing over work") #letting employee choose whether to handover or takeover
-    print("2. Taking over work")
+def handover_from_file(filename):
+    #Read and validate a handover .txt file by name (looked up in handover_dir).
+    #returns the file text if valid and clean, otherwise None so the caller can
+    #decide how to proceed (e.g. re-prompt).
 
-    role = input("Select an option: ") 
+    input_file = handover_dir / filename
 
-    if role == "1":
-        handover_role = "Handing over"
-    elif role == "2":
-        handover_role = "Taking over"
-    else:
-        print("Invalid option.")
+    handover_info = read_txt_file(input_file)
+    if handover_info is None:
         return None
 
-    return name, department, handover_role
+    if validate_user_input(handover_info):
+        return None
+
+    return handover_info
+
+#function to get user details
+def get_user_details(): #function to get user details
+    name = required_input("Enter your name: ") #employee name
+    department = required_input("Enter your department: ") #employee department
+
+    submission_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S") #get current date and time
+    print("\n Are you:")
+    print("1. Handing over work") #letting employee choose whether to handover or takeover
+    print("2. Taking over work") 
+
+    while True:
+        role = required_input("Select an option: ") 
+
+        if role == "1":
+
+            return {                        #stores information in a dictionary
+                "name": name,
+                "department": department,
+                "date":submission_date,
+                "role": "Handing over"
+            }
+        elif role == "2":
+
+            previous_employee = required_input("Enter the name of the previous employee: ") #enters the details of previous empployee to extract the handover document
+            previous_department = required_input("Enter their department:")
+
+            return {
+                "name":name,
+                "department":department,
+                "date": submission_date,
+                "role": "Taking over",
+                "taking_over_from": previous_employee,
+                "taking_over_department": previous_department
+            }
+        else:
+            print("Invalid option.")
 
 def required_input(prompt): #this is to ensure manually added information for required fields
     while True:
@@ -107,51 +140,45 @@ def required_input(prompt): #this is to ensure manually added information for re
         else:
             return value
 
-def get_handover_info(): #list of details for the handover task, kept the information in a dictionary format to allow more than one task to be recorded
+def handover_input():
     while True:
-        task = required_input("Enter the task name:")
-        description = required_input("Enter the task description: ")
-        owner_input = required_input("Enter task owner(s), separated by commas: ")
-        owners = [owner.strip() for owner in owner_input.split(",")]
-        deadline = required_input("Enter deadline (DD/MM/YYYY):")
-        comments = input("Enter any additional comments(optional):")
+        print("\nEnter the information for handover:")
+        print("Enter text directly or type file:<filename> to load a .txt file.") #a singular input for user to choose between texxt or file upload
 
-        text_check =(  # to double check sensitive information for manually entered data
-            task + " "+
-            description + " " +
-            owner_input + " " +
-            deadline + " " +
-            comments
-        )
+        handover_info = required_input("\nHandover: ")
 
+        #check if user wants to load a file
+        if handover_info.lower().startswith("file:"):
+            filename = handover_info[5:].strip()
 
-        if validate_user_input(text_check):
-            print("Please re-enter the task. \n")
+            if filename == "":
+                print("Please provide a filename.")
+                continue
+
+            handover_info = handover_from_file(filename)
+
+            if handover_info is None:
+                continue
+
+        #check sensitive information
         else:
-            task_info = {
-                "task": task,
-                "description": description,
-                "owners": owners,
-                "deadline": deadline,
-                "comments": comments
-            }
-
-        return task_info
+            if validate_user_input(handover_info):
+                continue
 
 
-def handover_from_file(filename):
-    """Read and validate a handover .txt file by name (looked up in handover_dir).
+        return handover_info
 
-    Returns the file text if valid and clean, otherwise None so the caller can
-    decide how to proceed (e.g. re-prompt).
-    """
-    input_file = handover_dir / filename
+def main():
+    user_details = get_user_details()
 
-    handover_info = read_txt_file(input_file)
-    if handover_info is None:
-        return None
+    if user_details["role"] == "Handing over":
+        handover_info = handover_input()
 
-    if validate_user_input(handover_info):
-        return None
+        print("Input is successfully validated.")
 
-    return handover_info
+        return user_details, handover_info
+
+    elif user_details["role"] == "Taking over":
+        print("Taking over information successfully validated.")
+
+        return user_details
