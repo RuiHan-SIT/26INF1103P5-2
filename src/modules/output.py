@@ -1,8 +1,8 @@
 import os
 from datetime import datetime
 
-STATUS_READY = "Ready for Handover"
-STATUS_CLARIFY = "Needs Clarification"
+STATUS_COMPLETE = "Handover Complete"
+STATUS_INCOMPLETE = "Handover Incomplete"
 NOT_SPECIFIED = "Not specified"
 WIDTH = 78
 SUMMARY_DIR = "data/summaries"
@@ -25,27 +25,37 @@ def _owners_str(owners):
 def display_status(result):
     #prints the handover status and list missing info if not ready
     status = result.get("status", "Unknown")
+    display_status = STATUS_COMPLETE if status in (STATUS_COMPLETE, "complete") else status
+    if status == "incomplete":
+        display_status = STATUS_INCOMPLETE
     print("\n" + "=" * WIDTH)
-    print(f"STATUS: {status.upper()}")
+    print(f"STATUS: {display_status.upper()}")
     print("=" * WIDTH)
  
-    if status == STATUS_CLARIFY:
-        missing = result.get("missing_info", [])
+    if status in (STATUS_INCOMPLETE, "incomplete"):
+        missing = result.get("missing_info", result.get("errors", []))
         if missing:
             print("\nClarification needed:")
             for item in missing:
-                print(f"  - {str(item)}")
+                if isinstance(item, dict):
+                    details = ", ".join(item.get("errors", []))
+                    label = item.get("task", item.get("type", "Handover"))
+                    print(f"  - {label}: {details or item}")
+                else:
+                    print(f"  - {str(item)}")
         print("\nPlease resolve the items above, then run the handover again.")
  
  
 def generate_summary_txt(result, output_dir=SUMMARY_DIR):
     #write the handover summary to a .txt file
-    #only generates when status is Ready and returns the file path, or None
-    if result.get("status") != STATUS_READY:
-        print("\nCannot generate summary: handover is not yet Ready.")
+    #only generates when status is Complete and returns the file path, or None
+    if result.get("status") not in (STATUS_COMPLETE, "complete"):
+        print("\nCannot generate summary: handover is not yet Complete.")
         return None
  
     tasks = result.get("tasks", [])
+    outstanding_tasks = result.get("outstanding_tasks", [])
+    bau_tasks = result.get("bau_tasks", [])
     now = datetime.now()
     #generate a unique filename based on the current timestamp
     filename = f"handover_summary_{now:%Y-%m-%d_%H%M%S}.txt"
@@ -54,10 +64,35 @@ def generate_summary_txt(result, output_dir=SUMMARY_DIR):
         "HANDOVER SUMMARY",
         "=" * WIDTH,
         f"Generated : {now:%Y-%m-%d %H:%M}",
-        f"Status    : {result.get('status')}",
-        f"Tasks     : {len(tasks)}",
+        f"Status    : {STATUS_COMPLETE}",
+        f"Tasks     : {len(tasks) + len(outstanding_tasks) + len(bau_tasks)}",
         "",
     ]
+    if outstanding_tasks:
+        lines.extend(["OUTSTANDING TASKS", "-" * WIDTH])
+        for task in outstanding_tasks:
+            lines.append(f"* {_clean(task.get('task'))}")
+            if task.get("description"):
+                lines.append(f"    Description : {_clean(task.get('description'))}")
+            lines.append(f"    Owner(s)    : {_owners_str(task.get('owners'))}")
+            lines.append(f"    Deadline    : {_clean(task.get('deadline'))}")
+        lines.append("")
+
+    if bau_tasks:
+        lines.extend(["ROUTINE TASKS", "-" * WIDTH])
+        for task in bau_tasks:
+            lines.append(f"* {_clean(task.get('task'))}")
+            if task.get("description"):
+                lines.append(f"    Description : {_clean(task.get('description'))}")
+            lines.append(f"    Owner(s)    : {_owners_str(task.get('owners'))}")
+        lines.append("")
+
+    important_information = result.get("important_information", [])
+    if important_information:
+        lines.extend(["IMPORTANT INFORMATION", "-" * WIDTH])
+        lines.extend(f"* {_clean(item)}" for item in important_information)
+        lines.append("")
+
     for priority in ("High", "Medium", "Low"):
         group = [t for t in tasks if _clean(t.get("priority")).title() == priority]
         if not group:
@@ -88,8 +123,7 @@ def generate_summary_txt(result, output_dir=SUMMARY_DIR):
 def show_output(result):
     #main entry point, called from main.py with the logic manager's result
     display_status(result)
-    if result.get("status") == STATUS_READY:
+    if result.get("status") in (STATUS_COMPLETE, "complete"):
         path = generate_summary_txt(result)
         if path:
             print(f"\nHandover summary saved to: {path}")
- 
