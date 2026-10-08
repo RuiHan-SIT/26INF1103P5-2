@@ -1,6 +1,5 @@
 import sys
 from pathlib import Path
-from modules.input_handler import required_input
 
 # Ensure this file's directory (src/) is on sys.path so the sibling packages
 # `modules` and `utils` import correctly no matter where the program is
