@@ -15,6 +15,7 @@ from modules.input_handler import (
     validate_user_input,
 )
 
+from modules.nvidia_router import send_to_llm
 
 def handover_input():
     while True:
