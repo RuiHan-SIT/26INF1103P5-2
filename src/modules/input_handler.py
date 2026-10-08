@@ -166,4 +166,35 @@ def handover_input():
 
         return handover_info
 
+# Validate user's name
+def validate_name(name): 
+    if name.strip() == "": # Check if name is blank
+        return False
+    
+    has_letter = False
 
+    for char in name: 
+        if char.isalpha():
+            has_letter = True
+
+    return has_letter
+
+# Validate user's department
+def validate_department(department): 
+    if department.strip() == "": # Check if deparment is blank
+        return False
+
+    has_letter = False
+    
+    for char in department: 
+        if char.isalpha():
+            has_letter = True
+    
+    return has_letter
+
+# Validate user's employee ID
+def validate_employee_id(employee_id):
+    if len(employee_id) == 7 and employee_id.isdigit():
+        return True
+
+    return False

@@ -1,31 +1,5 @@
 from datetime import datetime
 
-# Validate user's name
-def validate_name(name): 
-    if name.strip() == "":
-        return False
-    
-    has_letter = False
-
-    for char in name: 
-        if char.isalpha():
-            has_letter = True
-
-    return has_letter
-
-# Validate user's department
-def validate_department(department): 
-    if department.strip() == "":
-        return False
-
-    has_letter = False
-    
-    for char in department: 
-        if char.isalpha():
-            has_letter = True
-    
-    return has_letter
-
 # Check required info in outstanding tasks
 def validate_outstanding_task(task): 
     errors = []
