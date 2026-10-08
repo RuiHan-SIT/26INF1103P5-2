@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+import src.modules.logic_manager as logic_manager
 
 # Ensure this file's directory (src/) is on sys.path so the sibling packages
 # `modules` and `utils` import correctly no matter where the program is

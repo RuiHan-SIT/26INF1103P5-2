@@ -54,7 +54,7 @@ def validate_outstanding_task(task):
 
     return errors
 
-# Check required info for BAU tasks
+# Check required info for BAU tasks and return all errors 
 def validate_bau_task(task): 
     errors = []
 
@@ -108,12 +108,13 @@ def validate_handover(data):
     return errors
 
 # Determine if handover needs re-prompt/clarifications
+# Returns a status of "complete" or "incomplete"
 def get_handover_status(data, errors):
     outstanding_tasks = data["outstanding_tasks"]
     bau_tasks = data["bau_tasks"]
 
     if len(errors) != 0 or (len(outstanding_tasks) == 0 and len(bau_tasks) == 0):
-        return "incomplete"
+        return "incomplete" 
     else:
         return "complete"
 
