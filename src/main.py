@@ -53,9 +53,10 @@ def main():
     if user_details["role"] == "Handing over":
         handover_info = handover_input()
 
-        print("Input is successfully validated.")
+        # print("Input is successfully validated.")
+        # return user_details, handover_info
+        print(handover_info)
 
-        return user_details, handover_info
 
     elif user_details["role"] == "Taking over":
         print("Taking over information successfully validated.")

@@ -1,9 +1,9 @@
 import requests
 import json
-from src.utils.openai_client import client 
-from src.utils.logger import logger
-from src.utils.llm_prompt import SYSTEM_PROMPT
-from src.model.handover_model import HandoverReport
+from utils.openai_client import client
+from utils.logger import logger
+from utils.llm_prompt import SYSTEM_PROMPT
+from model.handover_model import HandoverReport
 from pydantic import ValidationError
 import openai
 import re
@@ -157,7 +157,7 @@ def send_to_llm(user_input: str):
         }
 
 
-se
+
 
 
 

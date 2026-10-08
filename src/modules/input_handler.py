@@ -167,17 +167,3 @@ def handover_input():
         return handover_info
 
 
-def main():
-    user_details = get_user_details()
-
-    if user_details["role"] == "Handing over":
-        handover_info = handover_input()
-
-        print("Input is successfully validated.")
-
-        return user_details, handover_info
-
-    elif user_details["role"] == "Taking over":
-        print("Taking over information successfully validated.")
-
-        return user_details   
