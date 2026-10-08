@@ -116,3 +116,18 @@ def delete_record(record_id, filepath=DEFAULT_DATA_FILE):
 
     #5.4 Save the shorter list back
     return save_records(updated_records, filepath)
+
+def get_record_by_id(record_id, filepath=DEFAULT_DATA_FILE):
+    #6.1 Read. Given an id, return the matching record, or None if no record with that id exists.
+    records = load_records(filepath)
+
+    for record in records:
+        #6.2 Skip anything that isn't a proper record (defensive, same as update/delete)
+        if not isinstance(record, dict):
+            continue
+
+        if record.get("id") == record_id:
+            return record
+
+    #No record with that id was found
+    return None
