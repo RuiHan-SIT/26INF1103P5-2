@@ -1,8 +1,9 @@
 import sys
 from pprint import pformat
 from pathlib import Path
+
 import modules.logic_manager as logic_manager
-from modules.nvidia_router import send_to_llm
+from modules.gemini_router import send_to_llm
 from modules.input_handler import (
     get_user_details,
     handover_from_file,
@@ -81,7 +82,7 @@ if __name__ == "__main__":
 
 
 
-# error handling done by nvidia file 
+# error handling done by gemini_router file
 
 # result = analyze_handover_safe(file_text)
 
