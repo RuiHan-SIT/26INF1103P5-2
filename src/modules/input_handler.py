@@ -182,3 +182,4 @@ def main():
         print("Taking over information successfully validated.")
 
         return user_details
+    main()

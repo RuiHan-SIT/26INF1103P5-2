@@ -10,73 +10,55 @@ if str(SRC_DIR) not in sys.path:
 
 from modules.input_handler import (
     get_user_details,
-    get_handover_info,
     handover_from_file,
+    required_input,
+    validate_user_input,
 )
 
 
-def collect_handover_info():
-    """Ask how the user wants to provide handover info, then collect it."""
+def handover_input():
     while True:
-        print("\nEnter the information for handover: ")
-        print("1. Enter the information manually")
-        print("2. Load a .txt file")
+        print("\nEnter the information for handover:")
+        print("Enter text directly or type file:<filename> to load a .txt file.") #a singular input for user to choose between texxt or file upload
 
-        choice = input("Select an option: ")
+        handover_info = required_input("\nHandover: ")
 
-        if choice == "1":
-            tasks = []
+        #check if user wants to load a file
+        if handover_info.lower().startswith("file:"):
+            filename = handover_info[5:].strip()
 
-            while True:
-                task_info = get_handover_info()
-                tasks.append(task_info)
-
-                while True:
-                    more = input("\nDo you want to add more tasks? (yes/no): ").lower()
-                    if more in ("yes", "no"):
-                        break
-                    print("Invalid input. Please enter yes or no")
-
-                if more == "no":
-                    break
-
-            return tasks
-
-        elif choice == "2":
-            filename = input("Enter the .txt filename: ")
-            handover_info = handover_from_file(filename)
-            if handover_info is None:
-                # invalid / not found / contained sensitive info: re-prompt
+            if filename == "":
+                print("Please provide a filename.")
                 continue
-            return handover_info
 
+            handover_info = handover_from_file(filename)
+
+            if handover_info is None:
+                continue
+
+        #check sensitive information
         else:
-            print("Invalid option. Please select 1 or 2.")
+            if not validate_user_input(handover_info):
+                continue
+
+
+        return handover_info
 
 
 def main():
     user_details = get_user_details()
-    if user_details is None:
-        return None
 
-    name, department, handover_role = user_details
+    if user_details["role"] == "Handing over":
+        handover_info = handover_input()
 
-    if handover_role == "Handing over":
-        handover_info = collect_handover_info()
-        if handover_info is None:
-            return None
-
-        #to pass data to LLM
         print("Input is successfully validated.")
-        return name, department, handover_role, handover_info
 
-    elif handover_role == "Taking over":
-        #to be handle by logic manager or and additional user input
-        print("No handover input required.")
-        return name, department, handover_role
+        return user_details, handover_info
 
-    return None
+    elif user_details["role"] == "Taking over":
+        print("Taking over information successfully validated.")
 
+        return user_details
 
 if __name__ == "__main__":
     main()
