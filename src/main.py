@@ -1,14 +1,8 @@
 import sys
+from pprint import pformat
 from pathlib import Path
-import src.modules.logic_manager as logic_manager
-
-# Ensure this file's directory (src/) is on sys.path so the sibling packages
-# `modules` and `utils` import correctly no matter where the program is
-# launched from.
-SRC_DIR = Path(__file__).resolve().parent
-if str(SRC_DIR) not in sys.path:
-    sys.path.insert(0, str(SRC_DIR))
-
+import modules.logic_manager as logic_manager
+from modules.nvidia_router import send_to_llm
 from modules.input_handler import (
     get_user_details,
     handover_from_file,
@@ -16,7 +10,12 @@ from modules.input_handler import (
     validate_user_input,
 )
 
-from modules.nvidia_router import send_to_llm
+# Ensure this file's directory (src/) is on sys.path so the sibling packages
+# `modules` and `utils` import correctly no matter where the program is
+# launched from.
+SRC_DIR = Path(__file__).resolve().parent
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
 
 def handover_input():
     while True:
@@ -42,27 +41,40 @@ def handover_input():
         else:
             if validate_user_input(handover_info):
                 continue
-
-
+            
         return handover_info
-
 
 def main():
     user_details = get_user_details()
 
     if user_details["role"] == "Handing over":
         handover_info = handover_input()
+        print("Input is successfully validated.")
 
-        # print("Input is successfully validated.")
-        # return user_details, handover_info
-        print(handover_info)
+        # Pass handover output to AI Manager
+        llm_output = send_to_llm(handover_info)
 
+        # Convert AI output into dictionary
+        handover_data = llm_output.model_dump()
+
+        # Pass dictionary to Logic Manager
+        result = logic_manager.process_handover(handover_data)
+
+        # Check handover status
+        if result["status"] == "incomplete":
+            print("\nHandover is incomplete.")
+
+            for error in result["errors"]:
+                print(error)
+
+        else:
+            print("\nHandover is complete.")
+        # return user_details, llm_output
 
     elif user_details["role"] == "Taking over":
         print("Taking over information successfully validated.")
-
         return user_details
-
+    
 if __name__ == "__main__":
     result = main()
 
