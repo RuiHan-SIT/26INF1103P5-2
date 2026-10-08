@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+from modules.input_handler import required_input
 
 # Ensure this file's directory (src/) is on sys.path so the sibling packages
 # `modules` and `utils` import correctly no matter where the program is
@@ -38,7 +39,7 @@ def handover_input():
 
         #check sensitive information
         else:
-            if not validate_user_input(handover_info):
+            if validate_user_input(handover_info):
                 continue
 
 
@@ -62,7 +63,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
 
 
