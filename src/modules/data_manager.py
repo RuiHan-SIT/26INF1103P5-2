@@ -5,6 +5,8 @@ from datetime import date
 
 DEFAULT_DATA_FILE = "handovers.json"
 
+#1. opens the saved JSON file and gives you back everything in it as a list. 
+#If the file doesn't exist yet or is broken, it just gives back an empty list instead of crashing.
 def load_records(filepath=DEFAULT_DATA_FILE):
     """Load all handover records from the JSON file
     Returns an empty  list if the file doesn't exist yet"""
@@ -34,7 +36,8 @@ def load_records(filepath=DEFAULT_DATA_FILE):
     
     return data
 
-
+#Takes a list of records and writes it to the JSON file, replacing whatever was there before. 
+#Mostly used internally by the other functions, not called directly.
 def save_records(records, filepath=DEFAULT_DATA_FILE):
     """Save the full list of handover records to the JSON file
     Overwrites whatever was previously saved"""
@@ -49,6 +52,8 @@ def save_records(records, filepath=DEFAULT_DATA_FILE):
 
     return True
 
+#Create. Takes a new handover, gives it a unique id and today's date, 
+#and saves it alongside everything already stored.
 def add_record(record, filepath=DEFAULT_DATA_FILE):
     """Add a new handover record to the JSON file. Auto generates the record's id and date, and saves the updated list."""
     # Loads the existing records, so we can add to them, not overwrite them
@@ -61,11 +66,12 @@ def add_record(record, filepath=DEFAULT_DATA_FILE):
         next_id = 1
     #3.2 Stamp the new record with its id and today's date
     record["id"] = next_id
-    record["date"] = date.today().isoformat()
+    record["saved_date"] = date.today().isoformat()
     records.append(record)
     return save_records(records, filepath)
 
-
+#Update. Given an id and the fields you want to change, 
+#finds that record and edits just those fields, without touching the rest.
 def update_record(record_id, updates, filepath=DEFAULT_DATA_FILE):
     """Update an existing handover record identified by its id.
     'updates' is a dict of the fields to change (e.g. {"task": "New task name"}).
@@ -94,3 +100,34 @@ def update_record(record_id, updates, filepath=DEFAULT_DATA_FILE):
 
     #4.8 No record with that id was found - nothing to update
     return False
+
+def delete_record(record_id, filepath=DEFAULT_DATA_FILE):
+    #Delete an existing handover record identified by its id.
+    #Returns True if a record was found and deleted, False if no record with that id exists."""
+    #5.1 Load the current records so we can search through them
+    records = load_records(filepath)
+
+    #5.2 Build a new list that keeps everything EXCEPT the record with the matching id
+    updated_records = [r for r in records if not (isinstance(r, dict) and r.get("id") == record_id)]
+
+    #5.3 If nothing changed length, there was no match to delete
+    if len(updated_records) == len(records):
+        return False
+
+    #5.4 Save the shorter list back
+    return save_records(updated_records, filepath)
+
+def get_record_by_id(record_id, filepath=DEFAULT_DATA_FILE):
+    #6.1 Read. Given an id, return the matching record, or None if no record with that id exists.
+    records = load_records(filepath)
+
+    for record in records:
+        #6.2 Skip anything that isn't a proper record (defensive, same as update/delete)
+        if not isinstance(record, dict):
+            continue
+
+        if record.get("id") == record_id:
+            return record
+
+    #No record with that id was found
+    return None
