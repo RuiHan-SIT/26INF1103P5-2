@@ -76,96 +76,6 @@ def validate_user_input(text: str):
         return True
 
     return False
-
-def handover_from_file(filename):
-    #Read and validate a handover .txt file by name (looked up in handover_dir).
-    #returns the file text if valid and clean, otherwise None so the caller can
-    #decide how to proceed (e.g. re-prompt).
-
-    input_file = handover_dir / filename
-
-    handover_info = read_txt_file(input_file)
-    if handover_info is None:
-        return None
-
-    if validate_user_input(handover_info):
-        return None
-
-    return handover_info
-
-def get_user_details(): #function to get user details
-    name = required_input("Enter your name: ") #employee name
-    department = required_input("Enter your department: ") #employee department
-    employee_id = required_input("Enter your employee ID: ") #employee ID
-
-    submission_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S") #get current date and time
-    print("\n Are you:")
-    print("1. Handing over work") #letting employee choose whether to handover or takeover
-    print("2. Taking over work")
-
-    while True:
-        role = required_input("Select an option: ") 
-
-        if role == "1":
-
-            return {
-                "name": name,
-                "department": department,
-                "employee_id": employee_id,
-                "date":submission_date,
-                "role": "Handing over"
-            }
-        elif role == "2":
-
-            previous_employee = required_input("Enter the name of the previous employee: ")
-            previous_employee_id = required_input("Enter the employee ID of the previous employee: ")
-
-            return {
-                "name":name,
-                "department":department,
-                "date": submission_date,
-                "role": "Taking over",
-                "taking_over_from": previous_employee,
-                "taking_over_from_id": previous_employee_id
-            }
-        else:
-            print("Invalid option.")
-
-def required_input(prompt): #this is to ensure manually added information for required fields
-    while True:
-        value = input(prompt).strip()
-
-        if value == "":
-            print("This field is required. Please enter a value.")
-        else:
-            return value
-        
-def handover_input():
-    while True:
-        print("\nEnter the information for handover:")
-        print("Enter text directly or type file:<filename> to load a .txt file.")
-
-        handover_info = required_input("\nHandover: ")
-
-        # Check if user wants to load a file
-        if handover_info.lower().startswith("file:"):
-            filename = handover_info[5:].strip()
-
-            if filename == "":
-                print("Please provide a filename.")
-                continue
-
-            handover_info = load_txt_file(filename)
-
-            if handover_info is None:
-                continue
-
-        # Check sensitive information
-        if sensitive_info(handover_info):
-            continue
-
-        return handover_info
-
 # Validate user's name
 def validate_name(name): 
     if name.strip() == "": # Check if name is blank
@@ -198,3 +108,128 @@ def validate_employee_id(employee_id):
         return True
 
     return False
+
+def handover_from_file(filename):
+    #Read and validate a handover .txt file by name (looked up in handover_dir).
+    #returns the file text if valid and clean, otherwise None so the caller can
+    #decide how to proceed (e.g. re-prompt).
+
+    input_file = (handover_dir / filename).resolve()
+    if not input_file.is_relative_to(handover_dir.resolve()):
+        print("Invalid file path. Please provide a valid filename within the handover directory.")
+        return None
+
+    handover_info = read_txt_file(input_file)
+    if handover_info is None:
+        return None
+
+    if validate_user_input(handover_info):
+        return None
+
+    return handover_info
+
+def get_user_details(): #function to get user details
+    while True: #get and validate user name
+        name = required_input("Enter your name: ") #employee name
+
+        if validate_name(name):
+            break
+        else:
+            print("Invalid name. Please enter a valid name containing at least one letter.")
+    while True: #get and validate user department
+        department = required_input("Enter your department: ") #employee department
+
+        if validate_department(department):
+            break
+        else:
+            print("Invalid department. Please enter a valid department containing at least one letter.")  
+    while True: #get and validate user employee ID
+        employee_id = required_input("Enter your employee ID: ") #employee ID
+
+        if validate_employee_id(employee_id):
+            break
+        else:
+            print("Invalid employee ID. Please enter a valid 7-digit employee ID.")
+
+    submission_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S") #get current date and time
+    print("\n Are you:")
+    print("1. Handing over work") #letting employee choose whether to handover or takeover
+    print("2. Taking over work")
+
+    while True:
+        role = required_input("Select an option: ") 
+
+        if role == "1":
+
+            return {
+                "name": name,
+                "department": department,
+                "employee_id": employee_id,
+                "date":submission_date,
+                "role": "Handing over"
+            }
+        elif role == "2":
+            while True:
+                previous_employee = required_input("Enter the name of the previous employee: ")
+
+                if validate_name(previous_employee):
+                    break
+                else:
+                    print("Invalid name. Please enter a valid name containing at least one letter.")
+
+            while True:
+                previous_employee_id = required_input("Enter the employee ID of the previous employee: ")
+
+                if validate_employee_id(previous_employee_id):
+                    break
+                else:
+                    print("Invalid employee ID. Please enter a valid 7-digit employee ID.")
+
+            return {
+                "name":name,
+                "department":department,
+                "employee_id":employee_id,
+                "date": submission_date,
+                "role": "Taking over",
+                "taking_over_from": previous_employee,
+                "taking_over_from_id": previous_employee_id
+            }
+        else:
+            print("Invalid option.")
+
+def required_input(prompt): #this is to ensure manually added information for required fields
+    while True:
+        value = input(prompt).strip()
+
+        if value == "":
+            print("This field is required. Please enter a value.")
+        else:
+            return value
+        
+def handover_input():
+    while True:
+        print("\nEnter the information for handover:")
+        print("Enter text directly or type file:<filename> to load a .txt file.")
+
+        handover_info = required_input("\nHandover: ")
+
+        # Check if user wants to load a file
+        if handover_info.lower().startswith("file:"):
+            filename = handover_info[5:].strip()
+
+            if filename == "":
+                print("Please provide a filename.")
+                continue
+
+            handover_info = handover_from_file(filename)
+
+            if handover_info is None:
+                continue
+
+        # Check sensitive information
+        else:
+            if validate_user_input(handover_info):
+                continue
+
+        return handover_info
+
