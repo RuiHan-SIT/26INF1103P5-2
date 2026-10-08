@@ -1,3 +1,4 @@
+from modules.input_handler import required_input
 from utils.logger import logger
 from pathlib import Path
 import scrubadub
@@ -93,7 +94,6 @@ def handover_from_file(filename):
 
     return handover_info
 
-#function to get user details
 def get_user_details(): #function to get user details
     name = required_input("Enter your name: ") #employee name
     department = required_input("Enter your department: ") #employee department
@@ -101,14 +101,14 @@ def get_user_details(): #function to get user details
     submission_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S") #get current date and time
     print("\n Are you:")
     print("1. Handing over work") #letting employee choose whether to handover or takeover
-    print("2. Taking over work") 
+    print("2. Taking over work")
 
     while True:
         role = required_input("Select an option: ") 
 
         if role == "1":
 
-            return {                        #stores information in a dictionary
+            return {
                 "name": name,
                 "department": department,
                 "date":submission_date,
@@ -116,7 +116,7 @@ def get_user_details(): #function to get user details
             }
         elif role == "2":
 
-            previous_employee = required_input("Enter the name of the previous employee: ") #enters the details of previous empployee to extract the handover document
+            previous_employee = required_input("Enter the name of the previous employee: ")
             previous_department = required_input("Enter their department:")
 
             return {
@@ -135,19 +135,18 @@ def required_input(prompt): #this is to ensure manually added information for re
         value = input(prompt).strip()
 
         if value == "":
-            
             print("This field is required. Please enter a value.")
         else:
             return value
-
+        
 def handover_input():
     while True:
         print("\nEnter the information for handover:")
-        print("Enter text directly or type file:<filename> to load a .txt file.") #a singular input for user to choose between texxt or file upload
+        print("Enter text directly or type file:<filename> to load a .txt file.")
 
         handover_info = required_input("\nHandover: ")
 
-        #check if user wants to load a file
+        # Check if user wants to load a file
         if handover_info.lower().startswith("file:"):
             filename = handover_info[5:].strip()
 
@@ -155,18 +154,17 @@ def handover_input():
                 print("Please provide a filename.")
                 continue
 
-            handover_info = handover_from_file(filename)
+            handover_info = load_txt_file(filename)
 
             if handover_info is None:
                 continue
 
-        #check sensitive information
-        else:
-            if validate_user_input(handover_info):
-                continue
-
+        # Check sensitive information
+        if sensitive_info(handover_info):
+            continue
 
         return handover_info
+
 
 def main():
     user_details = get_user_details()
@@ -181,5 +179,4 @@ def main():
     elif user_details["role"] == "Taking over":
         print("Taking over information successfully validated.")
 
-        return user_details
-    main()
+        return user_details   
