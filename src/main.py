@@ -62,7 +62,7 @@ def main():
         return user_details
 
 if __name__ == "__main__":
-    main()
+    result = main()
 
 
 

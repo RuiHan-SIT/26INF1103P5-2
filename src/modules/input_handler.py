@@ -1,4 +1,3 @@
-
 from utils.logger import logger
 from pathlib import Path
 import scrubadub
@@ -6,6 +5,7 @@ from datetime import datetime
 
 # Build the Scrubber once and reuse it across calls (construction is not free).
 _scrubber = scrubadub.Scrubber()
+_scrubber.remove_detector('phone')
 
 # Anchor to the project root (../../ up from src/modules/) so the path
 # works no matter which directory the program is launched from.
@@ -60,8 +60,7 @@ def validate_user_input(text: str):
 
     # keyword check for domain-sensitive words scrubadub does not model as PII
     sensitive_keywords = [
-        "password", "credit card", "bank account", "nric", "passport",
-        "driver's license", "confidential", "secret", "private", "restricted",
+        "password", "nric", "passport","driver's license", "confidential", "secret", "private", "restricted",
     ]
     text_lower = text.lower()
     for keyword in sensitive_keywords:
@@ -97,6 +96,7 @@ def handover_from_file(filename):
 def get_user_details(): #function to get user details
     name = required_input("Enter your name: ") #employee name
     department = required_input("Enter your department: ") #employee department
+    employee_id = required_input("Enter your employee ID: ") #employee ID
 
     submission_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S") #get current date and time
     print("\n Are you:")
@@ -111,13 +111,14 @@ def get_user_details(): #function to get user details
             return {
                 "name": name,
                 "department": department,
+                "employee_id": employee_id,
                 "date":submission_date,
                 "role": "Handing over"
             }
         elif role == "2":
 
             previous_employee = required_input("Enter the name of the previous employee: ")
-            previous_department = required_input("Enter their department:")
+            previous_employee_id = required_input("Enter the employee ID of the previous employee: ")
 
             return {
                 "name":name,
@@ -125,7 +126,7 @@ def get_user_details(): #function to get user details
                 "date": submission_date,
                 "role": "Taking over",
                 "taking_over_from": previous_employee,
-                "taking_over_department": previous_department
+                "taking_over_from_id": previous_employee_id
             }
         else:
             print("Invalid option.")
