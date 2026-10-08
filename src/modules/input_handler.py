@@ -109,6 +109,15 @@ def validate_employee_id(employee_id):
 
     return False
 
+def required_input(prompt): #this is to ensure manually added information for required fields
+    while True:
+        value = input(prompt).strip()
+
+        if value == "":
+            print("This field is required. Please enter a value.")
+        else:
+            return value
+
 def handover_from_file(filename):
     #Read and validate a handover .txt file by name (looked up in handover_dir).
     #returns the file text if valid and clean, otherwise None so the caller can
@@ -197,14 +206,6 @@ def get_user_details(): #function to get user details
         else:
             print("Invalid option.")
 
-def required_input(prompt): #this is to ensure manually added information for required fields
-    while True:
-        value = input(prompt).strip()
-
-        if value == "":
-            print("This field is required. Please enter a value.")
-        else:
-            return value
         
 def handover_input():
     while True:
