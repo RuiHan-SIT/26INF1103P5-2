@@ -16,7 +16,7 @@ def validate_outstanding_task(task):
         errors.append("description")
     
     if len(owners) == 0:
-        errors.append("owners")
+        errors.append("missing_owner(s)")
     
     if deadline.strip() == "":
         errors.append("missing_deadline")
@@ -43,7 +43,7 @@ def validate_bau_task(task):
         errors.append("description")
         
     if len(owners) == 0:
-        errors.append("owners")
+        errors.append("missing_owner(s)")
 
     return errors
 

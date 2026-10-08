@@ -1,0 +1,2 @@
+Handover - Operations
+The stock discrepancy report must be completed by 19/10/2026. Compare the warehouse count against the inventory spreadsheet and investigate any mismatches. I haven't assigned anyone to this task yet.

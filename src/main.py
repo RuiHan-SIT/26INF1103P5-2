@@ -63,13 +63,14 @@ def main():
         # Check handover status
         if result["status"] == "incomplete":
             print("\nHandover is incomplete.")
+            print(pformat(result, sort_dicts=False))
 
             for error in result["errors"]:
                 print(error)
 
         else:
             print("\nHandover is complete.")
-        # return user_details, llm_output
+            print(pformat(result, sort_dicts=False))
 
     elif user_details["role"] == "Taking over":
         print("Taking over information successfully validated.")

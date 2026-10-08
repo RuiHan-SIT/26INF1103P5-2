@@ -161,7 +161,7 @@ def get_user_details(): #function to get user details
             print("Invalid employee ID. Please enter a valid 7-digit employee ID.")
 
     submission_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S") #get current date and time
-    print("\n Are you:")
+    print("\nAre you:")
     print("1. Handing over work") #letting employee choose whether to handover or takeover
     print("2. Taking over work")
 

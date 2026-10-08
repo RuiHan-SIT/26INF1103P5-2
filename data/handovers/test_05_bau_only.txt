@@ -1,0 +1,4 @@
+Handover - Customer Service
+These are recurring responsibilities, not one-off pending tasks.
+Every morning, Mei checks the customer support inbox and assigns new enquiries to the appropriate team.
+Every Friday, Daniel updates the weekly enquiry tracker with the number of resolved and unresolved cases.
