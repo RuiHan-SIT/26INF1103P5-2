@@ -2,21 +2,22 @@
 import sys
 from pprint import pformat
 from pathlib import Path
-import modules.logic_manager as logic_manager
-from modules.gemini_router import send_to_llm
-from modules.input_handler import (
-    get_user_details,
-    handover_from_file,
-    required_input,
-    validate_user_input,
-)
-
 # Ensure this file's directory (src/) is on sys.path so the sibling packages
 # `modules` and `utils` import correctly no matter where the program is
 # launched from.
 SRC_DIR = Path(__file__).resolve().parent
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
+     
+import modules.logic_manager as logic_manager
+from modules.gemini_router import send_to_llm
+from modules import output
+from modules.input_handler import (
+    get_user_details,
+    handover_from_file,
+    required_input,
+    validate_user_input,
+)
 
 DEBUG = False # Change to False when out of debugging mode
 
@@ -147,10 +148,7 @@ def get_handover_data():
 def main():
 
     user_details = get_user_details()
-
-    handover_input()
-
-
+    
     if user_details["role"] == "Handing over":
         handover_data = get_handover_data()
 
@@ -160,6 +158,7 @@ def main():
             result = logic_manager.process_handover(handover_data)
 
             if result["status"] == "complete":
+                output.show_output(result)
                 print("\nHandover is complete.")
 
                 if DEBUG:
