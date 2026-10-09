@@ -1,6 +1,7 @@
 import sys
 from pathlib import Path
 import src.modules.logic_manager as logic_manager
+import src.modules.data_manager as data_manager
 
 # Ensure this file's directory (src/) is on sys.path so the sibling packages
 # `modules` and `utils` import correctly no matter where the program is
@@ -53,15 +54,39 @@ def main():
     if user_details["role"] == "Handing over":
         handover_info = handover_input()
 
-        # print("Input is successfully validated.")
-        # return user_details, handover_info
-        print(handover_info)
+        try:
+            llm_result = send_to_llm(handover_info)
+        except ValueError as e:
+            # Defensive: send_to_llm() currently raises ValueError on a
+            # Pydantic validation failure instead of returning an error dict
+            # like its other failure paths. Catch it here so a bad LLM
+            # response can't crash the whole pipeline.
+            print(f"Couldn't process handover: {e}")
+            return None
 
+        # send_to_llm returns a dict with success=False on failure,
+        # or a HandoverReport (Pydantic model) on success
+        if isinstance(llm_result, dict) and llm_result.get("success") is False:
+            print(f"Couldn't process handover: {llm_result['error_message']}")
+            return None
+
+        llm_data = llm_result.model_dump()                # Pydantic model -> plain dict
+        result = logic_manager.process_handover(llm_data)  # Logic Manager validates + sorts
+
+        if result["status"] == "incomplete":
+            print("Handover is incomplete:", result["errors"])
+            return None
+
+        final_record = {**user_details, **result}
+        data_manager.add_record(final_record)              # Data Manager: Create
+        print("Handover saved.")
+        return final_record
 
     elif user_details["role"] == "Taking over":
         print("Taking over information successfully validated.")
 
-        return user_details
+        records = data_manager.load_records()              # Data Manager: Read
+        return user_details, records
 
 if __name__ == "__main__":
     result = main()
