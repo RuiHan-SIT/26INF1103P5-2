@@ -131,3 +131,16 @@ def get_record_by_id(record_id, filepath=DEFAULT_DATA_FILE):
 
     #No record with that id was found
     return None
+
+def save_handover(user_details, result, filepath=DEFAULT_DATA_FILE):
+    #Build a handover record from the user's details and the logic
+    #manager's result, then save it to the JSON file."""
+    record = {
+        "name": user_details["name"],
+        "employee_id": user_details["employee_id"],
+        "department": user_details["department"],
+        "outstanding_tasks": result["outstanding_tasks"],
+        "bau_tasks": result["bau_tasks"],
+        "important_information": result["important_information"],
+    }
+    return add_record(record, filepath)
