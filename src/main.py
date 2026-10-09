@@ -1,15 +1,7 @@
+
 import sys
 from pprint import pformat
 from pathlib import Path
-
-import modules.logic_manager as logic_manager
-from modules.gemini_router import send_to_llm
-from modules.input_handler import (
-    get_user_details,
-    handover_from_file,
-    required_input,
-    validate_user_input,
-)
 
 # Ensure this file's directory (src/) is on sys.path so the sibling packages
 # `modules` and `utils` import correctly no matter where the program is
@@ -18,35 +10,23 @@ SRC_DIR = Path(__file__).resolve().parent
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-def handover_input():
-    while True:
-        print("\nEnter the information for handover:")
-        print("Enter text directly or type file:<filename> to load a .txt file.") #a singular input for user to choose between texxt or file upload
+import modules.logic_manager as logic_manager
+from modules.gemini_router import send_to_llm
+from modules.input_handler import (
+    get_user_details,
+    handover_from_file,
+    required_input,
+    validate_user_input,
+    handover_input
+)
 
-        handover_info = required_input("\nHandover: ")
-
-        #check if user wants to load a file
-        if handover_info.lower().startswith("file:"):
-            filename = handover_info[5:].strip()
-
-            if filename == "":
-                print("Please provide a filename.")
-                continue
-
-            handover_info = handover_from_file(filename)
-
-            if handover_info is None:
-                continue
-
-        #check sensitive information
-        else:
-            if validate_user_input(handover_info):
-                continue
-            
-        return handover_info
 
 def main():
+
     user_details = get_user_details()
+
+    handover_input()
+
 
     if user_details["role"] == "Handing over":
         handover_info = handover_input()
@@ -74,6 +54,7 @@ def main():
             print(pformat(result, sort_dicts=False))
 
     elif user_details["role"] == "Taking over":
+        #able to call data manager to return selected id file 
         print("Taking over information successfully validated.")
         return user_details
     
