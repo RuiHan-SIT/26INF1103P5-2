@@ -2,7 +2,7 @@ from utils.logger import logger
 from pathlib import Path
 import scrubadub
 from datetime import datetime
-
+import re
 # Build the Scrubber once and reuse it across calls (construction is not free).
 _scrubber = scrubadub.Scrubber()
 _scrubber.remove_detector('phone')
@@ -69,10 +69,20 @@ def validate_user_input(text: str):
     sensitive_keywords = [
         "password", "passport",
     ]
+    
+    sensitive_patterns ={
+    "NRIC/FIN": r"\b[STFG]\d{7}[A-Z]$\b",
+    "Passport": r"\b[E]\d{7}[A-Z]\b",
+    }
+
     text_lower = text.lower()
     for keyword in sensitive_keywords:
         if keyword in text_lower:
             detected_types.add(keyword)
+
+    for label, pattern in sensitive_patterns.items():
+        if re.search(pattern, text):
+            detected_types.add(label)
 
     if detected_types:
         print(
@@ -157,7 +167,7 @@ def get_user_details(): #function to get user details
     print("2. Taking over work")
 
     while True:
-        role = required_input("Select an option: ") 
+        role = required_input("\nSelect an option: ") 
 
         if role == "1":
 
