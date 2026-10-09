@@ -12,7 +12,7 @@ import re
 import json_repair
 
 """ 
-1) send the user input to Gemini 2.5 Flash and get a completion ( done )
+1) send the user input to Gemini 3.6 Flash and get a completion ( done )
 2) handle API status/error codes, malformed output, rate limits,
    response timeouts / API unreachable, and empty responses from the LLM
 3) handle output validation with the Pydantic schema
@@ -62,7 +62,7 @@ def clean_llm_json(raw_text: str | None) -> dict[str, Any]:
 def send_to_llm(user_input: str):
     try:
         MODEL = "gemini-3.6-flash"
-        # Gemini 2.5 Flash hard limits (shared by the free tier; free tier only caps RATE):
+        # Gemini 3.6 Flash hard limits (shared by the free tier; free tier only caps RATE):
         #   - input context window : ~1,048,576 tokens (available automatically, no setting needed)
         #   - max output tokens     : 65,536  <- set below so long reports never get truncated
         MAX_OUTPUT_TOKENS = 65536
