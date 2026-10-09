@@ -53,7 +53,7 @@ def generate_summary_txt(result, output_dir=SUMMARY_DIR):
         print("\nCannot generate summary: handover is not yet Complete.")
         return None
  
-    tasks = result.get("tasks", [])
+    
     outstanding_tasks = result.get("outstanding_tasks", [])
     bau_tasks = result.get("bau_tasks", [])
     now = datetime.now()
@@ -65,7 +65,7 @@ def generate_summary_txt(result, output_dir=SUMMARY_DIR):
         "=" * WIDTH,
         f"Generated : {now:%Y-%m-%d %H:%M}",
         f"Status    : {STATUS_COMPLETE}",
-        f"Tasks     : {len(tasks) + len(outstanding_tasks) + len(bau_tasks)}",
+        f"Tasks     : {len(outstanding_tasks) + len(bau_tasks)}",
         "",
     ]
     if outstanding_tasks:
@@ -73,9 +73,9 @@ def generate_summary_txt(result, output_dir=SUMMARY_DIR):
         for task in outstanding_tasks:
             lines.append(f"* {_clean(task.get('task'))}")
             if task.get("description"):
+                lines.append(f"    Owner       : {_owners_str(task.get('owners'))}")
                 lines.append(f"    Description : {_clean(task.get('description'))}")
-            lines.append(f"    Owner(s)    : {_owners_str(task.get('owners'))}")
-            lines.append(f"    Deadline    : {_clean(task.get('deadline'))}")
+                lines.append(f"    Deadline    : {_clean(task.get('deadline'))}")
         lines.append("")
 
     if bau_tasks:
@@ -84,7 +84,7 @@ def generate_summary_txt(result, output_dir=SUMMARY_DIR):
             lines.append(f"* {_clean(task.get('task'))}")
             if task.get("description"):
                 lines.append(f"    Description : {_clean(task.get('description'))}")
-            lines.append(f"    Owner(s)    : {_owners_str(task.get('owners'))}")
+                lines.append(f"    Owner     : {_owners_str(task.get('owners'))}")
         lines.append("")
 
     important_information = result.get("important_information", [])
@@ -93,21 +93,6 @@ def generate_summary_txt(result, output_dir=SUMMARY_DIR):
         lines.extend(f"* {_clean(item)}" for item in important_information)
         lines.append("")
 
-    for priority in ("High", "Medium", "Low"):
-        group = [t for t in tasks if _clean(t.get("priority")).title() == priority]
-        if not group:
-            continue
-        lines.append(f"{priority.upper()} PRIORITY")
-        lines.append("-" * WIDTH)
-        for t in group:
-            lines.append(f"* {_clean(t.get('task'))}")
-            if t.get("description"):
-                lines.append(f"    Description : {_clean(t.get('description'))}")
-            lines.append(f"    Owner(s)    : {_owners_str(t.get('owners'))}")
-            lines.append(f"    Deadline    : {_clean(t.get('deadline'))}")
-            if t.get("comments"):
-                lines.append(f"    Comments    : {_clean(t.get('comments'))}")
-        lines.append("")
  
     try:
         os.makedirs(output_dir, exist_ok=True)
@@ -126,4 +111,34 @@ def show_output(result):
     if result.get("status") in (STATUS_COMPLETE, "complete"):
         path = generate_summary_txt(result)
         if path:
-            print(f"\nHandover summary saved to: {path}")
+            print(f"\nHandover file saved to: {os.path.basename(path)}")
+
+#test code to show output!
+if __name__ == "__main__":
+    show_output({
+        "status": "complete",
+        "outstanding_tasks": [{"task": "Stock discrepancy report", "owners": ["John"], "deadline": "19 Oct 2026", "description": "Compare the warehouse count against the inventory spreadsheet."}],
+        "bau_tasks": [],
+        "important_information": ["Test info"],
+    })
+
+
+# add in main.py 
+# from modules import output
+
+# replace the if result["status"] == "incomplete":
+#            print("\nHandover is incomplete.")
+#            print(pformat(result, sort_dicts=False))
+#            for error in result["errors"]:
+#                print(error)
+#        else:
+#            print("\nHandover is complete.")
+#            print(pformat(result, sort_dicts=False))
+
+# with 
+
+#         # Display status and generate summary
+#        output.show_output(result)
+#
+#
+#
