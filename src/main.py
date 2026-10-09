@@ -1,7 +1,6 @@
 import sys
 from pprint import pformat
 from pathlib import Path
-
 import modules.logic_manager as logic_manager
 from modules.gemini_router import send_to_llm
 from modules.input_handler import (
@@ -18,14 +17,16 @@ SRC_DIR = Path(__file__).resolve().parent
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
+DEBUG = False # Change to False when out of debugging mode
+
 def handover_input():
     while True:
         print("\nEnter the information for handover:")
-        print("Enter text directly or type file:<filename> to load a .txt file.") #a singular input for user to choose between texxt or file upload
+        print("Enter text directly, type file:<filename>, or drag and drop a .txt file.")
 
         handover_info = required_input("\nHandover: ")
 
-        #check if user wants to load a file
+        # Check if user typed file:<filename>
         if handover_info.lower().startswith("file:"):
             filename = handover_info[5:].strip()
 
@@ -38,40 +39,137 @@ def handover_input():
             if handover_info is None:
                 continue
 
-        #check sensitive information
+        # Check if user dragged and dropped a file
         else:
-            if validate_user_input(handover_info):
-                continue
-            
+            file_path = handover_info.strip()
+
+            # Remove PowerShell's & prefix, if present
+            if file_path.startswith("& "):
+                file_path = file_path[2:].strip()
+
+            # Remove surrounding quotation marks
+            file_path = file_path.strip("'\"")
+
+            path = Path(file_path)
+
+            if path.suffix.lower() == ".txt" and path.is_file():
+                handover_info = handover_from_file(path.name)
+
+                if handover_info is None:
+                    continue
+
+            # Otherwise, treat input as ordinary text
+            else:
+                if validate_user_input(handover_info):
+                    continue
+
         return handover_info
+
+def fill_missing_information(handover_data, errors):
+
+    for error in errors:
+
+        if error["type"] == "handover":
+            print("No tasks were found. Please provide handover tasks.")
+            return False
+
+        task_type = error["type"]
+        task_index = error["index"] - 1
+
+        if task_type == "outstanding":
+            task = handover_data["outstanding_tasks"][task_index]
+        elif task_type == "bau":
+            task = handover_data["bau_tasks"][task_index]
+        else:
+            continue
+
+        print(f"\n--- {task_type.upper()} TASK {error['index']} ---")
+
+        # Display "Not provided" if empty string
+        print(f"Task Name: {task['task'] or 'Not provided'}") 
+        print(f"Description: {task['description'] or 'Not provided'}")
+        print(f"Owner(s): {', '.join(task['owners']) if task['owners'] else 'Not provided'}")
+
+        # Only outstanding tasks has a deadline hence check task_type == "outstanding" before printing deadline
+        if task_type == "outstanding":
+            print(f"Deadline: {task['deadline'] or 'Not provided'}")
+
+        for missing_field in error["errors"]:
+
+            if missing_field == "task":
+                task["task"] = input("\nEnter task name: ").strip()
+            elif missing_field == "description":
+                task["description"] = input("\nEnter description: ").strip()
+            elif missing_field == "missing_owner(s)":
+                owner = input("\nEnter owner: ").strip()
+                task["owners"] = [owner] if owner else []
+            elif missing_field in ("missing_deadline", "invalid_deadline"):
+
+                # Inform user why the deadline needs to be entered again
+                if missing_field == "missing_deadline":
+                    print("\nDeadline is missing. Please provide a deadline.")
+                elif missing_field == "invalid_deadline":
+                    print("\nInvalid deadline. Please enter a valid date (today or later) in DD/MM/YYYY format.")
+
+                while True:
+                    deadline = input("\nEnter deadline (DD/MM/YYYY): ").strip()
+
+                    if logic_manager.validate_deadline(deadline):
+                        task["deadline"] = deadline
+                        break
+
+                    print("Invalid deadline. Please enter a valid date (today or later) in DD/MM/YYYY format.")
+            else:
+                raise ValueError(f"Unhandled validation error: {missing_field}")
+            
+    return True
+
+def get_handover_data():
+    handover_info = handover_input()
+    print("Input is successfully validated.")
+
+    llm_output = send_to_llm(handover_info)
+
+    if hasattr(llm_output, "model_dump"):
+        handover_data = llm_output.model_dump()
+    elif isinstance(llm_output, dict):
+        handover_data = llm_output
+    else:
+        raise TypeError(f"Unexpected AI output type: {type(llm_output)}")
+
+    if DEBUG:
+        print("\nDEBUG - AI Manager output:")
+        print(pformat(handover_data, sort_dicts=False))
+
+    return handover_data
 
 def main():
     user_details = get_user_details()
 
     if user_details["role"] == "Handing over":
-        handover_info = handover_input()
-        print("Input is successfully validated.")
+        handover_data = get_handover_data()
 
-        # Pass handover output to AI Manager
-        llm_output = send_to_llm(handover_info)
+        while True:
 
-        # Convert AI output into dictionary
-        handover_data = llm_output.model_dump()
+            # Validate stored handover data
+            result = logic_manager.process_handover(handover_data)
 
-        # Pass dictionary to Logic Manager
-        result = logic_manager.process_handover(handover_data)
+            if result["status"] == "complete":
+                print("\nHandover is complete.")
 
-        # Check handover status
-        if result["status"] == "incomplete":
+                if DEBUG:
+                    print(f"\n{pformat(result, sort_dicts=False)}")
+
+                break
+
             print("\nHandover is incomplete.")
-            print(pformat(result, sort_dicts=False))
+            
+            if DEBUG: 
+                print(f"\n{pformat(result, sort_dicts=False)}")
 
-            for error in result["errors"]:
-                print(error)
-
-        else:
-            print("\nHandover is complete.")
-            print(pformat(result, sort_dicts=False))
+            # Ask user to fill in missing information
+            if not fill_missing_information(handover_data, result["errors"]):
+                handover_data = get_handover_data()
 
     elif user_details["role"] == "Taking over":
         print("Taking over information successfully validated.")

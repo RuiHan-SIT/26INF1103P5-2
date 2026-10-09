@@ -1,4 +1,15 @@
-from datetime import datetime
+from datetime import datetime, date
+
+# Validate if deadline is in correct format
+def validate_deadline(deadline):
+    try:
+        deadline_date = datetime.strptime(deadline, "%d/%m/%Y").date()
+
+        # Deadline must be today or a future date
+        return deadline_date >= date.today()
+
+    except (ValueError, TypeError):
+        return False
 
 # Check required info in outstanding tasks
 def validate_outstanding_task(task): 
@@ -18,13 +29,10 @@ def validate_outstanding_task(task):
     if len(owners) == 0:
         errors.append("missing_owner(s)")
     
-    if deadline.strip() == "":
+    if not deadline or not deadline.strip():
         errors.append("missing_deadline")
-    else:
-        try:
-            datetime.strptime(deadline, "%d/%m/%Y")
-        except ValueError:
-            errors.append("invalid_deadline")
+    elif not validate_deadline(deadline):
+        errors.append("invalid_deadline")
 
     return errors
 

@@ -166,7 +166,7 @@ def get_user_details(): #function to get user details
     print("2. Taking over work")
 
     while True:
-        role = required_input("Select an option: ") 
+        role = required_input("\nSelect an option: ") 
 
         if role == "1":
 
