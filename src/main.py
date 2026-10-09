@@ -12,6 +12,7 @@ if str(SRC_DIR) not in sys.path:
 import modules.logic_manager as logic_manager
 from modules.gemini_router import send_to_llm
 from modules import output
+from modules import data_manager
 from modules.input_handler import (
     get_user_details,
     handover_from_file,
