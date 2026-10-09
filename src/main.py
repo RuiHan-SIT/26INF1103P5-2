@@ -1,3 +1,4 @@
+
 import sys
 from pprint import pformat
 from pathlib import Path
@@ -144,7 +145,11 @@ def get_handover_data():
     return handover_data
 
 def main():
+
     user_details = get_user_details()
+
+    handover_input()
+
 
     if user_details["role"] == "Handing over":
         handover_data = get_handover_data()
@@ -172,6 +177,7 @@ def main():
                 handover_data = get_handover_data()
 
     elif user_details["role"] == "Taking over":
+        #able to call data manager to return selected id file 
         print("Taking over information successfully validated.")
         return user_details
     

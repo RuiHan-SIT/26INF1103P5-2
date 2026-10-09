@@ -12,8 +12,8 @@ _scrubber.remove_detector('phone')
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 handover_dir = BASE_DIR / "data" / "handovers"
 
-def validate_txt_file(filename):
-    # accept both str and Path, work with a Path internally
+# accept both str and Path, work with a Path internally
+def validate_file(filename, max_bytes: int = 5 * 1024 * 1024):    
     path = Path(filename)
 
     # checks if the file is in the correct format
@@ -28,11 +28,18 @@ def validate_txt_file(filename):
     if path.stat().st_size == 0:
         raise ValueError(f"File is empty: '{filename}'")
 
-    
+    # checks if the file is abnormally large
+    if file_size > max_bytes:
+        max_mb = max_bytes / (1024 * 1024)
+        actual_mb = file_size / (1024 * 1024)
+        raise ValueError(
+            f"File '{filename}' exceeds maximum allowed size "
+            f"({actual_mb:.2f} MB > {max_mb:.2f} MB limit)."
+        )
 
 def read_txt_file(filename: str):
     try:
-        validate_txt_file(filename)
+        validate_file(filename)
 
         with open(filename, 'r', encoding='utf-8') as file:
             handover_info = file.read()
@@ -60,7 +67,7 @@ def validate_user_input(text: str):
 
     # keyword check for domain-sensitive words scrubadub does not model as PII
     sensitive_keywords = [
-        "password", "nric", "passport","driver's license", "confidential", "secret", "private", "restricted",
+        "password", "passport",
     ]
     
     sensitive_patterns ={
@@ -86,38 +93,22 @@ def validate_user_input(text: str):
         return True
 
     return False
-# Validate user's name
-def validate_name(name): 
-    if name.strip() == "": # Check if name is blank
-        return False
+
+
+def has_alphabetic_char(text: str) -> bool:                                                                                                                                          
+    """Checks if a string is non-empty and contains at least one letter."""                                                                                                          
+    return bool(text.strip()) and any(char.isalpha() for char in text) 
+
+def validate_name(name: str) -> bool:                                                                                                                                    
+    return has_alphabetic_char(name)
     
-    has_letter = False
+def validate_department(department: str) -> bool:                                                                                                                                    
+    return has_alphabetic_char(department)                                                                                                                                           
+                                                                                                                                                                                         
+def validate_employee_id(employee_id: str) -> bool:                                                                                                                                  
+    return len(employee_id) == 7 and employee_id.isdigit()
 
-    for char in name: 
-        if char.isalpha():
-            has_letter = True
 
-    return has_letter
-
-# Validate user's department
-def validate_department(department): 
-    if department.strip() == "": # Check if deparment is blank
-        return False
-
-    has_letter = False
-    
-    for char in department: 
-        if char.isalpha():
-            has_letter = True
-    
-    return has_letter
-
-# Validate user's employee ID
-def validate_employee_id(employee_id):
-    if len(employee_id) == 7 and employee_id.isdigit():
-        return True
-
-    return False
 
 def required_input(prompt): #this is to ensure manually added information for required fields
     while True:
