@@ -22,6 +22,7 @@ from modules.input_handler import (
     handover_from_file,
     required_input,
     validate_user_input,
+    handover_input
 )
 
 # ===========================================================================
@@ -29,55 +30,6 @@ from modules.input_handler import (
 # ===========================================================================
 DEBUG = False # Change to False when out of debugging mode
 
-# ===========================================================================
-# Handover input  (uses: input handler)
-# Lets the user type the handover, load a file with file:<name>, or drag in a .txt file.
-# ===========================================================================
-def handover_input():
-    while True:
-        print("\nEnter the information for handover:")
-        print("Enter text directly, type file:<filename>, or drag and drop a .txt file.")
-
-        handover_info = required_input("\nHandover: ")
-
-        # Check if user typed file:<filename>
-        if handover_info.lower().startswith("file:"):
-            filename = handover_info[5:].strip()
-
-            if filename == "":
-                print("Please provide a filename.")
-                continue
-
-            handover_info = handover_from_file(filename)
-
-            if handover_info is None:
-                continue
-
-        # Check if user dragged and dropped a file
-        else:
-            file_path = handover_info.strip()
-
-            # Remove PowerShell's & prefix, if present
-            if file_path.startswith("& "):
-                file_path = file_path[2:].strip()
-
-            # Remove surrounding quotation marks
-            file_path = file_path.strip("'\"")
-
-            path = Path(file_path)
-
-            if path.suffix.lower() == ".txt" and path.is_file():
-                handover_info = handover_from_file(path.name)
-
-                if handover_info is None:
-                    continue
-
-            # Otherwise, treat input as ordinary text
-            else:
-                if validate_user_input(handover_info):
-                    continue
-
-        return handover_info
 
 # ===========================================================================
 # Fill in missing information  (uses: logic manager)
@@ -147,23 +99,49 @@ def fill_missing_information(handover_data, errors):
 # Sends the handover text to the AI and returns it as structured data (a dict).
 # ===========================================================================
 def get_handover_data():
-    handover_info = handover_input()
-    print("Input is successfully validated.")
+    # Only calls handover info when needed..
+    while True:
+        handover_info = handover_input()
 
-    llm_output = send_to_llm(handover_info)
+        handover_data = send_to_llm(handover_info)
 
-    if hasattr(llm_output, "model_dump"):
-        handover_data = llm_output.model_dump()
-    elif isinstance(llm_output, dict):
-        handover_data = llm_output
-    else:
-        raise TypeError(f"Unexpected AI output type: {type(llm_output)}")
+        # Check if send_to_llm returned an error envelope
+        if handover_data.get("success") is False:
+            err = handover_data.get("error_message", "")
+            print(f"\n[AI Error]: {err}")
 
-    if DEBUG:
-        print("\nDEBUG - AI Manager output:")
-        print(pformat(handover_data, sort_dicts=False))
+            # 1. Fatal Auth Error (API key missing or invalid)
+            if "Authentication failed" in err:
+                print("Action: Please check your GEMINI_API_KEY environment variable.")
+                return None
 
-    return handover_data
+            # 2. Rate Limit Hit (429)
+            elif "Rate limit" in err:
+                print("Action: AI quota exceeded. Please wait ~30 seconds before retrying.")
+
+            # 3. Connection / Downtime (Network timeout, Server 5xx)
+            elif "Network timeout" in err or "temporarily unavailable" in err:
+                print("Action: Check your internet connection or server availability.")
+
+            # 4. Parsing / Schema Failure (LLM produced unexpected JSON)
+            elif "schema" in err or "Malformed JSON" in err:
+                print("Action: The AI had trouble understanding the notes. Try rewording or providing more detail.")
+
+            # Default / Unexpected
+            else:
+                print("Action: An unexpected error occurred.")
+
+            # Ask user if they wish to retry
+            retry = input("\nWould you like to try again? (y/n): ").strip().lower()
+            if retry == "y":
+                continue
+            return None
+
+        if DEBUG:
+            print("\nDEBUG - AI Manager output:")
+            print(pformat(handover_data, sort_dicts=False))
+
+        return handover_data
 
 # ===========================================================================
 # Main program flow
@@ -174,11 +152,14 @@ def main():
 
     # Step 1 - Input handler: get the user's details and role (handing over / taking over)
     user_details = get_user_details()
-    
+
     # ----- HANDING OVER -----
     if user_details["role"] == "Handing over":
-        # Step 2 - Input handler + Gemini router: get the handover text and let the AI structure it
+        # Step 2 - Input handler + Gemini router: get the handover text and pass to Gemini to put structure into Data
         handover_data = get_handover_data()
+        if not handover_data:
+            print("\nHandover process cancelled.")
+            return user_details
 
         # Step 3 - Logic manager: validate, and keep asking for missing info until complete
         while True:
@@ -206,6 +187,9 @@ def main():
             # Ask user to fill in missing information
             if not fill_missing_information(handover_data, result["errors"]):
                 handover_data = get_handover_data()
+                if not handover_data:
+                    print("\nHandover process cancelled.")
+                    return user_details
 
     # ----- TAKING OVER -----
     elif user_details["role"] == "Taking over":
@@ -234,25 +218,9 @@ if __name__ == "__main__":
 
 
 
-# error handling done by gemini_router file
-
-# result = analyze_handover_safe(file_text)
-
-# if not result["success"]:
-#     print(f"\n[!] Failed to process handover: {result['error_message']}\n")
-# else:
-#     handover = result["data"]
-#     print(f"\n[+] Successfully Analyzed: {handover.summary}")
-#     print("Action Items:")
-#     for task in handover.action_items:
-#         print(f" - {task}")
-
 
 
 """
-- idempotent handling (  Idempotent = doing something more than once gives the same result as doing it once.)
-- ai able to call data.json and verify but asking for user input. 
-
 Business Logic:
 IMPORTANT: Main.py should check for exisitng data than fill in the blanks.
 1) input 

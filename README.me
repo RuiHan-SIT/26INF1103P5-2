@@ -4,33 +4,37 @@
 26INF1103P5-2/
 ├── .env                        # Local environment variables (API keys) — not committed
 ├── .env.example                # Template for environment variables
-├── .gitignore                  # Git ignore file (cache, virtualenv, secrets, env)
+├── .gitignore                  # Git ignore file (cache, virtualenv, secrets, generated files)
 ├── requirements.txt            # Python package dependencies
+├── Dockerfile                  # Container build instructions for Docker
+├── update.ps1                  # PowerShell script to build/update Docker image
 ├── README.me                   # Project documentation
 ├── ProjectInitialDetails.md    # Problem statement, users, and business rules
 │
 ├── src/                        # Main application source code
-│   ├── main.py                 # Application entry point / main flow orchestration
+│   ├── main.py                 # Application entry point and workflow orchestration
 │   │
-│   ├── modules/                # Core building-block functions and integrations
-│   │   ├── input_handler.py    # User input, file validation, and PII detection helpers
-│   │   ├── logic_manager.py    # Handover business-rule validation
-│   │   ├── nvdia_router.py      # LLM (OpenRouter/NVIDIA) communication
-│   │   └── llm_prompt.py       # LLM prompt templates
+│   ├── model/                  # Data schemas and validation
+│   │   └── handover_model.py   # Pydantic schemas and validation functions for handovers
 │   │
-│   ├── utils/                  # Shared utilities
-│   │   ├── __init__.py
-│   │   └── logger.py           # Application logger
+│   ├── modules/                # Core domain modules and business logic
+│   │   ├── input_handler.py    # User input prompt, file validation, and PII detection
+│   │   ├── gemini_router.py    # Gemini LLM communication, JSON sanitization & error handling
+│   │   ├── logic_manager.py    # Handover completeness verification and deadline sorting
+│   │   ├── data_manager.py     # Local JSON persistence (saving and querying handovers)
+│   │   └── output.py           # Formats terminal output and writes summary .txt files
 │   │
-│   └── model/                  # Data storage and models
+│   └── utils/                  # Shared utilities and configurations
+│       ├── __init__.py
+│       ├── gemini_client.py    # Gemini API client initialization and automatic retries
+│       ├── llm_prompt.py       # LLM prompt templates and extraction rules
+│       └── logger.py           # Application logging configuration
 │
-├── data/                       # Runtime data
-│   └── handovers/              # Handover .txt files loaded by the app
-│       └── handover.txt
-│
-└── test/                       # Automated unit tests
-    ├── logic_manager_test.py   # Tests for logic_manager
-    └── ai_manager_test.py      # Tests for the AI/LLM portion
+└── data/                       # Application runtime data
+    ├── handovers/              # Sample/input handover .txt files
+    │   └── handover.txt
+    ├── summaries/              # Generated handover summary text files (gitignored)
+    └── handovers.json          # Persistent JSON storage for handover records (gitignored)
 ```
 
 #installing of library from requirement.txt

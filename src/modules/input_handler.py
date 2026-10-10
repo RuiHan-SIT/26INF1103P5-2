@@ -12,6 +12,12 @@ _scrubber.remove_detector('phone')
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 handover_dir = BASE_DIR / "data" / "handovers"
 
+
+# ===========================================================================
+# Helper Functions 
+# Validate file
+# 1) Check File Size, Check if file exists and Check if its a txt file
+# ===========================================================================
 # accept both str and Path, work with a Path internally
 def validate_file(filename, max_bytes: int = 5 * 1024 * 1024):    
     path = Path(filename)
@@ -37,7 +43,10 @@ def validate_file(filename, max_bytes: int = 5 * 1024 * 1024):
             f"File '{filename}' exceeds maximum allowed size "
             f"({actual_mb:.2f} MB > {max_mb:.2f} MB limit)."
         )
-
+# ===========================================================================
+# Helper Functions 
+# Literally reads txt file.
+# ===========================================================================
 def read_txt_file(filename: str):
     try:
         validate_file(filename)
@@ -60,7 +69,11 @@ def read_txt_file(filename: str):
         # Use logger.exception to log the full decode stack trace
         logger.exception(f"Encoding error: '{filename}' could not be decoded as UTF-8.")
         return None
-
+    
+# ===========================================================================
+# Helper Functions 
+# Validate user input with scrubdud lib and regex
+# ===========================================================================
 
 def validate_user_input(text: str):  
     # scrubadub detects structured PII: emails, phone numbers, credit cards, etc.
@@ -164,7 +177,7 @@ def get_user_details(): #function to get user details
 
     submission_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S") #get current date and time
     print("\nAre you:")
-    print("1. Handing over work") #letting employee choose whether to handover or takeover
+    print("1. Handing over work")
     print("2. Taking over work")
 
     while True:
@@ -208,7 +221,10 @@ def get_user_details(): #function to get user details
         else:
             print("Invalid option.")
 
-        
+# ===========================================================================
+# Handover input  (uses: input handler)
+# Lets the user type the handover, load a file with file:<name>, or drag in a .txt file.
+# ===========================================================================    
 def handover_input():
     while True:
         print("\nEnter the information for handover:")
@@ -228,11 +244,29 @@ def handover_input():
 
             if handover_info is None:
                 continue
-
-        # Check sensitive information
+        # Check if user dragged and dropped a file
         else:
-            if validate_user_input(handover_info):
-                continue
+            file_path = handover_info.strip()
+
+            # Remove PowerShell's & prefix, if present
+            if file_path.startswith("& "):
+                file_path = file_path[2:].strip()
+
+            # Remove surrounding quotation marks
+            file_path = file_path.strip("'\"")
+
+            path = Path(file_path)
+
+            if path.suffix.lower() == ".txt" and path.is_file():
+                handover_info = handover_from_file(path.name)
+
+                if handover_info is None:
+                    continue
+
+            # Check sensitive information
+            else:
+                if validate_user_input(handover_info):
+                    continue
 
         return handover_info
 

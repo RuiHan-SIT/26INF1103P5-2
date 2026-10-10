@@ -6,7 +6,7 @@ from google.genai import errors, types
 from utils.gemini_client import client
 from utils.logger import logger
 from utils.llm_prompt import SYSTEM_PROMPT
-from model.handover_model import HandoverReport
+from model.handover_model import validate_handover
 from pydantic import ValidationError
 import re
 import json_repair
@@ -58,13 +58,12 @@ def clean_llm_json(raw_text: str | None) -> dict[str, Any]:
         logger.error("Failed to repair/decode JSON. Faulty snippet:\n%s", json_str[:400])
         raise ValueError(f"Malformed JSON from LLM: {err}") from err
 
-
+# Gemini 3.6 Flash hard limits (shared by the free tier; free tier only caps RATE):
+#   - input context window : ~1,048,576 tokens (available automatically, no setting needed)
+#   - max output tokens     : 65,536  <- set below so long reports never get truncated
 def send_to_llm(user_input: str):
     try:
         MODEL = "gemini-3.6-flash"
-        # Gemini 3.6 Flash hard limits (shared by the free tier; free tier only caps RATE):
-        #   - input context window : ~1,048,576 tokens (available automatically, no setting needed)
-        #   - max output tokens     : 65,536  <- set below so long reports never get truncated
         MAX_OUTPUT_TOKENS = 65536
         response = client.models.generate_content(
             model=MODEL,
@@ -72,9 +71,7 @@ def send_to_llm(user_input: str):
             config=types.GenerateContentConfig(
                 system_instruction=SYSTEM_PROMPT,
                 temperature=1,
-                # Max output the model allows; prevents truncated/incomplete JSON reports
                 max_output_tokens=MAX_OUTPUT_TOKENS,
-                # Ask Gemini to emit raw JSON directly
                 response_mime_type="application/json",
             ),
         )
@@ -85,8 +82,8 @@ def send_to_llm(user_input: str):
         # Gemini may still wrap/pad the JSON, so sanitize before validating
         parsed_dict = clean_llm_json(raw_content)
 
-        # Pass the plain dict to standard Pydantic validation
-        return HandoverReport.model_validate(parsed_dict)
+        # Pass the plain dict to Pydantic validation (returns a cleaned plain dict)
+        return validate_handover(parsed_dict)
 
     # --- Gemini API Errors ---
     # Gemini raises errors.ClientError (4xx) and errors.ServerError (5xx),
@@ -151,7 +148,11 @@ def send_to_llm(user_input: str):
     # --- Pydantic Validation Errors ---
     except ValidationError as e:
         logger.error("LLM schema mismatch (%d errors): %s", e.error_count(), e)
-        raise ValueError(f"LLM output did not match expected Handover schema: {e}") from e
+        return {
+            "success": False,
+            "data": None,
+            "error_message": f"LLM output did not match expected Handover schema: {e}",
+        }
 
     # --- JSON parsing / sanitization Errors ---
     except (ValueError, json.JSONDecodeError) as e:

@@ -114,31 +114,12 @@ def show_output(result):
             print(f"\nHandover file saved to: {os.path.basename(path)}")
 
 #test code to show output!
-if __name__ == "__main__":
-    show_output({
-        "status": "complete",
-        "outstanding_tasks": [{"task": "Stock discrepancy report", "owners": ["John"], "deadline": "19 Oct 2026", "description": "Compare the warehouse count against the inventory spreadsheet."}],
-        "bau_tasks": [],
-        "important_information": ["Test info"],
-    })
+# if __name__ == "__main__":
+#     show_output({
+#         "status": "complete",
+#         "outstanding_tasks": [{"task": "Stock discrepancy report", "owners": ["John"], "deadline": "19 Oct 2026", "description": "Compare the warehouse count against the inventory spreadsheet."}],
+#         "bau_tasks": [],
+#         "important_information": ["Test info"],
+#     })
 
 
-# add in main.py 
-# from modules import output
-
-# replace the if result["status"] == "incomplete":
-#            print("\nHandover is incomplete.")
-#            print(pformat(result, sort_dicts=False))
-#            for error in result["errors"]:
-#                print(error)
-#        else:
-#            print("\nHandover is complete.")
-#            print(pformat(result, sort_dicts=False))
-
-# with 
-
-#         # Display status and generate summary
-#        output.show_output(result)
-#
-#
-#
