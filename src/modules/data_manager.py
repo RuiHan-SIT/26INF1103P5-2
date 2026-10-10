@@ -2,8 +2,12 @@
 import json
 import os
 from datetime import date 
+from pathlib import Path 
 
-DEFAULT_DATA_FILE = "handovers.json"
+#Establishing to the project root (../../ up from src/modules/) so the file  is 
+#always saved in the same place, no matter where the program is launched from.
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+DEFAULT_DATA_FILE = BASE_DIR / "data" / "handovers.json"
 
 #1. opens the saved JSON file and gives you back everything in it as a list. 
 #If the file doesn't exist yet or is broken, it just gives back an empty list instead of crashing.
@@ -101,9 +105,9 @@ def update_record(record_id, updates, filepath=DEFAULT_DATA_FILE):
     #4.8 No record with that id was found - nothing to update
     return False
 
+#Delete an existing handover record identified by its id.
 def delete_record(record_id, filepath=DEFAULT_DATA_FILE):
-    #Delete an existing handover record identified by its id.
-    #Returns True if a record was found and deleted, False if no record with that id exists."""
+    #Returns True if a record was found and deleted, False if no record with that id exists.
     #5.1 Load the current records so we can search through them
     records = load_records(filepath)
 
@@ -133,7 +137,7 @@ def get_record_by_id(record_id, filepath=DEFAULT_DATA_FILE):
     return None
 
 def save_handover(user_details, result, filepath=DEFAULT_DATA_FILE):
-    #Build a handover record from the user's details and the logic
+    #7.1 Build a handover record from the user's details and the logic
     #manager's result, then save it to the JSON file."""
     record = {
         "name": user_details["name"],
@@ -144,3 +148,16 @@ def save_handover(user_details, result, filepath=DEFAULT_DATA_FILE):
         "important_information": result["important_information"],
     }
     return add_record(record, filepath)
+
+def get_records_by_employee_id(employee_id, filepath=DEFAULT_DATA_FILE):
+    #8.1 Read & return all handover records saved by the said employee, newest first.
+    #Returns an empty list if none are found.
+    records = load_records(filepath)
+
+    matches = [
+        r for r in records
+        if isinstance(r, dict) and r.get("employee_id") == employee_id
+    ]
+
+    #Highest id = most recently saved, so it comes first
+    return sorted(matches, key=lambda r: r.get("id", 0), reverse=True)
