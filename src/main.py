@@ -178,7 +178,7 @@ def main():
                 handover_data = get_handover_data()
 
     elif user_details["role"] == "Taking over":
-        #The  7 digit ID the person typed when asked for the "previous employees ID"
+        #The 7 digit ID the person typed when asked for the "previous employees ID"
         #Data Manager is called 
         previous_id = user_details["taking_over_from_id"]
         records = data_manager.get_records_by_employee_id(previous_id)
@@ -191,7 +191,8 @@ def main():
         handover = records[0]  # newest handover comes first
         print(f"\nFound handover from {handover['name']} ({handover['department']}), saved on {handover['saved_date']}.")
         
-        print("Taking over information successfully validated.")
+        #Output: generate a summary .txt file from the fetched handover
+        output.show_output({**handover, "status": "complete"})
         return user_details
     
 if __name__ == "__main__":
