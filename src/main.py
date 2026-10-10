@@ -161,6 +161,7 @@ def main():
             if result["status"] == "complete":
                 output.show_output(result)
                 print("\nHandover is complete.")
+                data_manager.save_handover(user_details, result)
 
                 if DEBUG:
                     print(f"\n{pformat(result, sort_dicts=False)}")
