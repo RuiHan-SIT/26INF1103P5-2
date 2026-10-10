@@ -105,9 +105,9 @@ def update_record(record_id, updates, filepath=DEFAULT_DATA_FILE):
     #4.8 No record with that id was found - nothing to update
     return False
 
+#Delete an existing handover record identified by its id.
 def delete_record(record_id, filepath=DEFAULT_DATA_FILE):
-    #Delete an existing handover record identified by its id.
-    #Returns True if a record was found and deleted, False if no record with that id exists."""
+    #Returns True if a record was found and deleted, False if no record with that id exists.
     #5.1 Load the current records so we can search through them
     records = load_records(filepath)
 
