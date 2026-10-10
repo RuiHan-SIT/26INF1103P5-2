@@ -138,7 +138,7 @@ def get_record_by_id(record_id, filepath=DEFAULT_DATA_FILE):
 
 def save_handover(user_details, result, filepath=DEFAULT_DATA_FILE):
     #7.1 Build a handover record from the user's details and the logic
-    #manager's result, then save it to the JSON file."""
+    #manager's result, then save it to the JSON file.
     record = {
         "name": user_details["name"],
         "employee_id": user_details["employee_id"],

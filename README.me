@@ -47,3 +47,6 @@ pip install -r requirements.txt
 AND BUILD THE DOCKER IMAGE
 
 # to RUN PROGRAM USING DOCKER - docker run --rm -it --env-file .env handover-app
+
+# Alternative command : docker run --rm -it --env-file .env -v "${PWD}/data:/app/data" handover-app (saved handovers will disappear when the 
+container stops, so taking over finds nothing)
