@@ -224,6 +224,15 @@ def main():
         
         # Step 3 - Output: generate a summary .txt file from the fetched handover
         output.show_output({**handover, "status": "complete"})
+        
+        # Step 4 - Data manager (Update): record who took over this handover
+        data_manager.update_record(handover["id"], {
+            "taken_over_by": user_details["name"],
+            "taken_over_by_id": user_details["employee_id"],
+            "taken_over_date": user_details["date"],
+        })
+        
+        
         return user_details
     
 # ===========================================================================
