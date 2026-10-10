@@ -178,7 +178,19 @@ def main():
                 handover_data = get_handover_data()
 
     elif user_details["role"] == "Taking over":
-        #able to call data manager to return selected id file 
+        #The  7 digit ID the person typed when asked for the "previous employees ID"
+        #Data Manager is called 
+        previous_id = user_details["taking_over_from_id"]
+        records = data_manager.get_records_by_employee_id(previous_id)
+        
+       #Empty List means nothing was found
+        if not records:
+            print(f"\nNo handover found for employee ID {previous_id}.")
+            return user_details
+        
+        handover = records[0]  # newest handover comes first
+        print(f"\nFound handover from {handover['name']} ({handover['department']}), saved on {handover['saved_date']}.")
+        
         print("Taking over information successfully validated.")
         return user_details
     
