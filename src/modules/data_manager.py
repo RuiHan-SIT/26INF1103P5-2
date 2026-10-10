@@ -2,8 +2,12 @@
 import json
 import os
 from datetime import date 
+from pathlib import Path 
 
-DEFAULT_DATA_FILE = "handovers.json"
+#Establishing to the project root (../../ up from src/modules/) so the file  is 
+#always saved in the same place, no matter where the program is launched from.
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+DEFAULT_DATA_FILE = BASE_DIR / "data" / "handovers.json"
 
 #1. opens the saved JSON file and gives you back everything in it as a list. 
 #If the file doesn't exist yet or is broken, it just gives back an empty list instead of crashing.
