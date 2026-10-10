@@ -1,4 +1,7 @@
 
+# ===========================================================================
+# Setup - imports and paths
+# ===========================================================================
 import sys
 from pprint import pformat
 from pathlib import Path
@@ -9,6 +12,7 @@ SRC_DIR = Path(__file__).resolve().parent
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
      
+# Team modules: logic manager, Gemini router (AI), output, data manager, input handler
 import modules.logic_manager as logic_manager
 from modules.gemini_router import send_to_llm
 from modules import output
@@ -20,8 +24,15 @@ from modules.input_handler import (
     validate_user_input,
 )
 
+# ===========================================================================
+# Settings
+# ===========================================================================
 DEBUG = False # Change to False when out of debugging mode
 
+# ===========================================================================
+# Handover input  (uses: input handler)
+# Lets the user type the handover, load a file with file:<name>, or drag in a .txt file.
+# ===========================================================================
 def handover_input():
     while True:
         print("\nEnter the information for handover:")
@@ -68,6 +79,10 @@ def handover_input():
 
         return handover_info
 
+# ===========================================================================
+# Fill in missing information  (uses: logic manager)
+# Asks the user for any task name, description, owner or deadline the logic manager flagged.
+# ===========================================================================
 def fill_missing_information(handover_data, errors):
 
     for error in errors:
@@ -127,6 +142,10 @@ def fill_missing_information(handover_data, errors):
             
     return True
 
+# ===========================================================================
+# AI extraction  (uses: Gemini router)
+# Sends the handover text to the AI and returns it as structured data (a dict).
+# ===========================================================================
 def get_handover_data():
     handover_info = handover_input()
     print("Input is successfully validated.")
@@ -146,21 +165,32 @@ def get_handover_data():
 
     return handover_data
 
+# ===========================================================================
+# Main program flow
+# Handing over: input -> AI -> logic manager -> output -> data manager (save)
+# Taking over : input -> data manager (find) -> output
+# ===========================================================================
 def main():
 
+    # Step 1 - Input handler: get the user's details and role (handing over / taking over)
     user_details = get_user_details()
     
+    # ----- HANDING OVER -----
     if user_details["role"] == "Handing over":
+        # Step 2 - Input handler + Gemini router: get the handover text and let the AI structure it
         handover_data = get_handover_data()
 
+        # Step 3 - Logic manager: validate, and keep asking for missing info until complete
         while True:
 
             # Validate stored handover data
             result = logic_manager.process_handover(handover_data)
 
             if result["status"] == "complete":
+                # Step 4 - Output: show the status and generate the summary .txt
                 output.show_output(result)
                 print("\nHandover is complete.")
+                # Step 5 - Data manager: save the completed handover to data/handovers.json
                 data_manager.save_handover(user_details, result)
 
                 if DEBUG:
@@ -177,13 +207,14 @@ def main():
             if not fill_missing_information(handover_data, result["errors"]):
                 handover_data = get_handover_data()
 
+    # ----- TAKING OVER -----
     elif user_details["role"] == "Taking over":
-        #The 7 digit ID the person typed when asked for the "previous employees ID"
-        #Data Manager is called 
+        # Step 2 - Data manager: find the handover saved by the previous employee,
+        # using the 7-digit ID the user typed for the previous employee
         previous_id = user_details["taking_over_from_id"]
         records = data_manager.get_records_by_employee_id(previous_id)
         
-       #Empty List means nothing was found
+        # An empty list means nothing was found
         if not records:
             print(f"\nNo handover found for employee ID {previous_id}.")
             return user_details
@@ -191,10 +222,13 @@ def main():
         handover = records[0]  # newest handover comes first
         print(f"\nFound handover from {handover['name']} ({handover['department']}), saved on {handover['saved_date']}.")
         
-        #Output: generate a summary .txt file from the fetched handover
+        # Step 3 - Output: generate a summary .txt file from the fetched handover
         output.show_output({**handover, "status": "complete"})
         return user_details
     
+# ===========================================================================
+# Program entry point
+# ===========================================================================
 if __name__ == "__main__":
     result = main()
 
