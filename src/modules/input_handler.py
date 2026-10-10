@@ -25,7 +25,8 @@ def validate_file(filename, max_bytes: int = 5 * 1024 * 1024):
         raise FileNotFoundError(f"File not found: '{filename}'")
 
     # checks if the file is empty
-    if path.stat().st_size == 0:
+    file_size = path.stat().st_size
+    if file_size == 0:
         raise ValueError(f"File is empty: '{filename}'")
 
     # checks if the file is abnormally large
