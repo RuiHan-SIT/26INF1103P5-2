@@ -1,0 +1,17 @@
+Project: Website Migration
+Handover Date: 10 October 2026
+Prepared By: Alex Tan
+
+Task 1:
+Task: Complete website migration testing
+Owner: Sarah Lim
+Deadline: 15 October 2026
+Status: In Progress
+Notes: Test all website functions before deployment.
+
+Task 2:
+Task: Prepare deployment documentation
+Owner: Daniel Lee
+Deadline: 17 October 2026
+Status: Not Started
+Notes: Document the deployment procedure and rollback steps.

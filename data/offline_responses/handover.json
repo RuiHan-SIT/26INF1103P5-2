@@ -1,0 +1,40 @@
+{
+    "outstanding_tasks": [
+        {
+            "task": "Q3 inventory reconciliation",
+            "description": "85% complete. Raw count sheet is on the clipboard next to the label printer in warehouse 2. Check with Priya before entering the three unmarked boxes of thermal rolls in bay 14 into the auditor file.",
+            "owners": [
+                "Priya"
+            ],
+            "deadline": ""
+        },
+        {
+            "task": "Collect spare keycard",
+            "description": "Retrieve the spare keycard for the backup server cabinet from Marcus's desk drawer (top left, key is taped underneath).",
+            "owners": [
+                "Marcus"
+            ],
+            "deadline": ""
+        },
+        {
+            "task": "Approve payment run",
+            "description": "Do not approve the payment run on Wednesday until Brenda confirms which duplicate PO (PO-88219 or PO-88220) from August is void.",
+            "owners": [
+                "Brenda"
+            ],
+            "deadline": ""
+        }
+    ],
+    "bau_tasks": [],
+    "important_information": [
+        "Alpha Logistics driver Ken (+65 9123 4567) delivers before 10 AM on weekdays. Gate 3 docking after 10 AM requires a manual clearance chit from Dave.",
+        "Packaging tape order is delayed until next Thursday. Approximately 12 rolls remain in the mezzanine rack.",
+        "Master padlock code for the rear loading bay roll-up shutter was rotated to 7392 on the 15th.",
+        "Line 2 label applicator machine jams on matte synthetic stock. Keep on semi-gloss or reduce feed speed to 60% on error 404 until replacement roller arrives in mid-October.",
+        "Building management fire alarm pressure test on next Friday at 2:30 PM will auto-seal loading bay doors for ~20 minutes; pause pallet transfers around 2:15 PM.",
+        "Do not change the sample archive room thermostat setting; sensor is offset by -3C, so setting to 22C drops room to 19C and causes condensation.",
+        "Facility manager: Mr. Tan (office extension 4022).",
+        "Waste disposal vendor: GreenCycle dispatch (+65 6789 0123, account code GC-4490).",
+        "Cleaning supervisor: Madam Halimah comes in at 6 PM and leaves sanitiser restock logs on the breakroom noticeboard."
+    ]
+}

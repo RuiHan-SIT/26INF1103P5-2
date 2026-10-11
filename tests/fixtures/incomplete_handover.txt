@@ -1,0 +1,22 @@
+Project: Website Migration
+Handover Date: 10 October 2026
+Prepared By: Alex Tan
+
+Task 1:
+Task: Complete website migration testing
+Owner:
+Deadline: 15 October 2026
+Status: In Progress
+
+Task 2:
+Task: Prepare deployment documentation
+Owner: Daniel Lee
+Deadline:
+Status: Not Started
+
+Task 3:
+Task: Review website security
+Owner:
+Deadline:
+Status: Pending
+Notes: Follow up with the security team.
