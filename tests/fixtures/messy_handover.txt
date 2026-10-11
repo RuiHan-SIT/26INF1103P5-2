@@ -1,0 +1,14 @@
+website migration handover!!!
+
+Sarah supposed to finish testing by 15 oct, still doing it i think. Need check all the pages and login.
+
+oh and Daniel is doing deployment docs... should be ready around 17 October? not 100% sure
+
+Security review also needs doing. nobody confirmed who is taking it yet. deadline not given.
+
+remember to check with team about rollback procedure!!!
+
+some other notes:
+
+* deployment can't happen until testing is done
+* documentation should include recovery steps

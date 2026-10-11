@@ -1,0 +1,38 @@
+Project: E-Commerce Platform Launch
+Handover Date: 10 October 2026
+Prepared By: Project Coordinator
+
+Task 1:
+Task: Complete payment gateway integration
+Owner: Amanda Wong
+Deadline: 12 October 2026
+Status: In Progress
+Notes: Test successful and failed payment transactions.
+
+Task 2:
+Task: Perform user acceptance testing
+Owner: Brian Koh
+Deadline: 14 October 2026
+Status: Not Started
+Notes: Coordinate testing with the business team.
+
+Task 3:
+Task: Fix outstanding checkout bugs
+Owner: Chloe Tan
+Deadline: 13 October 2026
+Status: In Progress
+Notes: Prioritise bugs affecting payment confirmation.
+
+Task 4:
+Task: Prepare production deployment
+Owner: Ethan Lim
+Deadline: 16 October 2026
+Status: Not Started
+Notes: Confirm deployment checklist and rollback plan.
+
+Task 5:
+Task: Update user documentation
+Owner: Farah Ahmad
+Deadline: 18 October 2026
+Status: Not Started
+Notes: Include updated checkout instructions.
