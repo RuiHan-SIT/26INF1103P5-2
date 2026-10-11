@@ -120,7 +120,7 @@ def generate_summary_txt(result, user_details, output_dir=SUMMARY_DIR):
 
     employee_id = user_details["employee_id"]
 
-    filename = f"{now:%Y-%m-%d}_{name}_{employee_id}_{now:%I-%M-%S%p}.txt"
+    filename = f"{now:%Y-%m-%d}_{name}_{employee_id}_{now:%H-%M-%S}.txt"
  
     try:
         os.makedirs(output_dir, exist_ok=True)
@@ -148,14 +148,3 @@ def show_output(result, user_details, save_file=True):
         else:
             # Display the handover summary directly in the CLI
             print("\n" + format_summary(result))
-
-#test code to show output!
-# if __name__ == "__main__":
-#     show_output({
-#         "status": "complete",
-#         "outstanding_tasks": [{"task": "Stock discrepancy report", "owners": ["John"], "deadline": "19 Oct 2026", "description": "Compare the warehouse count against the inventory spreadsheet."}],
-#         "bau_tasks": [],
-#         "important_information": ["Test info"],
-#     })
-
-
