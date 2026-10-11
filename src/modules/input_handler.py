@@ -105,7 +105,10 @@ def validate_user_input(text: str):
         return True
 
     return False
-
+# ===========================================================================
+# Helper Functions 
+# Validate user input
+# ===========================================================================
 
 def has_alphabetic_char(text: str) -> bool:                                                                                                                                          
     """Checks if a string is non-empty and contains at least one letter."""                                                                                                          
@@ -184,6 +187,8 @@ def get_user_details(): #function to get user details
     print("\nAre you:")
     print("1. Handing over work")
     print("2. Taking over work")
+    print("3. Deleting a work")
+
 
     while True:
         role = required_input("\nSelect an option: ") 
@@ -207,6 +212,14 @@ def get_user_details(): #function to get user details
                 validate_employee_id,
                 "Invalid employee ID. Please enter a valid 7-digit employee ID."
             )
+        elif role == "3":                                                                                           
+            return {                                                                                                                           
+                "name": name,                                                                                                                  
+                "department": department,                                                                                                      
+                "employee_id": employee_id,                                                                                                    
+                "date": submission_date,                                                                                                       
+                "role": "Delete"                                                                                                               
+            }             
 
             return {
                 "name": name,

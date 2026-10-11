@@ -116,19 +116,26 @@ def update_record(record_id, updates, filepath=DEFAULT_DATA_FILE):
     return False
 
 #Delete an existing handover record identified by its id.
-def delete_record(record_id, filepath=DEFAULT_DATA_FILE):
-    #Returns True if a record was found and deleted, False if no record with that id exists.
-    #5.1 Load the current records so we can search through them
+def delete_record(identifier: str, filepath: str = DEFAULT_DATA_FILE) -> bool:
+    """Deletes records where either 'id' or 'employee_id' matches identifier."""
+    if not identifier:
+        return False
+
     records = load_records(filepath)
+    if not isinstance(records, list):
+        return False
 
-    #5.2 Build a new list that keeps everything EXCEPT the record with the matching id
-    updated_records = [r for r in records if not (isinstance(r, dict) and r.get("id") == record_id)]
+    updated_records = [
+        r for r in records
+        if not (
+            isinstance(r, dict)
+            and (r.get("id") == identifier or r.get("employee_id") == identifier)
+        )
+    ]
 
-    #5.3 If nothing changed length, there was no match to delete
     if len(updated_records) == len(records):
         return False
 
-    #5.4 Save the shorter list back
     return save_records(updated_records, filepath)
 
 #takes not employee id but json key id

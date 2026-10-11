@@ -227,7 +227,15 @@ def main():
         
         
         return user_details
-    
+    elif user_details["role"] == "Delete":
+        #get employee id
+        employee_id = user_details["employee_id"]
+        result = data_manager.delete_record(employee_id)
+        if (result == False):
+            print("Invalid ID or You are not person who created the file.")
+        elif (result == True):
+            print("Records Deleted!")
+
 # ===========================================================================
 # Program entry point
 # ===========================================================================
