@@ -5,6 +5,7 @@ from datetime import date, timedelta
 
 import pytest
 from pydantic import ValidationError
+from src.modules import output
 
 # Allow tests to import modules from src/
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -512,3 +513,137 @@ def test_handover_file_with_mocked_ai(monkeypatch):
         == "Complete website testing"
     )
 
+
+def test_summary_saving_failure_is_handled(monkeypatch, tmp_path, capsys):
+    # Simulate a file-saving failure
+    def raise_os_error(*args, **kwargs):
+        raise OSError("Permission denied")
+
+    monkeypatch.setattr(output.os, "makedirs", raise_os_error)
+
+    result = {
+        "status": "Handover Complete",
+        "outstanding_tasks": [],
+        "bau_tasks": [],
+        "important_information": [],
+    }
+
+    user_details = {
+        "name": "Test User",
+        "employee_id": "TEST001",
+    }
+
+    # Attempt to save the summary
+    saved_path = output.generate_summary_txt(
+        result,
+        user_details,
+        output_dir=str(tmp_path),
+    )
+
+    # Verify the failure is handled correctly
+    captured = capsys.readouterr()
+
+    assert saved_path is None
+    assert "[Error] Could not save summary file" in captured.out
+    assert "Permission denied" in captured.out
+
+def test_send_to_llm_handles_connection_failure(monkeypatch):
+    # Simulate a network connection failure without calling the real API
+    def raise_connection_error(*args, **kwargs):
+        raise ConnectionError("Simulated network failure")
+
+    monkeypatch.setattr(
+        gemini_router.client.models,
+        "generate_content",
+        raise_connection_error,
+    )
+
+    # Call the function under test
+    result = gemini_router.send_to_llm("Test handover input")
+
+    # Verify the connection error is handled
+    assert result["success"] is False
+    assert result["data"] is None
+    assert "Network timeout" in result["error_message"]
+    assert "internet connection" in result["error_message"]
+
+
+def test_read_txt_file_handles_missing_file(tmp_path):
+    from src.modules import input_handler
+
+    missing_file = tmp_path / "missing_handover.txt"
+
+    result = input_handler.read_txt_file(missing_file)
+
+    assert result is None
+
+
+def test_read_txt_file_handles_invalid_utf8(tmp_path):
+    from src.modules import input_handler
+
+    # Create a file containing invalid UTF-8 bytes
+    invalid_file = tmp_path / "invalid_encoding.txt"
+    invalid_file.write_bytes(b"\xff\xfe\xfa")
+
+    result = input_handler.read_txt_file(invalid_file)
+
+    assert result is None
+
+
+def test_clean_llm_json_repairs_malformed_json():
+    from src.modules.gemini_router import clean_llm_json
+
+    # Simulate JSON with a missing comma
+    malformed_response = '{"status": "complete" "important_information": []}'
+
+    result = clean_llm_json(malformed_response)
+
+    assert isinstance(result, dict)
+    assert result["status"] == "complete"
+    assert result["important_information"] == []
+
+
+def test_validate_name_rejects_empty_or_non_alphabetic_input():
+    from src.modules.input_handler import validate_name
+
+    assert validate_name("") is False
+    assert validate_name("   ") is False
+    assert validate_name("123456") is False
+
+
+def test_validate_name_accepts_alphabetic_input():
+    from src.modules.input_handler import validate_name
+
+    assert validate_name("Alex") is True
+    assert validate_name("Alex Tan") is True
+
+
+def test_validate_department_rejects_empty_or_non_alphabetic_input():
+    from src.modules.input_handler import validate_department
+
+    assert validate_department("") is False
+    assert validate_department("123456") is False
+
+
+def test_validate_employee_id_requires_seven_digits():
+    from src.modules.input_handler import validate_employee_id
+
+    assert validate_employee_id("1234567") is True
+    assert validate_employee_id("123456") is False
+    assert validate_employee_id("12345678") is False
+    assert validate_employee_id("ABC1234") is False
+    assert validate_employee_id("1234 67") is False
+
+
+def test_validate_user_input_detects_password_keyword(capsys):
+    from src.modules.input_handler import validate_user_input
+
+    result = validate_user_input(
+        "The system password is example123"
+    )
+
+    captured = capsys.readouterr()
+
+    assert result is True
+    assert "Sensitive information detected" in captured.out
+    assert "password" in captured.out
