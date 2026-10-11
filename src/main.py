@@ -28,12 +28,11 @@ from modules.input_handler import (
 # ===========================================================================
 # Settings
 # ===========================================================================
-DEBUG = False # Change to False when out of debugging mode
+DEBUG = False # Set to True for debugging mode
 
 
 # ===========================================================================
-# Fill in missing information  (uses: logic manager)
-# Asks the user for any task name, description, owner or deadline the logic manager flagged.
+# Prompt the user to correct missing or invalid task information
 # ===========================================================================
 def fill_missing_information(handover_data, errors):
 
@@ -99,7 +98,7 @@ def fill_missing_information(handover_data, errors):
 # Sends the handover text to the AI and returns it as structured data (a dict).
 # ===========================================================================
 def get_handover_data():
-    # Only calls handover info when needed..
+    # Allow the user to resubmit handover information if AI processing fails
     while True:
         handover_info = handover_input()
 
@@ -145,8 +144,8 @@ def get_handover_data():
 
 # ===========================================================================
 # Main program flow
-# Handing over: input -> AI -> logic manager -> output -> data manager (save)
-# Taking over : input -> data manager (find) -> output
+# Handing over: Input -> AI -> Logic Manager -> Output -> Data Manager (Save)
+# Taking over: Input -> Data Manager (Retrieve) -> Output -> Data Manager (Update)
 # ===========================================================================
 def main():
 
@@ -224,18 +223,3 @@ def main():
 # ===========================================================================
 if __name__ == "__main__":
     result = main()
-
-
-
-
-
-"""
-Business Logic:
-IMPORTANT: Main.py should check for exisitng data than fill in the blanks.
-1) input 
-2) validate user input 
-3) pass to llm to organise the data with my system prompt and user prompt ( stream disable not needed for now )
-4) llm output is pass to logic manager 
-5) logic maanger passes then it will call data manager to save data
-6) data manager saves data tagged to the hoto 
-"""

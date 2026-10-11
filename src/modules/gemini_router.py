@@ -11,19 +11,15 @@ from pydantic import ValidationError
 import re
 import json_repair
 
-""" 
-1) send the user input to Gemini 3.6 Flash and get a completion ( done )
-2) handle API status/error codes, malformed output, rate limits,
-   response timeouts / API unreachable, and empty responses from the LLM
-3) handle output validation with the Pydantic schema
-
-Retry note: transient failures (408/429/5xx, timeouts) are retried
-automatically by the client (see utils/gemini_client.py) with exponential
-backoff before any exception reaches the handlers below. So a 429/5xx that
-lands here means the retry budget was already exhausted.
 """
+Gemini Router
 
+Sends handover information to the Gemini API, processes the AI response,
+validates the extracted data and handles API or response errors.
 
+Transient API failures are retried by the Gemini client before errors
+are returned to the caller.
+"""
 
 # Validate the data from the response and handle errors
 # handles markdown returned by the LLM
@@ -77,7 +73,6 @@ def send_to_llm(user_input: str):
         )
 
         raw_content = response.text
-        # print(raw_content)
 
         # Gemini may still wrap/pad the JSON, so sanitize before validating
         parsed_dict = clean_llm_json(raw_content)
