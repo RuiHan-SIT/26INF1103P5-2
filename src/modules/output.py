@@ -1,11 +1,13 @@
 import os
 from datetime import datetime
 
+from utils.config import SUMMARIES_DIR
+
 STATUS_COMPLETE = "Handover Complete"
 STATUS_INCOMPLETE = "Handover Incomplete"
 NOT_SPECIFIED = "Not specified"
 WIDTH = 78
-SUMMARY_DIR = "data/summaries"
+SUMMARY_DIR = SUMMARIES_DIR
 
 def _clean(value):
     #return a display-safe string; placeholder if empty/missing
@@ -56,7 +58,7 @@ def display_status(result):
         print("\nPlease resolve the items above, then run the handover again.")
 
 
-def format_summary(result):
+def format_summary(result, user_details=None):
     # Format the handover summary for both file saving and CLI display
     outstanding_tasks = result.get("outstanding_tasks", [])
     bau_tasks = result.get("bau_tasks", [])
@@ -67,9 +69,21 @@ def format_summary(result):
         "HANDOVER SUMMARY",
         "=" * WIDTH,
         f"Generated on  : {now:%Y-%m-%d %H:%M}",
+    ]
+
+    if user_details:
+        name = user_details.get("name")
+        emp_id = user_details.get("employee_id")
+        dept = user_details.get("department")
+        if name or emp_id:
+            lines.append(f"Employee      : {name or 'N/A'} (ID: {emp_id or 'N/A'})")
+        if dept:
+            lines.append(f"Department    : {dept}")
+
+    lines.extend([
         f"Tasks         : {len(outstanding_tasks) + len(bau_tasks)}",
         "",
-    ]
+    ])
 
     if outstanding_tasks:
         lines.extend(["OUTSTANDING TASKS", "-" * WIDTH])
@@ -126,7 +140,7 @@ def generate_summary_txt(result, user_details, output_dir=SUMMARY_DIR):
         os.makedirs(output_dir, exist_ok=True)
         path = os.path.join(output_dir, filename)
         with open(path, "w", encoding="utf-8") as f:
-            f.write(format_summary(result))
+            f.write(format_summary(result, user_details))
         return path
     except OSError as e:
         print(f"\n[Error] Could not save summary file: {e}")
@@ -147,4 +161,4 @@ def show_output(result, user_details, save_file=True):
 
         else:
             # Display the handover summary directly in the CLI
-            print("\n" + format_summary(result))
+            print("\n" + format_summary(result, user_details))

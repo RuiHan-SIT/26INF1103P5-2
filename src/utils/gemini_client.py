@@ -4,12 +4,10 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
-# Load variables from the .env file into environment
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
+from utils.config import DOTENV_PATH
 
-# Point directly to the .env in the root
-dotenv_path = BASE_DIR / ".env"
-load_dotenv(dotenv_path=dotenv_path)
+# Load variables from the .env file into environment
+load_dotenv(dotenv_path=DOTENV_PATH)
 
 api_key = os.getenv("GEMINI_API_KEY")
 

@@ -7,10 +7,8 @@ import re
 _scrubber = scrubadub.Scrubber()
 _scrubber.remove_detector('phone')
 
-# Anchor to the project root (../../ up from src/modules/) so the path
-# works no matter which directory the program is launched from.
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
-handover_dir = BASE_DIR / "data" / "handovers"
+from utils.config import HANDOVERS_DIR
+handover_dir = HANDOVERS_DIR
 
 
 # ===========================================================================
@@ -85,7 +83,7 @@ def validate_user_input(text: str):
     ]
     
     sensitive_patterns ={
-    "NRIC/FIN": r"\b[STFG]\d{7}[A-Z]ho\b",
+    "NRIC/FIN": r"\b[STFGM]\d{7}[A-Z]\b",                                                                                                
     "Passport": r"\b[E]\d{7}[A-Z]\b",
     }
 
@@ -133,6 +131,14 @@ def required_input(prompt): #this is to ensure manually added information for re
         else:
             return value
 
+def prompt_validated(prompt: str, validator, error_message: str) -> str:
+    """Prompt the user repeatedly until input passes the validator."""
+    while True:
+        value = required_input(prompt)
+        if validator(value):
+            return value
+        print(error_message)
+
 def process_file_content(file_path):
     """Read, validate file size/encoding, and check for sensitive data."""
     handover_info = read_txt_file(file_path)
@@ -158,27 +164,21 @@ def handover_from_file(filename):
     return process_file_content(input_file)
 
 def get_user_details(): #function to get user details
-    while True: #get and validate user name
-        name = required_input("Enter your name: ") #employee name
-
-        if validate_name(name):
-            break
-        else:
-            print("Invalid name. Please enter a valid name containing at least one letter.")
-    while True: #get and validate user department
-        department = required_input("Enter your department: ") #employee department
-
-        if validate_department(department):
-            break
-        else:
-            print("Invalid department. Please enter a valid department containing at least one letter.")  
-    while True: #get and validate user employee ID
-        employee_id = required_input("Enter your employee ID: ") #employee ID
-
-        if validate_employee_id(employee_id):
-            break
-        else:
-            print("Invalid employee ID. Please enter a valid 7-digit employee ID.")
+    name = prompt_validated(
+        "Enter your name: ",
+        validate_name,
+        "Invalid name. Please enter a valid name containing at least one letter."
+    )
+    department = prompt_validated(
+        "Enter your department: ",
+        validate_department,
+        "Invalid department. Please enter a valid department containing at least one letter."
+    )
+    employee_id = prompt_validated(
+        "Enter your employee ID: ",
+        validate_employee_id,
+        "Invalid employee ID. Please enter a valid 7-digit employee ID."
+    )
 
     submission_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S") #get current date and time
     print("\nAre you:")
@@ -189,35 +189,29 @@ def get_user_details(): #function to get user details
         role = required_input("\nSelect an option: ") 
 
         if role == "1":
+            return {
+                "name": name,
+                "department": department,
+                "employee_id": employee_id,
+                "date": submission_date,
+                "role": "Handing over"
+            }
+        elif role == "2":
+            previous_employee = prompt_validated(
+                "Enter the name of the previous employee: ",
+                validate_name,
+                "Invalid name. Please enter a valid name containing at least one letter."
+            )
+            previous_employee_id = prompt_validated(
+                "Enter the employee ID of the previous employee: ",
+                validate_employee_id,
+                "Invalid employee ID. Please enter a valid 7-digit employee ID."
+            )
 
             return {
                 "name": name,
                 "department": department,
                 "employee_id": employee_id,
-                "date":submission_date,
-                "role": "Handing over"
-            }
-        elif role == "2":
-            while True:
-                previous_employee = required_input("Enter the name of the previous employee: ")
-
-                if validate_name(previous_employee):
-                    break
-                else:
-                    print("Invalid name. Please enter a valid name containing at least one letter.")
-
-            while True:
-                previous_employee_id = required_input("Enter the employee ID of the previous employee: ")
-
-                if validate_employee_id(previous_employee_id):
-                    break
-                else:
-                    print("Invalid employee ID. Please enter a valid 7-digit employee ID.")
-
-            return {
-                "name":name,
-                "department":department,
-                "employee_id":employee_id,
                 "date": submission_date,
                 "role": "Taking over",
                 "taking_over_from": previous_employee,

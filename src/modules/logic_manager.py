@@ -1,3 +1,4 @@
+import copy
 from datetime import datetime, date
 
 # Validate if deadline is in correct format
@@ -129,12 +130,14 @@ def process_handover(data):
 
     sorted_tasks = sort_outstanding_tasks(data)
 
-    for task in sorted_tasks:
+    # Format deadlines on a copy to preserve raw data in standard DD/MM/YYYY format
+    formatted_tasks = copy.deepcopy(sorted_tasks)
+    for task in formatted_tasks:
         task["deadline"] = format_deadline(task["deadline"])
 
     return {
-    "status": status,
-    "outstanding_tasks": sorted_tasks,
-    "bau_tasks": data["bau_tasks"],
-    "important_information": data["important_information"]
+        "status": status,
+        "outstanding_tasks": formatted_tasks,
+        "bau_tasks": data["bau_tasks"],
+        "important_information": data["important_information"]
     }

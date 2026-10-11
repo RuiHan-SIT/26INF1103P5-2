@@ -22,8 +22,10 @@ from modules.input_handler import (
     handover_from_file,
     required_input,
     validate_user_input,
-    handover_input
+    handover_input,
+    prompt_validated
 )
+from utils.logger import logger
 
 # ===========================================================================
 # Settings
@@ -66,30 +68,32 @@ def fill_missing_information(handover_data, errors):
         for missing_field in error["errors"]:
 
             if missing_field == "task":
-                task["task"] = input("\nMissing Task name. Please enter a task name: ").strip()
+                task["task"] = required_input("\nMissing Task name. Please enter a task name: ")
             elif missing_field == "description":
-                task["description"] = input("\nMissing task description. Please enter a description: ").strip()
+                task["description"] = required_input("\nMissing task description. Please enter a description: ")
             elif missing_field == "missing_owner(s)":
-                owner = input("\nMissing task owner(s). Please enter owner(s) separated by comma: ").strip()
-                task["owners"] = [owner] if owner else []
+                owner = required_input("\nMissing task owner(s). Please enter owner(s) separated by comma: ")
+                task["owners"] = [o.strip() for o in owner.split(",") if o.strip()]
             elif missing_field in ("missing_deadline", "invalid_deadline"):
-
                 # Inform user why the deadline needs to be entered again
                 if missing_field == "missing_deadline":
                     print("\nDeadline is missing. Please provide a deadline.")
                 elif missing_field == "invalid_deadline":
                     print("\nInvalid deadline. Please enter a valid date (today or later) in DD/MM/YYYY format.")
 
-                while True:
-                    deadline = input("\nEnter deadline (DD/MM/YYYY): ").strip()
-
-                    if logic_manager.validate_deadline(deadline):
-                        task["deadline"] = deadline
-                        break
-
-                    print("Invalid deadline. Please enter a valid date (today or later) in DD/MM/YYYY format.")
+                task["deadline"] = prompt_validated(
+                    "\nEnter deadline (DD/MM/YYYY): ",
+                    logic_manager.validate_deadline,
+                    "Invalid deadline. Please enter a valid date (today or later) in DD/MM/YYYY format."
+                )
             else:
-                raise ValueError(f"Unhandled validation error: {missing_field}")
+                logger.warning(
+                    "Unhandled validation error '%s' on %s task %s",
+                    missing_field,
+                    task_type,
+                    error.get("index")
+                )
+                print(f"\n[Notice] Unrecognized validation check '{missing_field}'. Please review this task.")
             
     return True
 
@@ -171,7 +175,9 @@ def main():
                 output.show_output(result, user_details)
                 print("\nHandover is complete.")
                 # Step 5 - Data manager: save the completed handover to data/handovers.json
-                data_manager.save_handover(user_details, result)
+                saved = data_manager.save_handover(user_details, result)
+                if not saved:
+                    print("\n[Warning] Could not save handover to database. Please check file permissions.")
 
                 if DEBUG:
                     print(f"\n{pformat(result, sort_dicts=False)}")

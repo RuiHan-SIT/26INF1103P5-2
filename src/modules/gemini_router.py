@@ -66,7 +66,7 @@ def send_to_llm(user_input: str):
             contents=user_input,
             config=types.GenerateContentConfig(
                 system_instruction=SYSTEM_PROMPT,
-                temperature=1,
+                temperature=0,
                 max_output_tokens=MAX_OUTPUT_TOKENS,
                 response_mime_type="application/json",
             ),

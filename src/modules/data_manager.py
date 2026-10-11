@@ -4,10 +4,8 @@ import os
 from datetime import date 
 from pathlib import Path 
 
-#Establishing to the project root (../../ up from src/modules/) so the file  is 
-#always saved in the same place, no matter where the program is launched from.
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
-DEFAULT_DATA_FILE = BASE_DIR / "data" / "handovers.json"
+from utils.config import DEFAULT_DATA_FILE, DATA_DIR
+from utils.logger import logger
 
 #1. opens the saved JSON file and gives you back everything in it as a list. 
 #If the file doesn't exist yet or is broken, it just gives back an empty list instead of crashing.
@@ -16,27 +14,38 @@ def load_records(filepath=DEFAULT_DATA_FILE):
     Returns an empty  list if the file doesn't exist yet"""
     #1.1 The first requirement to prevent crashing: 
     if not os.path.exists(filepath):
-        return[]
+        return []
     
     #1.2 Attempting to open the file safely, and reading it. Try/except catches cases like if the file exists but it's unreadable
     try:
         with open(filepath, "r", encoding="utf-8") as f:
             content = f.read().strip()
-    except OSError:
-        return[]
+    except OSError as err:
+        logger.error("Could not read records file %s: %s", filepath, err)
+        return []
     
     #1.3 Handling an empty file; A file exists but has no content
     if not content:
-        return[]
+        return []
     #1.4 Parsing the JSON, turning raw text into Python data (lists/dictionary)
     #1.4 Handling a corrupted file without crashing
     try:
         data = json.loads(content)
-    except json.JSONDecodeError:
-        return[]
+    except json.JSONDecodeError as err:
+        logger.error("Corrupted JSON in %s: %s", filepath, err)
+        # Create a backup so data is never permanently lost
+        backup_path = Path(str(filepath) + ".corrupted.bak")
+        try:
+            with open(backup_path, "w", encoding="utf-8") as bkp:
+                bkp.write(content)
+            logger.warning("Corrupted database safely backed up to %s", backup_path)
+        except OSError:
+            pass
+        return []
     #1.5 If the JSON is valid but is not in the form of a list of records
     if not isinstance(data, list):
-        return[]
+        logger.error("JSON in %s is not a list of records.", filepath)
+        return []
     
     return data
 
@@ -48,6 +57,7 @@ def save_records(records, filepath=DEFAULT_DATA_FILE):
     #2.1 Writing the records to disk as JSON. "w" mode overwrites the whole file
     #2.1 (unlike "a" which appends) — that matches what "save the full list" means
     try:
+        Path(filepath).parent.mkdir(parents=True, exist_ok=True)
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(records, f, indent=2, sort_keys=True)
     except OSError:
@@ -121,6 +131,7 @@ def delete_record(record_id, filepath=DEFAULT_DATA_FILE):
     #5.4 Save the shorter list back
     return save_records(updated_records, filepath)
 
+#takes not employee id but json key id
 def get_record_by_id(record_id, filepath=DEFAULT_DATA_FILE):
     #6.1 Read. Given an id, return the matching record, or None if no record with that id exists.
     records = load_records(filepath)
