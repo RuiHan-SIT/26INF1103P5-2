@@ -15,10 +15,20 @@ def _clean(value):
  
  
 def _owners_str(owners):
-
     if isinstance(owners, list):
-        cleaned = [o.strip() for o in owners if o and o.strip()]
+        cleaned = [
+            name.strip()
+            for owner in owners
+            if owner
+            for name in owner.split(",")
+            if name.strip()
+        ]
         return ", ".join(cleaned) if cleaned else NOT_SPECIFIED
+
+    if isinstance(owners, str):
+        cleaned = [name.strip() for name in owners.split(",") if name.strip()]
+        return ", ".join(cleaned) if cleaned else NOT_SPECIFIED
+
     return _clean(owners)
  
  
@@ -44,9 +54,53 @@ def display_status(result):
                 else:
                     print(f"  - {str(item)}")
         print("\nPlease resolve the items above, then run the handover again.")
+
+
+def format_summary(result):
+    # Format the handover summary for both file saving and CLI display
+    outstanding_tasks = result.get("outstanding_tasks", [])
+    bau_tasks = result.get("bau_tasks", [])
+    now = datetime.now()
+
+    lines = [
+        "=" * WIDTH,
+        "HANDOVER SUMMARY",
+        "=" * WIDTH,
+        f"Generated on  : {now:%Y-%m-%d %H:%M}",
+        f"Tasks         : {len(outstanding_tasks) + len(bau_tasks)}",
+        "",
+    ]
+
+    if outstanding_tasks:
+        lines.extend(["OUTSTANDING TASKS", "-" * WIDTH])
+
+        for index, task in enumerate(outstanding_tasks, start=1):
+            lines.append(f"Task {index}: {_clean(task.get('task'))}")
+            lines.append(f"    Owner       : {_owners_str(task.get('owners'))}")
+            lines.append(f"    Description : {_clean(task.get('description'))}")
+            lines.append(f"    Deadline    : {_clean(task.get('deadline'))}")
+            lines.append("")
+
+    if bau_tasks:
+        lines.extend(["ROUTINE TASKS", "-" * WIDTH])
+
+        for index, task in enumerate(bau_tasks, start=1):
+            lines.append(f"Task {index}: {_clean(task.get('task'))}")
+            lines.append(f"    Owner       : {_owners_str(task.get('owners'))}")
+            lines.append(f"    Description : {_clean(task.get('description'))}")
+            lines.append("")
+
+    important_information = result.get("important_information", [])
+
+    if important_information:
+        lines.extend(["IMPORTANT INFORMATION", "-" * WIDTH])
+        lines.extend(f"* {_clean(item)}" for item in important_information)
+        lines.append("")
+
+    return "\n".join(lines)
+
  
- 
-def generate_summary_txt(result, output_dir=SUMMARY_DIR):
+def generate_summary_txt(result, user_details, output_dir=SUMMARY_DIR):
     #write the handover summary to a .txt file
     #only generates when status is Complete and returns the file path, or None
     if result.get("status") not in (STATUS_COMPLETE, "complete"):
@@ -57,61 +111,43 @@ def generate_summary_txt(result, output_dir=SUMMARY_DIR):
     outstanding_tasks = result.get("outstanding_tasks", [])
     bau_tasks = result.get("bau_tasks", [])
     now = datetime.now()
-    #generate a unique filename based on the current timestamp
-    filename = f"handover_summary_{now:%Y-%m-%d_%H%M%S}.txt"
- 
-    lines = [
-        "HANDOVER SUMMARY",
-        "=" * WIDTH,
-        f"Generated : {now:%Y-%m-%d %H:%M}",
-        f"Status    : {STATUS_COMPLETE}",
-        f"Tasks     : {len(outstanding_tasks) + len(bau_tasks)}",
-        "",
-    ]
-    if outstanding_tasks:
-        lines.extend(["OUTSTANDING TASKS", "-" * WIDTH])
-        for task in outstanding_tasks:
-            lines.append(f"* {_clean(task.get('task'))}")
-            if task.get("description"):
-                lines.append(f"    Owner       : {_owners_str(task.get('owners'))}")
-                lines.append(f"    Description : {_clean(task.get('description'))}")
-                lines.append(f"    Deadline    : {_clean(task.get('deadline'))}")
-        lines.append("")
 
-    if bau_tasks:
-        lines.extend(["ROUTINE TASKS", "-" * WIDTH])
-        for task in bau_tasks:
-            lines.append(f"* {_clean(task.get('task'))}")
-            if task.get("description"):
-                lines.append(f"    Description : {_clean(task.get('description'))}")
-                lines.append(f"    Owner     : {_owners_str(task.get('owners'))}")
-        lines.append("")
+    # Generate a filename using the date, employee name, ID and time
+    name = "".join(
+        char if char.isalnum() or char in " -_" else "_"
+        for char in user_details["name"]
+    ).strip().replace(" ", "_")
 
-    important_information = result.get("important_information", [])
-    if important_information:
-        lines.extend(["IMPORTANT INFORMATION", "-" * WIDTH])
-        lines.extend(f"* {_clean(item)}" for item in important_information)
-        lines.append("")
+    employee_id = user_details["employee_id"]
 
+    filename = f"{now:%Y-%m-%d}_{name}_{employee_id}_{now:%I-%M-%S%p}.txt"
  
     try:
         os.makedirs(output_dir, exist_ok=True)
         path = os.path.join(output_dir, filename)
         with open(path, "w", encoding="utf-8") as f:
-            f.write("\n".join(lines))
+            f.write(format_summary(result))
         return path
     except OSError as e:
         print(f"\n[Error] Could not save summary file: {e}")
         return None
+
  
- 
-def show_output(result):
+def show_output(result, user_details, save_file=True):
     #main entry point, called from main.py with the logic manager's result
-    display_status(result)
+    if save_file:
+        display_status(result)
+    
     if result.get("status") in (STATUS_COMPLETE, "complete"):
-        path = generate_summary_txt(result)
-        if path:
-            print(f"\nHandover file saved to: {os.path.basename(path)}")
+        if save_file:
+            path = generate_summary_txt(result, user_details)
+        
+            if path:
+                print(f"\nHandover file saved to: {os.path.basename(path)}")
+
+        else:
+            # Display the handover summary directly in the CLI
+            print("\n" + format_summary(result))
 
 #test code to show output!
 # if __name__ == "__main__":

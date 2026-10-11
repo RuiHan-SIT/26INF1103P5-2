@@ -66,11 +66,11 @@ def fill_missing_information(handover_data, errors):
         for missing_field in error["errors"]:
 
             if missing_field == "task":
-                task["task"] = input("\nEnter task name: ").strip()
+                task["task"] = input("\nMissing Task name. Please enter a task name: ").strip()
             elif missing_field == "description":
-                task["description"] = input("\nEnter description: ").strip()
+                task["description"] = input("\nMissing task description. Please enter a description: ").strip()
             elif missing_field == "missing_owner(s)":
-                owner = input("\nEnter owner: ").strip()
+                owner = input("\nMissing task owner(s). Please enter owner(s) separated by comma: ").strip()
                 task["owners"] = [owner] if owner else []
             elif missing_field in ("missing_deadline", "invalid_deadline"):
 
@@ -168,7 +168,7 @@ def main():
 
             if result["status"] == "complete":
                 # Step 4 - Output: show the status and generate the summary .txt
-                output.show_output(result)
+                output.show_output(result, user_details)
                 print("\nHandover is complete.")
                 # Step 5 - Data manager: save the completed handover to data/handovers.json
                 data_manager.save_handover(user_details, result)
@@ -205,8 +205,12 @@ def main():
         handover = records[0]  # newest handover comes first
         print(f"\nFound handover from {handover['name']} ({handover['department']}), saved on {handover['saved_date']}.")
         
-        # Step 3 - Output: generate a summary .txt file from the fetched handover
-        output.show_output({**handover, "status": "complete"})
+        # Step 3 - Output: Opens the fetched handover
+        output.show_output(
+            {**handover, "status": "complete"},
+            handover,
+            save_file=False
+        )
         
         # Step 4 - Data manager (Update): record who took over this handover
         data_manager.update_record(handover["id"], {
