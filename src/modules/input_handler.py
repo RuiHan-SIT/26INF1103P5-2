@@ -85,7 +85,7 @@ def validate_user_input(text: str):
     ]
     
     sensitive_patterns ={
-    "NRIC/FIN": r"\b[STFG]\d{7}[A-Z]$\b",
+    "NRIC/FIN": r"\b[STFG]\d{7}[A-Z]ho\b",
     "Passport": r"\b[E]\d{7}[A-Z]\b",
     }
 
@@ -133,17 +133,9 @@ def required_input(prompt): #this is to ensure manually added information for re
         else:
             return value
 
-def handover_from_file(filename):
-    #Read and validate a handover .txt file by name (looked up in handover_dir).
-    #returns the file text if valid and clean, otherwise None so the caller can
-    #decide how to proceed (e.g. re-prompt).
-
-    input_file = (handover_dir / filename).resolve()
-    if not input_file.is_relative_to(handover_dir.resolve()):
-        print("Invalid file path. Please provide a valid filename within the handover directory.")
-        return None
-
-    handover_info = read_txt_file(input_file)
+def process_file_content(file_path):
+    """Read, validate file size/encoding, and check for sensitive data."""
+    handover_info = read_txt_file(file_path)
     if handover_info is None:
         return None
 
@@ -151,6 +143,19 @@ def handover_from_file(filename):
         return None
 
     return handover_info
+
+
+def handover_from_file(filename):
+    # Read and validate a handover .txt file by name (looked up in handover_dir).
+    # returns the file text if valid and clean, otherwise None so the caller can
+    # decide how to proceed (e.g. re-prompt).
+
+    input_file = (handover_dir / filename).resolve()
+    if not input_file.is_relative_to(handover_dir.resolve()):
+        print("Invalid file path. Please provide a valid filename within the handover directory.")
+        return None
+
+    return process_file_content(input_file)
 
 def get_user_details(): #function to get user details
     while True: #get and validate user name
@@ -258,7 +263,7 @@ def handover_input():
             path = Path(file_path)
 
             if path.suffix.lower() == ".txt" and path.is_file():
-                handover_info = handover_from_file(path.name)
+                handover_info = process_file_content(path.resolve())
 
                 if handover_info is None:
                     continue

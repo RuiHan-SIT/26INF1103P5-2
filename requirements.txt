@@ -1,6 +1,5 @@
 requests
 python-dotenv
-openai
 google-genai
 scrubadub
 pydantic
