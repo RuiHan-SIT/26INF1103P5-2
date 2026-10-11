@@ -212,15 +212,6 @@ def get_user_details(): #function to get user details
                 validate_employee_id,
                 "Invalid employee ID. Please enter a valid 7-digit employee ID."
             )
-        elif role == "3":                                                                                           
-            return {                                                                                                                           
-                "name": name,                                                                                                                  
-                "department": department,                                                                                                      
-                "employee_id": employee_id,                                                                                                    
-                "date": submission_date,                                                                                                       
-                "role": "Delete"                                                                                                               
-            }             
-
             return {
                 "name": name,
                 "department": department,
@@ -229,6 +220,14 @@ def get_user_details(): #function to get user details
                 "role": "Taking over",
                 "taking_over_from": previous_employee,
                 "taking_over_from_id": previous_employee_id
+            }
+        elif role == "3":
+            return {
+                "name": name,
+                "department": department,
+                "employee_id": employee_id,
+                "date": submission_date,
+                "role": "Delete"
             }
         else:
             print("Invalid option.")
