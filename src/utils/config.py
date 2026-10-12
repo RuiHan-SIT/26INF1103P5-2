@@ -17,3 +17,5 @@ SUMMARIES_DIR = DATA_DIR / "summaries"
 # Specific file locations
 DEFAULT_DATA_FILE = DATA_DIR / "handovers.json"
 DOTENV_PATH = BASE_DIR / ".env"
+
+   
