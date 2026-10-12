@@ -1,150 +1,169 @@
-# AI Handover Auditor — Master Test Case Table
+# AI Handover Auditor — Master Test Case Documentation
 
 ## 1. Purpose
 
-This document defines the test cases used to verify the reliability and correctness of the AI Handover Auditor. It covers handover input processing, AI response validation, error handling, and automated testing without live API calls.
+This document describes the automated test cases used to verify the reliability, correctness, and error-handling behaviour of the AI Handover Auditor project.
 
-## 2. Master Test Case Table
+The test suite covers four main areas:
 
-| Test ID | Test Category       | Test Scenario                      | Test Input                                                  | Expected Result                                                                    | Priority |
-| ------- | ------------------- | ---------------------------------- | ----------------------------------------------------------- | ---------------------------------------------------------------------------------- | -------- |
-| TC01    | Valid Input         | Complete handover document         | Handover containing task, owner, and deadline               | Handover is processed and task information is extracted correctly                  | High     |
-| TC02    | Incomplete Input    | Missing task owner                 | Handover containing a task without an owner                 | Missing owner is identified or represented according to the application schema     | High     |
-| TC03    | Incomplete Input    | Missing deadline                   | Handover containing a task without a deadline               | Missing deadline is identified or represented according to the application schema  | High     |
-| TC04    | Unstructured Input  | Messy or poorly formatted handover | Free-form notes containing task information                 | System processes identifiable information or reports appropriate validation issues | Medium   |
-| TC05    | Empty Input         | Empty handover file                | Empty text file                                             | System handles empty input safely without an uncontrolled crash                    | High     |
-| TC06    | Multiple Tasks      | Handover contains several tasks    | Document containing multiple task entries                   | All identifiable tasks are processed according to the expected schema              | High     |
-| TC07    | Valid AI Response   | AI returns valid JSON              | JSON containing all required fields with correct data types | JSON is parsed and passes schema validation                                        | High     |
-| TC08    | Invalid AI Response | AI returns malformed JSON          | `{invalid json`                                             | JSON parsing fails safely and an appropriate error is handled                      | High     |
-| TC09    | Invalid AI Response | Required field is missing          | Valid JSON with a required field omitted                    | Schema validation fails and identifies the missing field                           | High     |
-| TC10    | Invalid AI Response | Incorrect data type                | JSON containing a field with an invalid data type           | Schema validation rejects the response or reports a validation error               | High     |
-| TC11    | Invalid AI Response | AI returns an empty response       | Empty string                                                | System handles the response safely without an uncontrolled crash                   | High     |
-| TC12    | Invalid AI Response | Unexpected additional field        | Valid JSON containing an extra field                        | Additional field is accepted or rejected according to the documented schema policy | Medium   |
-| TC13    | Error Handling      | Multiple validation errors         | JSON with multiple missing or invalid fields                | Validation failures are handled without an uncontrolled crash                      | High     |
-| TC14    | Error Handling      | AI/API exception                   | Mock AI client raises an exception                          | Application handles the exception according to its error-handling policy           | High     |
-| TC15    | Automated Testing   | AI response is mocked              | Predefined valid AI response                                | Test runs without requiring a live AI API call                                     | High     |
-| TC16    | Automated Testing   | Invalid AI response is mocked      | Predefined malformed or invalid response                    | Error-handling behaviour is tested without a live AI API call                      | High     |
+1. Gemini response processing and JSON cleaning.
+2. Handover data schema validation using Pydantic.
+3. Handover processing, task validation, and deadline handling.
+4. Integration testing of file input, mocked AI responses, and core application logic.
 
-## 3. Test Case Details
+The tests are implemented using `pytest`. AI responses are mocked or hardcoded where appropriate to ensure that automated tests can run without depending on live Gemini API calls.
 
-### TC01 — Valid Handover
+## 2. Test Files and Coverage
 
-**Objective:** Verify that the system processes a complete handover correctly.
+| Test File               | Module Under Test                                                 | Purpose                                                                                               |
+| ----------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `test_gemini_router.py` | `modules/gemini_router.py`                                        | Tests JSON cleaning, invalid responses, and mocked Gemini API interactions.                           |
+| `test_handove_model.py` | `model/handover_model.py`                                         | Tests Pydantic schema validation, missing fields, invalid data types, and unexpected fields.          |
+| `test_logic_manager.py` | `modules/logic_manager.py`                                        | Tests deadline validation, task validation, handover processing, task sorting, and output formatting. |
+| `test_intergration.py`  | `main.py`, `modules/input_handler.py`, `modules/logic_manager.py` | Tests file input and the handover processing workflow using a mocked AI response.                     |
 
-**Input:** A handover containing a task description, owner, and deadline.
+**Note:** The filenames `test_handove_model.py` and `test_intergration.py` retain their current spellings. If these files are renamed in the project, update the documentation accordingly.
 
-**Expected result:** The system extracts the task information and produces data that conforms to the application's schema.
+## 3. Master Test Case Table
 
-**Pass criteria:** The output matches the expected structure and values.
+### 3.1 Gemini Router Tests
 
-### TC02 — Missing Task Owner
+**Test file:** `test_gemini_router.py`
 
-**Objective:** Verify that missing ownership information is handled correctly.
+| Test ID | Test Scenario                        | Test Input                                   | Expected Result                                                                                        | Priority |
+| ------- | ------------------------------------ | -------------------------------------------- | ------------------------------------------------------------------------------------------------------ | -------- |
+| GR01    | Response contains no JSON object     | Plain text without JSON                      | `ValueError` is raised with a message indicating that no JSON object was found.                        | High     |
+| GR02    | Empty AI response                    | Empty string                                 | `ValueError` is raised for an empty or null response.                                                  | High     |
+| GR03    | JSON wrapped in Markdown code fences | Valid JSON inside a Markdown code block      | JSON is cleaned and returned as a Python dictionary.                                                   | High     |
+| GR04    | Whitespace-only AI response          | String containing only whitespace            | `ValueError` is raised for an empty or null response.                                                  | High     |
+| GR05    | Gemini API call is mocked            | Handover text and a predefined fake response | The mocked Gemini client returns the expected parsed dictionary without requiring a real API response. | High     |
 
-**Input:** A handover containing a task and deadline but no owner.
+### 3.2 Handover Model Tests
 
-**Expected result:** The missing owner is identified, represented, or flagged according to the application's requirements.
+**Test file:** `test_handove_model.py`
 
-**Pass criteria:** The missing information is not silently replaced with an invented owner.
+| Test ID | Test Scenario                                | Test Input                                             | Expected Result                                                                      | Priority |
+| ------- | -------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------ | -------- |
+| HM01    | Missing required outstanding task field      | Outstanding task without the required `task` field     | Pydantic raises `ValidationError`.                                                   | High     |
+| HM02    | Missing required BAU task field              | BAU task without the required `task` field             | Pydantic raises `ValidationError`.                                                   | High     |
+| HM03    | Important information without an alert field | Important information containing only `context`        | Validation succeeds and the context is normalized into a string in the output list.  | High     |
+| HM04    | Invalid owners data type                     | `owners` supplied as an integer                        | Pydantic raises `ValidationError`.                                                   | High     |
+| HM05    | Invalid task data type                       | `task` supplied as an integer                          | Pydantic raises `ValidationError`.                                                   | High     |
+| HM06    | Unexpected task field                        | Valid task containing an additional `unexpected_field` | Validation succeeds, and the unexpected field is excluded from the validated output. | Medium   |
 
-### TC03 — Missing Deadline
+### 3.3 Logic Manager Tests
 
-**Objective:** Verify that incomplete deadline information is handled correctly.
+**Test file:** `test_logic_manager.py`
 
-**Input:** A handover containing a task and owner but no deadline.
+| Test ID | Test Scenario                        | Test Input                                             | Expected Result                                                                        | Priority |
+| ------- | ------------------------------------ | ------------------------------------------------------ | -------------------------------------------------------------------------------------- | -------- |
+| LM01    | Valid future deadline                | Date seven days in the future                          | `validate_deadline()` returns `True`.                                                  | High     |
+| LM02    | Past deadline                        | Date one day in the past                               | `validate_deadline()` returns `False`.                                                 | High     |
+| LM03    | Incorrect deadline format            | Deadline in `YYYY-MM-DD` format                        | `validate_deadline()` returns `False`.                                                 | High     |
+| LM04    | Empty deadline                       | Empty string                                           | `validate_deadline()` returns `False`.                                                 | High     |
+| LM05    | Valid outstanding task               | Outstanding task with valid fields                     | `validate_outstanding_task()` returns an empty error list.                             | High     |
+| LM06    | Outstanding task without owner       | Outstanding task with an empty owners list             | Returns `["missing_owner(s)"]`.                                                        | High     |
+| LM07    | Outstanding task without description | Outstanding task with an empty description             | Returns `["description"]`.                                                             | High     |
+| LM08    | Outstanding task without deadline    | Outstanding task with an empty deadline                | Returns `["missing_deadline"]`.                                                        | High     |
+| LM09    | Valid BAU task                       | BAU task with valid fields                             | `validate_bau_task()` returns an empty error list.                                     | High     |
+| LM10    | BAU task without owner               | BAU task with an empty owners list                     | Returns `["missing_owner(s)"]`.                                                        | High     |
+| LM11    | BAU task without description         | BAU task with an empty description                     | Returns `["description"]`.                                                             | High     |
+| LM12    | Handover without tasks               | Empty outstanding task and BAU task lists              | Processing returns an `incomplete` status and identifies `no_tasks`.                   | High     |
+| LM13    | Valid handover                       | Handover containing valid outstanding and BAU tasks    | Processing returns a `complete` status without an `errors` key.                        | High     |
+| LM14    | Outstanding tasks sorted by deadline | Two valid tasks with different future deadlines        | Tasks are sorted from the earliest deadline to the latest deadline.                    | High     |
+| LM15    | Deadline output formatting           | Valid deadline in `DD/MM/YYYY` format                  | Output deadline is formatted as `DD Mon YYYY`, for example, `15 Oct 2026`.             | Medium   |
+| LM16    | Realistic handover fixture response  | Hardcoded AI response containing two outstanding tasks | Processing returns a `complete` status and preserves both tasks in the expected order. | High     |
 
-**Expected result:** The missing deadline is identified or represented according to the application's requirements.
+### 3.4 Integration Tests
 
-**Pass criteria:** The system does not invent a deadline.
+**Test file:** `test_intergration.py`
 
-### TC07 — Valid AI Response
+| Test ID | Test Scenario                      | Test Input                                                | Expected Result                                                                                           | Priority |
+| ------- | ---------------------------------- | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | -------- |
+| IT01    | File input with mocked AI response | `valid_handover.txt` fixture and a predefined AI response | File contents are passed to the mocked AI function, and the resulting handover is processed successfully. | High     |
 
-**Objective:** Verify that valid AI output passes parsing and schema validation.
+## 4. Test Execution
 
-**Input:** A JSON response containing all required fields with appropriate values and data types.
+### 4.1 Prerequisites
 
-**Expected result:** The response is successfully parsed and validated.
+Ensure that Python and the project's required dependencies are installed, including `pytest` and the packages required by the application.
 
-**Pass criteria:** No parsing or schema validation errors occur.
+Run the commands from the project root directory.
 
-### TC08 — Malformed JSON
+### 4.2 Run All Tests
 
-**Objective:** Verify that malformed AI output is handled safely.
+```bash
+python -m pytest tests/ -v
+```
 
-**Input:**
-`{invalid json`
+This executes all test files in the `tests/` directory and displays individual test results.
 
-**Expected result:** JSON parsing fails and the application handles the error appropriately.
+### 4.3 Run Tests by File
 
-**Pass criteria:** The malformed response is not treated as successfully validated data.
+Run individual test modules when debugging or verifying changes.
 
-### TC09 — Missing Required Field
+```bash
+python -m pytest tests/test_gemini_router.py -v
+python -m pytest tests/test_handove_model.py -v
+python -m pytest tests/test_logic_manager.py -v
+python -m pytest tests/test_intergration.py -v
+```
 
-**Objective:** Verify that the schema rejects responses missing mandatory fields.
+### 4.4 Run a Specific Test
 
-**Input:** A JSON object that omits a required field from the Pydantic model.
+Use `-k` to select tests by part of their function name.
 
-**Expected result:** Schema validation fails.
+```bash
+python -m pytest tests/ -v -k deadline
+```
 
-**Pass criteria:** The missing field is reported or the validation failure is otherwise handled correctly.
+This runs tests whose names contain `deadline`.
 
-### TC10 — Incorrect Data Type
+## 5. General Pass/Fail Criteria
 
-**Objective:** Verify that fields contain values of the required types.
+A test passes when the observed behaviour matches its expected result.
 
-**Input:** A JSON response with a field containing an invalid data type.
+A test fails when one or more of the following occurs:
 
-**Expected result:** The response is rejected or a validation error is raised, depending on the schema and Pydantic configuration.
+* Invalid or empty AI responses are accepted without appropriate error handling.
+* Valid JSON cannot be cleaned and processed correctly.
+* Required handover fields or data types are not validated as expected.
+* Missing task owners, descriptions, or deadlines are not identified.
+* Invalid deadlines are accepted.
+* Valid outstanding tasks are not sorted or formatted correctly.
+* An empty handover is incorrectly marked as complete.
+* Valid handover data is incorrectly rejected.
+* File input does not pass the expected contents to the AI processing function.
+* Automated tests unexpectedly depend on a live Gemini API call.
 
-**Pass criteria:** The response does not silently pass validation when it violates the defined type requirements.
+## 6. Mocking and Test Data
 
-### TC11 — Empty AI Response
+The test suite uses predefined responses and fixtures to make test results repeatable.
 
-**Objective:** Verify that an empty response does not cause an uncontrolled crash.
+* **Mocked Gemini API:** The Gemini router test replaces the API client's `generate_content` method with a fake response.
+* **Hardcoded AI responses:** Logic manager tests use predefined dictionaries to verify validation and processing behaviour.
+* **File fixtures:** The integration test reads `valid_handover.txt` from the test fixtures directory.
+* **Mocked user input:** The integration test simulates the user entering a filename.
+* **Pydantic validation:** Handover model tests verify that missing fields and invalid data types raise the expected validation errors.
 
-**Input:** An empty string.
+These approaches allow the test suite to focus on application behaviour without requiring live AI responses for every test.
 
-**Expected result:** The application handles the empty response with an appropriate error or failure result.
+## 7. Limitations and Future Improvements
 
-**Pass criteria:** The empty response is not treated as valid task data.
+The current tests cover important validation and processing paths, but the following areas may be added or expanded in future testing:
 
-### TC12 — Unexpected Additional Field
+* Empty handover files and malformed file input.
+* Gemini API exceptions and network failures.
+* Malformed JSON that contains an opening brace but is syntactically invalid.
+* Additional boundary cases for deadline validation.
+* Multiple simultaneous validation errors.
+* More integration tests for incomplete handovers and invalid AI responses.
+* Regression tests for any defects discovered during development.
 
-**Objective:** Verify that additional fields follow the intended schema policy.
+These are potential improvements and are not claimed to be covered by the current four test files.
 
-**Input:** A JSON response containing the expected fields and an additional field such as `"extra_info"`.
+## 8. Summary
 
-**Expected result:** The additional field is handled according to the Pydantic model configuration.
+The automated test suite verifies the AI Handover Auditor at both unit and integration levels.
 
-**Pass criteria:** Actual behaviour matches the documented policy.
-
-### TC15 — No Live API Calls
-
-**Objective:** Ensure automated tests do not depend on an external AI service.
-
-**Input:** A predefined AI response supplied through a mock.
-
-**Expected result:** The test executes using the mock response.
-
-**Pass criteria:** No live AI API request is made during the test.
-
-## 4. General Pass/Fail Criteria
-
-A test passes when the observed behaviour matches the expected result.
-
-A test fails when:
-
-* Valid input is incorrectly rejected.
-* Invalid AI output is incorrectly accepted.
-* Required information is silently lost.
-* The system invents missing task details.
-* An error causes an uncontrolled application crash.
-* Automated unit tests unexpectedly call the live AI API.
-
-## 5. Notes
-
-* Required fields and data types must match the project's actual Pydantic models.
-* Error messages should be tested against the application's implemented error-handling behaviour.
-* Additional-field behaviour must be confirmed from the Pydantic configuration.
-* Automated tests should use mocks or fixtures for AI responses.
-* Expected results should be refined when the application's actual interfaces and validation rules are confirmed.
+The four test modules cover Gemini response processing, Pydantic schema validation, core handover logic, and the integration of file input with mocked AI responses. Running the complete suite helps identify regressions and confirms that the tested application behaviour matches the expected requirements.
