@@ -341,4 +341,7 @@ def main():
 # Program entry point
 # ===========================================================================
 if __name__ == "__main__":
-    result = main()
+    try:
+        main()
+    except KeyboardInterrupt:                                                                                                          
+        print("\nProgram aborted by user.") 
