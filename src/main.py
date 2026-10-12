@@ -218,13 +218,17 @@ def main():
             validate_name,
             "Invalid name. Please enter a valid name containing at least one letter."
         )
-
-        employee_id = prompt_validated(
+        while True:
+            employee_id = prompt_validated(
             "Enter your employee ID: ",
             validate_employee_id,
             "Invalid employee ID. Please enter a valid 7-digit employee ID."
         )
-
+            if employee_id == str(previous_id):
+                print("You cannot use the same employee ID as the previous employee. Please enter a different ID.")
+                continue
+            break
+        
         # Step 4 - Output: Opens the fetched handover
         output.show_output(
             {**handover, "status": "complete"},
@@ -341,4 +345,14 @@ def main():
 # Program entry point
 # ===========================================================================
 if __name__ == "__main__":
-    result = main()
+    while True:
+        result = main()
+        choice = input("\nWould you like to perform another action? (y/n): ").strip().lower()
+        if choice == "n":
+            print("Thank you for using the Handover Management System.")
+            break
+            sys.exit
+        elif choice == "y":
+            print("\nRestarting the program...\n")
+        else:
+            print("Invalid input. Restarting the program.")
