@@ -227,14 +227,20 @@ def main():
         
         
         return user_details
+        
     elif user_details["role"] == "Delete":
-        #get employee id
+        # Data manager (Delete): remove this employee's saved handovers
+        # from data/handovers.json, and their summary .txt files from data/summaries
         employee_id = user_details["employee_id"]
-        result = data_manager.delete_record(employee_id)
-        if (result == False):
-            print("Invalid ID or You are not person who created the file.")
-        elif (result == True):
-            print("Records Deleted!")
+        records_deleted = data_manager.delete_record(employee_id)
+        files_deleted = data_manager.delete_summary_files(employee_id)
+
+        if not records_deleted and files_deleted == 0:
+            print(f"\nNo saved handovers or summary files found for employee ID {employee_id}.")
+        else:
+            if records_deleted:
+                print("\nHandover record(s) deleted.")
+            print(f"{files_deleted} summary file(s) deleted.")
 
 # ===========================================================================
 # Program entry point
