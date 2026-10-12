@@ -17,10 +17,9 @@ import json
 import os
 from datetime import date, datetime
 from pathlib import Path 
-
 from utils.config import DEFAULT_DATA_FILE, DATA_DIR, SUMMARIES_DIR
 from utils.logger import logger
-
+EMPLOYEES_FILE = DATA_DIR / "employees.json"
 
 # ===========================================================================
 # File helpers - read and write the whole JSON file
@@ -86,6 +85,35 @@ def save_records(records, filepath=DEFAULT_DATA_FILE):
 
     return True
 
+
+# ===========================================================================
+# EMPLOYEE REGISTRY
+# ===========================================================================
+
+def load_employees(filepath=EMPLOYEES_FILE):
+    # Load registered employees
+    if not Path(filepath).exists():
+        return {}
+
+    try:
+        with open(filepath, "r", encoding="utf-8") as file:
+            employees = json.load(file)
+
+        return employees if isinstance(employees, dict) else {}
+
+    except (OSError, json.JSONDecodeError) as err:
+        logger.error("Could not load employee registry: %s", err)
+        return None
+
+
+def get_employee(employee_id, filepath=EMPLOYEES_FILE):
+    # Retrieve employee details from the existing company database
+    employees = load_employees(filepath)
+
+    if employees is None:
+        return None
+
+    return employees.get(employee_id)
 
 # ===========================================================================
 # CREATE
@@ -204,73 +232,66 @@ def add_viewer(record_id, name, employee_id, filepath=DEFAULT_DATA_FILE):
     if record is None:
         return False
 
-    # Retrieve existing viewing history, or start an empty list
+    # Retrieve existing viewing history
     viewing_history = record.get("viewed_by", [])
 
     if not isinstance(viewing_history, list):
         viewing_history = []
 
-    # Add the new viewer
+    # Add the current viewer
     viewing_history.append({
         "name": name,
         "employee_id": employee_id,
         "viewed_date": datetime.now().strftime("%d %b %Y %H:%M:%S")
     })
 
-    # Update the record using the existing CRUD Update function
-    return update_record(
-        record_id,
-        {"viewed_by": viewing_history},
-        filepath
-    )
+    # Save the updated viewing history to JSON
+    return update_record(record_id, {"viewed_by": viewing_history}, filepath)
 
 
 # ===========================================================================
 # DELETE
 # ===========================================================================
 
-# Deletes every record whose "id" or "employee_id" matches the identifier.
-# Called by main.py when deleting a work.
-def delete_record(identifier: str, filepath: str = DEFAULT_DATA_FILE) -> bool:
-    #Deletes records where either 'id' or 'employee_id' matches identifier.#
-    if not identifier:
-        return False
-
+# Delete only the handover matching the selected record ID
+def delete_record(record_id, filepath=DEFAULT_DATA_FILE):
     records = load_records(filepath)
-    if not isinstance(records, list):
-        return False
 
     updated_records = [
-        r for r in records
+        record for record in records
         if not (
-            isinstance(r, dict)
-            and (r.get("id") == identifier or r.get("employee_id") == identifier)
+            isinstance(record, dict)
+            and record.get("id") == record_id
         )
     ]
 
+    # No matching record found
     if len(updated_records) == len(records):
         return False
 
     return save_records(updated_records, filepath)
 
-# Removes every summary .txt file in data/summaries that belongs to the said employee.
-def delete_summary_files(employee_id, summaries_dir=SUMMARIES_DIR):
-    #9.1 Summary files are named <date>_<name>_<employee_id>_<time>.txt
-    #Returns how many files were deleted.
-    if not employee_id:
-        return 0
+# Removes the selected summary .txt file in data/summaries
+def delete_summary_files(filename, summaries_dir=SUMMARIES_DIR):
+    # Delete only the selected handover summary file
+    if not filename:
+        return False
 
-    folder = Path(summaries_dir)
-    if not folder.exists():
-        return 0
+    folder = Path(summaries_dir).resolve()
+    file_path = (folder / filename).resolve()
 
-    deleted = 0
-    for file in folder.glob(f"*_{employee_id}_*.txt"):
-        try:
-            file.unlink()  # unlink() deletes the file
-            deleted += 1
-        except OSError as err:
-            #9.2 Don't crash if a file can't be deleted (e.g. it's open in another program)
-            logger.error("Could not delete summary file %s: %s", file, err)
+    # Ensure the file is inside the summaries folder
+    if file_path.parent != folder or file_path.suffix.lower() != ".txt":
+        return False
 
-    return deleted
+    # Check whether the file exists
+    if not file_path.is_file():
+        return False
+
+    try:
+        file_path.unlink()
+        return True
+
+    except OSError as err:
+        logger.error("Could not delete summary file %s: %s", file_path, err)
+        return False

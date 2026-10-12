@@ -2,11 +2,11 @@ from utils.logger import logger
 from pathlib import Path
 import scrubadub
 from datetime import datetime
+from modules import data_manager
 import re
 # Build the Scrubber once and reuse it across calls (construction is not free).
 _scrubber = scrubadub.Scrubber()
 _scrubber.remove_detector('phone')
-
 from utils.config import HANDOVERS_DIR
 handover_dir = HANDOVERS_DIR
 
@@ -151,7 +151,6 @@ def process_file_content(file_path):
 
     return handover_info
 
-
 def handover_from_file(filename):
     # Read and validate a handover .txt file by name (looked up in handover_dir).
     # returns the file text if valid and clean, otherwise None so the caller can
@@ -178,30 +177,39 @@ def get_user_details():
         role = required_input("\nSelect an option: ")
 
         if role == "1":
-            # Only collect full employee details when creating a handover
-            name = prompt_validated(
-                "\nEnter your name: ",
-                validate_name,
-                "Invalid name. Please enter a valid name containing at least one letter."
-            )
-            department = prompt_validated(
-                "Enter your department: ",
-                validate_department,
-                "Invalid department. Please enter a valid department containing at least one letter."
-            )
-            employee_id = prompt_validated(
-                "Enter your employee ID: ",
-                validate_employee_id,
-                "Invalid employee ID. Please enter a valid 7-digit employee ID."
-            )
+            while True:
+                employee_id = prompt_validated(
+                    "\nEnter your employee ID: ",
+                    validate_employee_id,
+                    "Invalid employee ID. Please enter a valid 7-digit employee ID."
+                )
 
-            return {
-                "name": name,
-                "department": department,
-                "employee_id": employee_id,
-                "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "role": "Handing over"
-            }
+                # Retrieve employee details from the company database
+                employee = data_manager.get_employee(employee_id)
+
+                if employee is None:
+                    print("\nEmployee ID not found. Please check your employee ID and try again.")
+                    continue
+
+                # Display employee details for confirmation
+                print(f"\nEmployee found: {employee['name']}")
+                print(f"Department: {employee['department']}")
+
+                confirm = input("\nIs this you? (y/n): ").strip().lower()
+
+                if confirm == "y":
+                    return {
+                        "name": employee["name"],
+                        "department": employee["department"],
+                        "employee_id": employee_id,
+                        "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "role": "Handing over"
+                    }
+
+                if confirm == "n":
+                    print("\nPlease check your employee ID and try again.")
+                else:
+                    print("\nInvalid input. Please enter y or n.")
 
         elif role == "2":
             # Retrieve the handover using the previous employee's ID
@@ -217,20 +225,41 @@ def get_user_details():
             }
 
         elif role == "3":
-            # Only request an employee ID for deletion
-            employee_id = prompt_validated(
-                "\nEnter your employee ID: ",
-                validate_employee_id,
-                "Invalid employee ID. Please enter a valid 7-digit employee ID."
-            )
+            while True:
+                employee_id = prompt_validated(
+                    "\nEnter your employee ID: ",
+                    validate_employee_id,
+                    "Invalid employee ID. Please enter a valid 7-digit employee ID."
+                )
 
-            return {
-                "role": "Delete",
-                "employee_id": employee_id
-            }
+                # Retrieve employee details from the company database
+                employee = data_manager.get_employee(employee_id)
 
-        else:
-            print("Invalid option. Please select 1, 2 or 3.")
+                if employee is None:
+                    print("\nEmployee ID not found. Please check your employee ID and try again.")
+                    continue
+
+                # Display employee details for confirmation
+                print(f"\nEmployee found: {employee['name']}")
+                print(f"Department: {employee['department']}")
+
+                while True:
+                    confirm = input("\nIs this you? (y/n): ").strip().lower()
+
+                    if confirm == "y":
+                        return {
+                            "role": "Delete",
+                            "employee_id": employee_id,
+                            "name": employee["name"],
+                            "department": employee["department"]
+                        }
+
+                    if confirm == "n":
+                        print("\nPlease check your employee ID and try again.")
+                        break
+
+                    print("\nInvalid input. Please enter y or n.")
+
 
 # ===========================================================================
 # Handover input  (uses: input handler)

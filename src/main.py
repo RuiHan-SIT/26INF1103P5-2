@@ -268,19 +268,74 @@ def main():
         return user_details
     
         
+    # ----- DELETE HANDOVER -----
     elif user_details["role"] == "Delete":
-        # Data manager (Delete): remove this employee's saved handovers
-        # from data/handovers.json, and their summary .txt files from data/summaries
         employee_id = user_details["employee_id"]
-        records_deleted = data_manager.delete_record(employee_id)
-        files_deleted = data_manager.delete_summary_files(employee_id)
 
-        if not records_deleted and files_deleted == 0:
-            print(f"\nNo saved handovers or summary files found for employee ID {employee_id}.")
+        # Retrieve saved handovers belonging to the employee
+        records = data_manager.get_records_by_employee_id(employee_id)
+
+        if not records:
+            print(f"\nNo saved handovers found for employee ID {employee_id}.")
+            return user_details
+
+        # Display the available handovers
+        print(f"\nSaved handovers for {user_details['name']} ({employee_id}):")
+
+        for index, record in enumerate(records, start=1):
+            filename = record.get("filename") or "Filename unavailable"
+            print(f"{index}. {filename}")
+
+        print("0. Cancel")
+
+        # Ask the user to select a handover
+        while True:
+            choice = input("\nSelect a handover to delete: ").strip()
+
+            if choice == "0":
+                print("\nDeletion cancelled.")
+                return user_details
+
+            if choice.isdigit() and 1 <= int(choice) <= len(records):
+                selected_record = records[int(choice) - 1]
+                break
+
+            print("Invalid selection. Please select a number from the list.")
+
+        # Confirm before deleting
+        filename = selected_record.get("filename")
+
+        print(f"\nSelected file: {filename or 'Filename unavailable'}")
+
+        while True:
+            confirm = input("Are you sure you want to delete this handover? (y/n): ").strip().lower()
+
+            if confirm == "y":
+                break
+
+            if confirm == "n":
+                print("\nDeletion cancelled.")
+                return user_details
+
+            print("Invalid input. Please enter y or n.")
+
+        # Delete the selected handover record from JSON
+        record_deleted = data_manager.delete_record(selected_record["id"])
+
+        if record_deleted:
+            # Delete the corresponding .txt summary file
+            if filename:
+                file_deleted = data_manager.delete_summary_files(filename)
+
+                if file_deleted:
+                    print("\nHandover deleted successfully.")
+                else:
+                    print("\nHandover record deleted, but the summary .txt file could not be deleted.")
+            else:
+                print("\nHandover record deleted. No summary filename was linked.")
+
         else:
-            if records_deleted:
-                print("\nHandover record(s) deleted.")
-            print(f"{files_deleted} summary file(s) deleted.")
+            print("\n[Error] Could not delete the handover record.")
 
 # ===========================================================================
 # Program entry point
