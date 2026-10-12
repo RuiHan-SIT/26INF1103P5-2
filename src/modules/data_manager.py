@@ -101,7 +101,10 @@ def add_record(record, filepath=DEFAULT_DATA_FILE):
 
     #3.1 Figuring out the next id: highest existing id + 1, or 1 if there are no records yet
     if records:
-        next_id = max(r["id"] for r in records) + 1
+        next_id = max(
+            (r.get("id", 0) for r in records if isinstance(r, dict) and isinstance(r.get("id"), int)),
+            default=0
+        ) + 1
     else:
         next_id = 1
     #3.2 Stamp the new record with its id and today's date

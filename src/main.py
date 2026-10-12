@@ -163,7 +163,7 @@ def main():
         handover_data = get_handover_data()
         if not handover_data:
             print("\nHandover process cancelled.")
-            return user_details
+            return 
 
         # Step 3 - Logic manager: validate, and keep asking for missing info until complete
         while True:
@@ -195,7 +195,7 @@ def main():
                 handover_data = get_handover_data()
                 if not handover_data:
                     print("\nHandover process cancelled.")
-                    return user_details
+                    return 
 
     # ----- TAKING OVER -----
     elif user_details["role"] == "Taking over":
@@ -207,7 +207,7 @@ def main():
         # An empty list means nothing was found
         if not records:
             print(f"\nNo handover found for employee ID {previous_id}.")
-            return user_details
+            # return user_details
         
         handover = records[0]  # newest handover comes first
         print(f"\nFound handover from {handover['name']} ({handover['department']}), saved on {handover['saved_date']}.")
@@ -265,7 +265,7 @@ def main():
         else:
             print("\n[Error] Could not update viewing history.")
         
-        return user_details
+        # return user_details
     
         
     elif user_details["role"] == "Delete":

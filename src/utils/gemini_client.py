@@ -27,7 +27,7 @@ _retry_options = types.HttpRetryOptions(
 
 # The genai Client reads the key explicitly so misconfiguration fails fast/clearly
 client = genai.Client(
-    api_key=api_key,
+    api_key=api_key or "missing_key",
     http_options=types.HttpOptions(
         timeout=300_000,  # per-request timeout in milliseconds (300s)
         retry_options=_retry_options,
