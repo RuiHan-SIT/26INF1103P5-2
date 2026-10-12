@@ -144,7 +144,6 @@ def get_records_by_employee_id(employee_id, filepath=DEFAULT_DATA_FILE):
     # Highest id = most recently saved, so it comes first
     return sorted(matches, key=lambda r: r.get("id", 0), reverse=True)
 
-
 # Returns one record by its JSON "id" (1, 2, 3...), not by employee ID.
 # Not currently called by main.py.
 def get_record_by_id(record_id, filepath=DEFAULT_DATA_FILE):
@@ -198,6 +197,33 @@ def update_record(record_id, updates, filepath=DEFAULT_DATA_FILE):
     #7.8 No record with that id was found - nothing to update
     return False
 
+def add_viewer(record_id, name, employee_id, filepath=DEFAULT_DATA_FILE):
+    # Retrieve the selected handover record
+    record = get_record_by_id(record_id, filepath)
+
+    if record is None:
+        return False
+
+    # Retrieve existing viewing history, or start an empty list
+    viewing_history = record.get("viewed_by", [])
+
+    if not isinstance(viewing_history, list):
+        viewing_history = []
+
+    # Add the new viewer
+    viewing_history.append({
+        "name": name,
+        "employee_id": employee_id,
+        "viewed_date": datetime.now().strftime("%d %b %Y %H:%M:%S")
+    })
+
+    # Update the record using the existing CRUD Update function
+    return update_record(
+        record_id,
+        {"viewed_by": viewing_history},
+        filepath
+    )
+
 
 # ===========================================================================
 # DELETE
@@ -226,33 +252,6 @@ def delete_record(identifier: str, filepath: str = DEFAULT_DATA_FILE) -> bool:
         return False
 
     return save_records(updated_records, filepath)
-
-def add_viewer(record_id, name, employee_id, filepath=DEFAULT_DATA_FILE):
-    # Retrieve the selected handover record
-    record = get_record_by_id(record_id, filepath)
-
-    if record is None:
-        return False
-
-    # Retrieve existing viewing history, or start an empty list
-    viewing_history = record.get("viewed_by", [])
-
-    if not isinstance(viewing_history, list):
-        viewing_history = []
-
-    # Add the new viewer
-    viewing_history.append({
-        "name": name,
-        "employee_id": employee_id,
-        "viewed_date": datetime.now().strftime("%d %b %Y %H:%M:%S")
-    })
-
-    # Update the record using the existing CRUD Update function
-    return update_record(
-        record_id,
-        {"viewed_by": viewing_history},
-        filepath
-    )
 
 # Removes every summary .txt file in data/summaries that belongs to the said employee.
 def delete_summary_files(employee_id, summaries_dir=SUMMARIES_DIR):
