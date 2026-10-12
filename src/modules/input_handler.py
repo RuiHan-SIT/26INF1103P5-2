@@ -123,8 +123,6 @@ def validate_department(department: str) -> bool:
 def validate_employee_id(employee_id: str) -> bool:                                                                                                                                  
     return len(employee_id) == 7 and employee_id.isdigit()
 
-
-
 def required_input(prompt): #this is to ensure manually added information for required fields
     while True:
         value = input(prompt).strip()
@@ -166,71 +164,73 @@ def handover_from_file(filename):
 
     return process_file_content(input_file)
 
-def get_user_details(): #function to get user details
-    name = prompt_validated(
-        "Enter your name: ",
-        validate_name,
-        "Invalid name. Please enter a valid name containing at least one letter."
-    )
-    department = prompt_validated(
-        "Enter your department: ",
-        validate_department,
-        "Invalid department. Please enter a valid department containing at least one letter."
-    )
-    employee_id = prompt_validated(
-        "Enter your employee ID: ",
-        validate_employee_id,
-        "Invalid employee ID. Please enter a valid 7-digit employee ID."
-    )
-
-    submission_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S") #get current date and time
-    print("\nAre you:")
-    print("1. Handing over work")
-    print("2. Taking over work")
-    print("3. Deleting a work")
-
+def get_user_details():
+    # Display the main menu before requesting user details
+    print("\n" + "=" * 45)
+    print("             AI HANDOVER ASSISTANT")
+    print("=" * 45)
+    print("\nWhat would you like to do?")
+    print("1. Create a new handover")
+    print("2. View a handover")
+    print("3. Delete a handover")
 
     while True:
-        role = required_input("\nSelect an option: ") 
+        role = required_input("\nSelect an option: ")
 
         if role == "1":
-            return {
-                "name": name,
-                "department": department,
-                "employee_id": employee_id,
-                "date": submission_date,
-                "role": "Handing over"
-            }
-        elif role == "2":
-            previous_employee = prompt_validated(
-                "Enter the name of the previous employee: ",
+            # Only collect full employee details when creating a handover
+            name = prompt_validated(
+                "\nEnter your name: ",
                 validate_name,
                 "Invalid name. Please enter a valid name containing at least one letter."
             )
-            previous_employee_id = prompt_validated(
-                "Enter the employee ID of the previous employee: ",
+            department = prompt_validated(
+                "Enter your department: ",
+                validate_department,
+                "Invalid department. Please enter a valid department containing at least one letter."
+            )
+            employee_id = prompt_validated(
+                "Enter your employee ID: ",
                 validate_employee_id,
                 "Invalid employee ID. Please enter a valid 7-digit employee ID."
             )
+
             return {
                 "name": name,
                 "department": department,
                 "employee_id": employee_id,
-                "date": submission_date,
+                "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "role": "Handing over"
+            }
+
+        elif role == "2":
+            # Retrieve the handover using the previous employee's ID
+            previous_employee_id = prompt_validated(
+                "\nEnter the employee ID of the person handing over: ",
+                validate_employee_id,
+                "Invalid employee ID. Please enter a valid 7-digit employee ID."
+            )
+
+            return {
                 "role": "Taking over",
-                "taking_over_from": previous_employee,
                 "taking_over_from_id": previous_employee_id
             }
+
         elif role == "3":
+            # Only request an employee ID for deletion
+            employee_id = prompt_validated(
+                "\nEnter your employee ID: ",
+                validate_employee_id,
+                "Invalid employee ID. Please enter a valid 7-digit employee ID."
+            )
+
             return {
-                "name": name,
-                "department": department,
-                "employee_id": employee_id,
-                "date": submission_date,
-                "role": "Delete"
+                "role": "Delete",
+                "employee_id": employee_id
             }
+
         else:
-            print("Invalid option.")
+            print("Invalid option. Please select 1, 2 or 3.")
 
 # ===========================================================================
 # Handover input  (uses: input handler)

@@ -1,6 +1,6 @@
 import os
 from datetime import datetime
-
+from pathlib import Path
 from utils.config import SUMMARIES_DIR
 
 STATUS_COMPLETE = "Handover Complete"
@@ -14,7 +14,6 @@ def _clean(value):
     if value is None or str(value).strip() == "":
         return NOT_SPECIFIED
     return str(value).strip()
- 
  
 def _owners_str(owners):
     if isinstance(owners, list):
@@ -32,7 +31,6 @@ def _owners_str(owners):
         return ", ".join(cleaned) if cleaned else NOT_SPECIFIED
 
     return _clean(owners)
- 
  
 def display_status(result):
     #prints the handover status and list missing info if not ready
@@ -56,7 +54,6 @@ def display_status(result):
                 else:
                     print(f"  - {str(item)}")
         print("\nPlease resolve the items above, then run the handover again.")
-
 
 def format_summary(result, user_details=None):
     # Format the handover summary for both file saving and CLI display
@@ -113,7 +110,6 @@ def format_summary(result, user_details=None):
 
     return "\n".join(lines)
 
- 
 def generate_summary_txt(result, user_details, output_dir=SUMMARY_DIR):
     #write the handover summary to a .txt file
     #only generates when status is Complete and returns the file path, or None
@@ -146,7 +142,6 @@ def generate_summary_txt(result, user_details, output_dir=SUMMARY_DIR):
         print(f"\n[Error] Could not save summary file: {e}")
         return None
 
- 
 def show_output(result, user_details, save_file=True):
     #main entry point, called from main.py with the logic manager's result
     if save_file:
@@ -158,7 +153,62 @@ def show_output(result, user_details, save_file=True):
         
             if path:
                 print(f"\nHandover file saved to: {os.path.basename(path)}")
+                return os.path.basename(path)
 
         else:
             # Display the handover summary directly in the CLI
             print("\n" + format_summary(result, user_details))
+
+def format_viewing_history(viewers):
+    lines = []
+
+    for viewer in viewers:
+        lines.extend([
+            f"Viewed by    : {viewer['name']}",
+            f"Employee ID  : {viewer['employee_id']}",
+            f"Viewed on    : {viewer['viewed_date']}"
+        ])
+
+    return "\n\n".join(
+        "\n".join(lines[i:i + 3])
+        for i in range(0, len(lines), 3)
+    )
+
+def append_viewing_history(filename, name, employee_id):
+    # Locate the existing handover summary
+    if not filename:
+        print("\n[Warning] No filename linked to this handover.")
+        return False
+
+    path = Path(SUMMARY_DIR) / filename
+
+    if not os.path.isfile(path):
+        print("\n[Warning] Handover summary file not found.")
+        return False
+
+    # Prepare the viewer's details
+    viewed_date = datetime.now().strftime("%d %b %Y %H:%M:%S")
+
+    try:
+        with open(path, "a", encoding="utf-8") as f:
+            # Add heading only for the first viewer
+            if "VIEWING HISTORY" not in path.read_text(encoding="utf-8"):
+                f.write("\n\n\n" + "=" * WIDTH + "\n")
+                f.write("VIEWING HISTORY\n")
+                f.write("=" * WIDTH + "\n")
+            else:
+                f.write("\n")
+
+            viewer = {
+                "name": name,
+                "employee_id": employee_id,
+                "viewed_date": viewed_date
+            }
+
+            f.write(format_viewing_history([viewer]) + "\n")
+
+        return True
+
+    except OSError as e:
+        print(f"\n[Error] Could not update viewing history: {e}")
+        return False

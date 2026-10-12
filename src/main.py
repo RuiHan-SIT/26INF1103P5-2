@@ -19,13 +19,14 @@ from modules import output
 from modules import data_manager
 from modules.input_handler import (
     get_user_details,
-    handover_from_file,
     required_input,
-    validate_user_input,
     handover_input,
-    prompt_validated
+    prompt_validated,
+    validate_name, 
+    validate_employee_id
 )
 from utils.logger import logger
+from datetime import datetime
 
 # ===========================================================================
 # Settings
@@ -172,10 +173,10 @@ def main():
 
             if result["status"] == "complete":
                 # Step 4 - Output: show the status and generate the summary .txt
-                output.show_output(result, user_details)
+                filename = output.show_output(result, user_details)
                 print("\nHandover is complete.")
                 # Step 5 - Data manager: save the completed handover to data/handovers.json
-                saved = data_manager.save_handover(user_details, result)
+                saved = data_manager.save_handover(user_details, result, filename)
                 if not saved:
                     print("\n[Warning] Could not save handover to database. Please check file permissions.")
 
@@ -211,22 +212,61 @@ def main():
         handover = records[0]  # newest handover comes first
         print(f"\nFound handover from {handover['name']} ({handover['department']}), saved on {handover['saved_date']}.")
         
-        # Step 3 - Output: Opens the fetched handover
+        # Step 3 - Ask for employee details to update viewing history
+        name = prompt_validated(
+            "\nEnter your name: ",
+            validate_name,
+            "Invalid name. Please enter a valid name containing at least one letter."
+        )
+
+        employee_id = prompt_validated(
+            "Enter your employee ID: ",
+            validate_employee_id,
+            "Invalid employee ID. Please enter a valid 7-digit employee ID."
+        )
+
+        # Step 4 - Output: Opens the fetched handover
         output.show_output(
             {**handover, "status": "complete"},
             handover,
             save_file=False
         )
-        
-        # Step 4 - Data manager (Update): record who took over this handover
-        data_manager.update_record(handover["id"], {
-            "taken_over_by": user_details["name"],
-            "taken_over_by_id": user_details["employee_id"],
-            "taken_over_date": user_details["date"],
-        })
-        
+
+        # Display previous viewers before recording the current viewer
+        previous_viewers = handover.get("viewed_by", [])
+
+        print("\n\n" + "=" * output.WIDTH)
+        print("VIEWING HISTORY")
+        print("=" * output.WIDTH)
+
+        if previous_viewers:
+            print(output.format_viewing_history(previous_viewers))
+        else:
+            print("No previous views recorded.")
+
+        # Record the viewer in handovers.json
+        updated = data_manager.add_viewer(
+            handover["id"],
+            name,
+            employee_id
+        )
+
+        if updated:
+            file_updated = output.append_viewing_history(
+                handover.get("filename"),
+                name,
+                employee_id
+            )
+
+            if file_updated:
+                print("\nViewing history updated successfully.")
+            else:
+                print("\n[Warning] Viewing history saved to JSON, but the .txt file could not be updated.")
+        else:
+            print("\n[Error] Could not update viewing history.")
         
         return user_details
+    
     elif user_details["role"] == "Delete":
         #get employee id
         employee_id = user_details["employee_id"]

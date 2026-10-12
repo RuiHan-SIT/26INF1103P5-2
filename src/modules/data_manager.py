@@ -1,7 +1,7 @@
 #Importing of the relevant modules
 import json
 import os
-from datetime import date 
+from datetime import date, datetime
 from pathlib import Path 
 
 from utils.config import DEFAULT_DATA_FILE, DATA_DIR
@@ -154,13 +154,14 @@ def get_record_by_id(record_id, filepath=DEFAULT_DATA_FILE):
     #No record with that id was found
     return None
 
-def save_handover(user_details, result, filepath=DEFAULT_DATA_FILE):
+def save_handover(user_details, result, filename, filepath=DEFAULT_DATA_FILE):
     #7.1 Build a handover record from the user's details and the logic
     #manager's result, then save it to the JSON file.
     record = {
         "name": user_details["name"],
         "employee_id": user_details["employee_id"],
         "department": user_details["department"],
+        "filename": filename,
         "outstanding_tasks": result["outstanding_tasks"],
         "bau_tasks": result["bau_tasks"],
         "important_information": result["important_information"],
@@ -179,3 +180,30 @@ def get_records_by_employee_id(employee_id, filepath=DEFAULT_DATA_FILE):
 
     #Highest id = most recently saved, so it comes first
     return sorted(matches, key=lambda r: r.get("id", 0), reverse=True)
+
+def add_viewer(record_id, name, employee_id, filepath=DEFAULT_DATA_FILE):
+    # Retrieve the selected handover record
+    record = get_record_by_id(record_id, filepath)
+
+    if record is None:
+        return False
+
+    # Retrieve existing viewing history, or start an empty list
+    viewing_history = record.get("viewed_by", [])
+
+    if not isinstance(viewing_history, list):
+        viewing_history = []
+
+    # Add the new viewer
+    viewing_history.append({
+        "name": name,
+        "employee_id": employee_id,
+        "viewed_date": datetime.now().strftime("%d %b %Y %H:%M:%S")
+    })
+
+    # Update the record using the existing CRUD Update function
+    return update_record(
+        record_id,
+        {"viewed_by": viewing_history},
+        filepath
+    )
