@@ -207,27 +207,14 @@ def main():
         # An empty list means nothing was found
         if not records:
             print(f"\nNo handover found for employee ID {previous_id}.")
-            # return user_details
+            return user_details
         
         handover = records[0]  # newest handover comes first
         print(f"\nFound handover from {handover['name']} ({handover['department']}), saved on {handover['saved_date']}.")
         
         # Step 3 - Ask for employee details to update viewing history
-        name = prompt_validated(
-            "\nEnter your name: ",
-            validate_name,
-            "Invalid name. Please enter a valid name containing at least one letter."
-        )
-        while True:
-            employee_id = prompt_validated(
-            "Enter your employee ID: ",
-            validate_employee_id,
-            "Invalid employee ID. Please enter a valid 7-digit employee ID."
-        )
-            if employee_id == str(previous_id):
-                print("You cannot use the same employee ID as the previous employee. Please enter a different ID.")
-                continue
-            break
+        name = user_details["name"]
+        employee_id = user_details["employee_id"]
         
         # Step 4 - Output: Opens the fetched handover
         output.show_output(

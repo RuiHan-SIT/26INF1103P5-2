@@ -218,11 +218,44 @@ def get_user_details():
                 validate_employee_id,
                 "Invalid employee ID. Please enter a valid 7-digit employee ID."
             )
+            while True:
+                #get the receiving employee's ID to ensure that the handover is being taken over by the correct person
+                employee_id = prompt_validated(
+                    "\nEnter your employee ID: ",
+                    validate_employee_id,
+                    "Invalid employee ID. Please enter a valid 7-digit employee ID."
+                )
+                if str(employee_id) == str(previous_employee_id):
+                    print("You cannot use the same employee ID as the previous employee. Please enter a different ID.")
+                    continue
 
-            return {
-                "role": "Taking over",
-                "taking_over_from_id": previous_employee_id
+                employee = data_manager.get_employee(employee_id)
+                if employee is None:
+                    print("\nEmployee ID not found. Please check your employee ID and try again.")
+                    continue
+
+                # Display employee details for confirmation
+                print(f"\nEmployee found: {employee['name']}")
+                print(f"Department: {employee['department']}")
+
+                while True:
+                    confirm = input("\nIs this you? (y/n): ").strip().lower()
+
+                    if confirm == "y":
+                        return {
+                            "name": employee["name"],
+                            "department": employee["department"],
+                            "employee_id": employee_id,
+                            "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                            "role": "Taking over",
+                            "taking_over_from_id": previous_employee_id
             }
+    
+                    if confirm == "n":
+                        print("\nPlease check your employee ID and try again.")
+                        break
+
+                    print("\nInvalid input. Please enter y or n.")
 
         elif role == "3":
             while True:
