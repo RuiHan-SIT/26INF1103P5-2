@@ -42,15 +42,6 @@ From the project folder:
 python src/main.py
 ```
 
-### Offline demo
-If you don't want to use the API (e.g. for presentations or if we hit the rate limit), you can run the offline version. It uses a saved Gemini response instead of calling the API.
-```
-python src/offline_demo.py
-```
-Choose option 1 and enter `file:handover.txt`.
-
-To save a response for a different handover file, run `python src/prepare_offline_response.py` (this one does need the API).
-
 ### Running the tests
 ```
 python -m pytest -v
