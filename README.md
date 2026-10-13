@@ -63,7 +63,7 @@ There are two ways to run the program in Docker:
 ```
 docker run --rm -it --env-file .env handover-app
 ```
-Everything works, but anything you save only lasts until the program closes. Good for a quick demo. If you want to view or delete a handover you just made, answer `y` when it asks if you want to do another action.
+Everything works, but anything you save only lasts until the program closes. The container gets wiped. Good for a quick demo. If you want to view or delete a handover you just made, answer `y` when it asks if you want to do another action.
 
 **Option 2: keep your data**
 ```
