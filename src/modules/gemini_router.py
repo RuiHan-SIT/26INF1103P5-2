@@ -54,19 +54,19 @@ def clean_llm_json(raw_text: str | None) -> dict[str, Any]:
         logger.error("Failed to repair/decode JSON. Faulty snippet:\n%s", json_str[:400])
         raise ValueError(f"Malformed JSON from LLM: {err}") from err
 
-# Gemini 3.7 Flash hard limits (shared by the free tier; free tier only caps RATE):
+# Gemini 3.8 Flash hard limits (shared by the free tier; free tier only caps RATE):
 #   - input context window : ~1,048,576 tokens (available automatically, no setting needed)
 #   - max output tokens     : 65,536  <- set below so long reports never get truncated
 def send_to_llm(user_input: str):
     try:
-        MODEL = "gemini-3.7-flash"
+        MODEL = "gemini-3.8-flash"
         MAX_OUTPUT_TOKENS = 65536
         response = client.models.generate_content(
             model=MODEL,
             contents=user_input,
             config=types.GenerateContentConfig(
                 system_instruction=SYSTEM_PROMPT,
-                temperature=0,
+                temperature=0.1,
                 max_output_tokens=MAX_OUTPUT_TOKENS,
                 response_mime_type="application/json",
             ),

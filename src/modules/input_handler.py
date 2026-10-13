@@ -41,6 +41,7 @@ def validate_file(filename, max_bytes: int = 5 * 1024 * 1024):
             f"File '{filename}' exceeds maximum allowed size "
             f"({actual_mb:.2f} MB > {max_mb:.2f} MB limit)."
         )
+
 # ===========================================================================
 # Helper Functions 
 # Literally reads txt file.
@@ -72,7 +73,6 @@ def read_txt_file(filename: str):
 # Helper Functions 
 # Validate user input with scrubdud lib and regex
 # ===========================================================================
-
 def validate_user_input(text: str):  
     # scrubadub detects structured PII: emails, phone numbers, credit cards, etc.
     detected_types = {filth.type for filth in _scrubber.iter_filth(text)}
@@ -98,6 +98,7 @@ def validate_user_input(text: str):
 
     if detected_types:
         print(
+            "\n"
             "Sensitive information detected: "
             f"{', '.join(sorted(detected_types))}. "
             "Please remove any sensitive information before proceeding."
@@ -105,6 +106,7 @@ def validate_user_input(text: str):
         return True
 
     return False
+
 # ===========================================================================
 # Helper Functions 
 # Validate user input
@@ -123,21 +125,33 @@ def validate_department(department: str) -> bool:
 def validate_employee_id(employee_id: str) -> bool:                                                                                                                                  
     return len(employee_id) == 7 and employee_id.isdigit()
 
-def required_input(prompt): #this is to ensure manually added information for required fields
+def required_input(prompt, allow_back=False):
     while True:
         value = input(prompt).strip()
+
+        if allow_back and value == "0":
+            return None
 
         if value == "":
             print("This field is required. Please enter a value.")
         else:
             return value
 
-def prompt_validated(prompt: str, validator, error_message: str) -> str:
-    """Prompt the user repeatedly until input passes the validator."""
+def prompt_validated(prompt: str, validator, error_message: str, allow_back=False):
+    """Prompt until valid input is entered, or return None if user goes back."""
     while True:
-        value = required_input(prompt)
+        value = input(prompt).strip()
+
+        if allow_back and value == "0":
+            return None
+
+        if not value:
+            print("This field is required. Please enter a value.")
+            continue
+
         if validator(value):
             return value
+
         print(error_message)
 
 def process_file_content(file_path):
@@ -172,17 +186,26 @@ def get_user_details():
     print("1. Create a new handover")
     print("2. View a handover")
     print("3. Delete a handover")
+    print("0. Exit")
 
     while True:
         role = required_input("\nSelect an option: ")
+        
+        if role == "0":
+            return None
 
         if role == "1":
             while True:
                 employee_id = prompt_validated(
-                    "\nEnter your employee ID: ",
+                    "\nEnter your employee ID (0 to go back): ",
                     validate_employee_id,
-                    "Invalid employee ID. Please enter a valid 7-digit employee ID."
+                    "Invalid employee ID. Please enter a valid 7-digit employee ID.",
+                    allow_back=True
                 )
+
+                if employee_id is None:
+                    print("\nReturning to main menu...")
+                    return "BACK"
 
                 # Retrieve employee details from the company database
                 employee = data_manager.get_employee(employee_id)
@@ -195,7 +218,11 @@ def get_user_details():
                 print(f"\nEmployee found: {employee['name']}")
                 print(f"Department: {employee['department']}")
 
-                confirm = input("\nIs this you? (y/n): ").strip().lower()
+                confirm = input("\nIs this you? (y/n or 0 to go back): ").strip().lower()
+
+                if confirm == "0":
+                    print("\nReturning to main menu...")
+                    return "BACK"
 
                 if confirm == "y":
                     return {
@@ -209,25 +236,33 @@ def get_user_details():
                 if confirm == "n":
                     print("\nPlease check your employee ID and try again.")
                 else:
-                    print("\nInvalid input. Please enter y or n.")
+                    print("\nInvalid input. Please enter y/n or 0.")
 
         elif role == "2":
             # Retrieve the handover using the previous employee's ID
             previous_employee_id = prompt_validated(
-                "\nEnter the employee ID of the person handing over: ",
+                "\nEnter the employee ID of the person handing over (0 to go back): ",
                 validate_employee_id,
-                "Invalid employee ID. Please enter a valid 7-digit employee ID."
+                "Invalid employee ID. Please enter a valid 7-digit employee ID.",
+                allow_back=True
             )
+
+            if previous_employee_id is None:
+                print("\nReturning to main menu...")
+                return "BACK"
+            
             while True:
                 #get the receiving employee's ID to ensure that the handover is being taken over by the correct person
                 employee_id = prompt_validated(
-                    "\nEnter your employee ID: ",
+                    "\nEnter your employee ID (0 to go back): ",
                     validate_employee_id,
-                    "Invalid employee ID. Please enter a valid 7-digit employee ID."
+                    "Invalid employee ID. Please enter a valid 7-digit employee ID.",
+                    allow_back=True
                 )
-                if str(employee_id) == str(previous_employee_id):
-                    print("You cannot use the same employee ID as the previous employee. Please enter a different ID.")
-                    continue
+
+                if employee_id is None:
+                    print("\nReturning to main menu...")
+                    return "BACK"
 
                 employee = data_manager.get_employee(employee_id)
                 if employee is None:
@@ -239,7 +274,11 @@ def get_user_details():
                 print(f"Department: {employee['department']}")
 
                 while True:
-                    confirm = input("\nIs this you? (y/n): ").strip().lower()
+                    confirm = input("\nIs this you? (y/n or 0 to go back): ").strip().lower()
+
+                    if confirm == "0":
+                        print("\nReturning to main menu...")
+                        return "BACK"
 
                     if confirm == "y":
                         return {
@@ -255,15 +294,20 @@ def get_user_details():
                         print("\nPlease check your employee ID and try again.")
                         break
 
-                    print("\nInvalid input. Please enter y or n.")
+                    print("\nInvalid input. Please enter y/n or 0.")
 
         elif role == "3":
             while True:
                 employee_id = prompt_validated(
-                    "\nEnter your employee ID: ",
+                    "\nEnter your employee ID (0 to go back): ",
                     validate_employee_id,
-                    "Invalid employee ID. Please enter a valid 7-digit employee ID."
+                    "Invalid employee ID. Please enter a valid 7-digit employee ID.",
+                    allow_back=True
                 )
+
+                if employee_id is None:
+                    print("\nReturning to main menu...")
+                    return "BACK"
 
                 # Retrieve employee details from the company database
                 employee = data_manager.get_employee(employee_id)
@@ -277,7 +321,11 @@ def get_user_details():
                 print(f"Department: {employee['department']}")
 
                 while True:
-                    confirm = input("\nIs this you? (y/n): ").strip().lower()
+                    confirm = input("\nIs this you? (y/n or 0 to go back): ").strip().lower()
+
+                    if confirm == "0":
+                        print("\nReturning to main menu...")
+                        return "BACK"
 
                     if confirm == "y":
                         return {
@@ -291,8 +339,7 @@ def get_user_details():
                         print("\nPlease check your employee ID and try again.")
                         break
 
-                    print("\nInvalid input. Please enter y or n.")
-
+                    print("\nInvalid input. Please enter y/n or 0.")
 
 # ===========================================================================
 # Handover input  (uses: input handler)
@@ -302,8 +349,13 @@ def handover_input():
     while True:
         print("\nEnter the information for handover:")
         print("Enter text directly or type file:<filename> to load a .txt file.")
+        print("Enter 0 to return to the main menu.")
 
         handover_info = required_input("\nHandover: ")
+
+        if handover_info == "0":
+            print("\nReturning to main menu...")
+            return None
 
         # Check if user wants to load a file
         if handover_info.lower().startswith("file:"):

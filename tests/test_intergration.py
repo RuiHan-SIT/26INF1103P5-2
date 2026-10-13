@@ -15,6 +15,33 @@ FIXTURES_DIR = Path(__file__).parent / "fixtures"
 # Project imports must come AFTER the src path setup
 import main as app_main
 from modules import input_handler, logic_manager
+from conftest import make_outstanding_task, make_bau_task
+
+
+@pytest.mark.parametrize("task_type", ["outstanding", "bau"])
+def test_fill_missing_information_updates_correct_tasks(task_type, monkeypatch, capsys):
+    make_task = make_outstanding_task if task_type == "outstanding" else make_bau_task
+    tasks = [
+        make_task(task="First task", owners=["Alex"]),
+        make_task(task="Second task", owners=[]),
+        make_task(task="Third task", owners=[]),
+    ]
+    data = {"outstanding_tasks": [], "bau_tasks": [], "important_information": []}
+    data[f"{task_type}_tasks"] = tasks
+    errors = logic_manager.validate_handover(data)
+    answers = iter(["Rania", "Shakira"])
+    monkeypatch.setattr("builtins.input", lambda prompt="": next(answers))
+
+    assert app_main.fill_missing_information(data, errors) is True
+    printed = capsys.readouterr().out
+    assert f"--- {task_type.upper()} TASK 1 ---" not in printed
+    assert printed.index(f"--- {task_type.upper()} TASK 2 ---") < printed.index(
+        f"--- {task_type.upper()} TASK 3 ---"
+    )
+    assert tasks[0]["owners"] == ["Alex"]
+    assert tasks[1]["owners"] == ["Rania"]
+    assert tasks[2]["owners"] == ["Shakira"]
+    assert logic_manager.validate_handover(data) == []
 
 
 

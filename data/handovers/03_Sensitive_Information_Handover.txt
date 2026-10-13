@@ -1,0 +1,9 @@
+Hi, these are my notes for the team before I go on leave.
+
+Aqmar will follow up on the Sales quotation folder access issue by 16 Oct 2026. He has the affected folder names already.
+
+The test account password is DemoPass123! Please use it to check the login issue.
+
+Shakira helped with the employee verification test using this fictional NRIC-shaped value: S1234567D.
+
+Haziq will continue the daily monitoring checks. Each morning, review the dashboard for critical alerts and record any issues in the operations log.

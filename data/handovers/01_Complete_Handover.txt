@@ -1,0 +1,9 @@
+Hi team, leaving these notes before I go on leave.
+
+Ti Seng will follow up on the outstanding approval for the IT equipment supplier invoices. I've sent him the invoice list already, and he needs to get the approvals sorted by 16 Oct 2026.
+
+Rania is finalising the announcement for the new employee portal. The draft is ready; she'll check the wording and send the announcement by 19 Oct 2026.
+
+For the daily server monitoring, Haziq will take over while I'm away. Every morning, open the monitoring dashboard, check for critical alerts and record any issues in the operations log. Escalate critical alerts to the IT support team.
+
+The September system usage report was submitted to management already. No follow-up needed for that.

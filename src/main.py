@@ -46,7 +46,9 @@ def fill_missing_information(handover_data, errors):
             return False
 
         task_type = error["type"]
-        task_index = error["index"] - 1
+        task_number = error["index"]
+        # Validation uses task numbers starting at 1; Python lists start at 0.
+        task_index = task_number - 1
 
         if task_type == "outstanding":
             task = handover_data["outstanding_tasks"][task_index]
@@ -55,7 +57,7 @@ def fill_missing_information(handover_data, errors):
         else:
             continue
 
-        print(f"\n--- {task_type.upper()} TASK {error['index']} ---")
+        print(f"\n--- {task_type.upper()} TASK {task_number} ---")
 
         # Display "Not provided" if empty string
         print(f"Task Name: {task['task'] or 'Not provided'}") 
@@ -66,27 +68,58 @@ def fill_missing_information(handover_data, errors):
         if task_type == "outstanding":
             print(f"Deadline: {task['deadline'] or 'Not provided'}")
 
+        
         for missing_field in error["errors"]:
 
             if missing_field == "task":
-                task["task"] = required_input("\nMissing Task name. Please enter a task name: ")
+                value = required_input(
+                    "\nMissing task name (0 to go back): ",
+                    allow_back=True
+                )
+                if value is None:
+                    return False
+                task["task"] = value
+
             elif missing_field == "description":
-                task["description"] = required_input("\nMissing task description. Please enter a description: ")
+                value = required_input(
+                    "\nMissing task description (0 to go back): ",
+                    allow_back=True
+                )
+                if value is None:
+                    return False
+                task["description"] = value
+
             elif missing_field == "missing_owner(s)":
-                owner = required_input("\nMissing task owner(s). Please enter owner(s) separated by comma: ")
-                task["owners"] = [o.strip() for o in owner.split(",") if o.strip()]
+                value = required_input(
+                    "\nMissing task owner(s). Enter owner(s) separated by comma (0 to go back): ",
+                    allow_back=True
+                )
+                if value is None:
+                    return False
+                task["owners"] = [
+                    owner.strip()
+                    for owner in value.split(",")
+                    if owner.strip()
+                ]
+
             elif missing_field in ("missing_deadline", "invalid_deadline"):
-                # Inform user why the deadline needs to be entered again
                 if missing_field == "missing_deadline":
                     print("\nDeadline is missing. Please provide a deadline.")
-                elif missing_field == "invalid_deadline":
+                else:
                     print("\nInvalid deadline. Please enter a valid date (today or later) in DD/MM/YYYY format.")
 
-                task["deadline"] = prompt_validated(
-                    "\nEnter deadline (DD/MM/YYYY): ",
+                value = prompt_validated(
+                    "\nEnter deadline (DD/MM/YYYY, 0 to go back): ",
                     logic_manager.validate_deadline,
-                    "Invalid deadline. Please enter a valid date (today or later) in DD/MM/YYYY format."
+                    "Invalid deadline. Please enter a valid date (today or later) in DD/MM/YYYY format.",
+                    allow_back=True
                 )
+
+                if value is None:
+                    return False
+
+                task["deadline"] = value
+
             else:
                 logger.warning(
                     "Unhandled validation error '%s' on %s task %s",
@@ -95,6 +128,7 @@ def fill_missing_information(handover_data, errors):
                     error.get("index")
                 )
                 print(f"\n[Notice] Unrecognized validation check '{missing_field}'. Please review this task.")
+
             
     return True
 
@@ -106,6 +140,9 @@ def get_handover_data():
     # Allow the user to resubmit handover information if AI processing fails
     while True:
         handover_info = handover_input()
+
+        if handover_info is None:
+            return None
 
         handover_data = send_to_llm(handover_info)
 
@@ -157,13 +194,21 @@ def main():
     # Step 1 - Input handler: get the user's details and role (handing over / taking over)
     user_details = get_user_details()
 
+    if user_details is None:
+        return False
+
+    if user_details == "BACK":
+        return "BACK"
+
     # ----- HANDING OVER -----
     if user_details["role"] == "Handing over":
+
         # Step 2 - Input handler + Gemini router: get the handover text and pass to Gemini to put structure into Data
         handover_data = get_handover_data()
+
         if not handover_data:
             print("\nHandover process cancelled.")
-            return 
+            return  "BACK"
 
         # Step 3 - Logic manager: validate, and keep asking for missing info until complete
         while True:
@@ -195,7 +240,7 @@ def main():
                 handover_data = get_handover_data()
                 if not handover_data:
                     print("\nHandover process cancelled.")
-                    return 
+                    return "BACK"
 
     # ----- TAKING OVER -----
     elif user_details["role"] == "Taking over":
@@ -277,15 +322,15 @@ def main():
             filename = record.get("filename") or "Filename unavailable"
             print(f"{index}. {filename}")
 
-        print("0. Cancel")
+        print("0. Back to Main Menu")
 
         # Ask the user to select a handover
         while True:
             choice = input("\nSelect a handover to delete: ").strip()
 
             if choice == "0":
-                print("\nDeletion cancelled.")
-                return user_details
+                print("\nDeletion cancelled. Returning to main menu...")
+                return "BACK"
 
             if choice.isdigit() and 1 <= int(choice) <= len(records):
                 selected_record = records[int(choice) - 1]
@@ -305,8 +350,8 @@ def main():
                 break
 
             if confirm == "n":
-                print("\nDeletion cancelled.")
-                return user_details
+                print("\nDeletion cancelled. Returning to main menu...")
+                return "BACK"
 
             print("Invalid input. Please enter y or n.")
 
@@ -331,14 +376,23 @@ def main():
 # ===========================================================================
 # Program entry point
 # ===========================================================================
+
 if __name__ == "__main__":
     while True:
         result = main()
-        choice = input("\nWould you like to perform another action? (y/n): ").strip().lower()
-        if choice == "n":
-            print("Thank you for using the Handover Management System.")
+
+        if result is False:
+            print("\nThank you for using the AI Handover Assistant.")
             break
-            sys.exit
+
+        if result == "BACK":
+            continue
+        
+        choice = input("\nWould you like to perform another action? (y/n): ").strip().lower()
+        
+        if choice == "n":
+            print("\nThank you for using the AI Handover Assistant.")
+            break
         elif choice == "y":
             print("\nRestarting the program...\n")
         else:
