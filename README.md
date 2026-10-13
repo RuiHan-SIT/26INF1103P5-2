@@ -57,11 +57,21 @@ To pull the latest changes and build the image (this also runs the tests):
 powershell -ExecutionPolicy Bypass -File .\update.ps1
 ```
 
-To run the program:
+There are two ways to run the program in Docker:
+
+**Option 1: quick run (data is not kept)**
+```
+docker run --rm -it --env-file .env handover-app
+```
+Everything works, but anything you save only lasts until the program closes. Good for a quick demo. If you want to view or delete a handover you just made, answer `y` when it asks if you want to do another action.
+
+**Option 2: keep your data**
 ```
 docker run --rm -it --env-file .env -v "${PWD}/data:/app/data" handover-app
 ```
-Keep the `-v` part in, otherwise anything you save is gone once the container stops.
+The `-v` part links your `data` folder to the container, so saved handovers (`data/handovers.json`) and summary files (`data/summaries/`) stay on your computer after the program closes. Use this one if you want to come back to a handover later.
+
+Note: `${PWD}` works in PowerShell. In Command Prompt use `%cd%` instead.
 
 To run only the tests in Docker:
 ```
