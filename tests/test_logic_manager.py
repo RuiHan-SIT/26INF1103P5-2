@@ -32,22 +32,34 @@ def test_empty_deadline_is_invalid():
 
 def test_valid_outstanding_task_has_no_errors():
     task = make_outstanding_task()
-    assert logic_manager.validate_outstanding_task(task) == []
+    task_object = logic_manager.OutstandingTask(
+        task["task"], task["description"], task["owners"], task["deadline"]
+    )
+    assert task_object.validate() == []
 
 
 def test_outstanding_task_missing_owner():
     task = make_outstanding_task(owners=[])
-    assert logic_manager.validate_outstanding_task(task) == ["missing_owner(s)"]
+    task_object = logic_manager.OutstandingTask(
+        task["task"], task["description"], task["owners"], task["deadline"]
+    )
+    assert task_object.validate() == ["missing_owner(s)"]
 
 
 def test_outstanding_task_missing_description():
     task = make_outstanding_task(description="")
-    assert logic_manager.validate_outstanding_task(task) == ["description"]
+    task_object = logic_manager.OutstandingTask(
+        task["task"], task["description"], task["owners"], task["deadline"]
+    )
+    assert task_object.validate() == ["description"]
 
 
 def test_outstanding_task_missing_deadline():
     task = make_outstanding_task(deadline="")
-    assert logic_manager.validate_outstanding_task(task) == ["missing_deadline"]
+    task_object = logic_manager.OutstandingTask(
+        task["task"], task["description"], task["owners"], task["deadline"]
+    )
+    assert task_object.validate() == ["missing_deadline"]
 
 
 # ===========================================================================
@@ -57,17 +69,26 @@ def test_outstanding_task_missing_deadline():
 
 def test_valid_bau_task_has_no_errors():
     task = make_bau_task()
-    assert logic_manager.validate_bau_task(task) == []
+    task_object = logic_manager.BAUTask(
+        task["task"], task["description"], task["owners"]
+    )
+    assert task_object.validate() == []
 
 
 def test_bau_task_missing_owner():
     task = make_bau_task(owners=[])
-    assert logic_manager.validate_bau_task(task) == ["missing_owner(s)"]
+    task_object = logic_manager.BAUTask(
+        task["task"], task["description"], task["owners"]
+    )
+    assert task_object.validate() == ["missing_owner(s)"]
 
 
 def test_bau_task_missing_description():
     task = make_bau_task(description="")
-    assert logic_manager.validate_bau_task(task) == ["description"]
+    task_object = logic_manager.BAUTask(
+        task["task"], task["description"], task["owners"]
+    )
+    assert task_object.validate() == ["description"]
 
 # ===========================================================================
 # 4. Handover processing tests with hardcoded sample AI responses
@@ -133,13 +154,13 @@ def test_valid_handover_fixture_with_hardcoded_response():
                 "task": "Complete website migration testing",
                 "description": "Test all website functions before deployment.",
                 "owners": ["Sarah Lim"],
-                "deadline": "25/10/2026",
+                "deadline": (date.today() + timedelta(days=7)).strftime("%d/%m/%Y"),
             },
             {
                 "task": "Prepare deployment documentation",
                 "description": "Document the deployment procedure and rollback steps.",
                 "owners": ["Daniel Lee"],
-                "deadline": "27/10/2026",
+                "deadline": (date.today() + timedelta(days=9)).strftime("%d/%m/%Y"),
             },
         ],
         "bau_tasks": [],

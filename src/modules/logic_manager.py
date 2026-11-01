@@ -1,143 +1,161 @@
 import copy
+from abc import ABC, abstractmethod
 from datetime import datetime, date
 
-# Validate if deadline is in correct format
-def validate_deadline(deadline):
-    try:
-        deadline_date = datetime.strptime(deadline, "%d/%m/%Y").date()
 
-        # Deadline must be today or a future date
-        return deadline_date >= date.today()
+class Task(ABC):
+    def __init__(self, name, description, owners):
+        self.__name = name
+        self.__description = description
+        self.__owners = list(owners)
 
-    except (ValueError, TypeError):
-        return False
+    def get_name(self):
+        return self.__name
 
-# Check required info in outstanding tasks
-def validate_outstanding_task(task): 
-    errors = []
+    @abstractmethod
+    def validate(self):
+        errors = []
 
-    task_name = task["task"]
-    description = task["description"]
-    owners = task["owners"]
-    deadline = task["deadline"]
+        if not self.__name.strip():
+            errors.append("task")
 
-    if task_name.strip() == "":
-        errors.append("task")
-    
-    if description.strip() == "":
-        errors.append("description")
-    
-    if len(owners) == 0:
-        errors.append("missing_owner(s)")
-    
-    if not deadline or not deadline.strip():
-        errors.append("missing_deadline")
-    elif not validate_deadline(deadline):
-        errors.append("invalid_deadline")
+        if not self.__description.strip():
+            errors.append("description")
 
-    return errors
+        if not self.__owners:
+            errors.append("missing_owner(s)")
 
-# Check required info for BAU tasks and return all errors 
-def validate_bau_task(task): 
-    errors = []
+        return errors
 
-    task_name = task["task"]
-    description = task["description"]
-    owners = task["owners"]
-
-    if task_name.strip() == "":
-        errors.append("task")
-        
-    if description.strip() == "":
-        errors.append("description")
-        
-    if len(owners) == 0:
-        errors.append("missing_owner(s)")
-
-    return errors
-
-# Check all tasks and collect errors 
-def validate_handover(data):
-    errors = []
-
-    for index, task in enumerate(data["outstanding_tasks"], start=1):
-        task_errors = validate_outstanding_task(task)
-
-        if len(task_errors) > 0:
-            errors.append({
-                "type": "outstanding",
-                "index": index,
-                "task": task["task"],
-                "errors": task_errors
-            })
-
-    for index, task in enumerate(data["bau_tasks"], start=1):
-        task_errors = validate_bau_task(task)
-
-        if len(task_errors) > 0:
-            errors.append({
-                "type": "bau",
-                "index": index,
-                "task": task["task"],
-                "errors": task_errors
-            })
-
-    if len(data["outstanding_tasks"]) == 0 and len(data["bau_tasks"]) == 0:
-        errors.append({
-            "type": "handover",
-            "errors": ["no_tasks"]
-        })
-
-    return errors
-
-# Determine if handover needs re-prompt/clarifications
-# Returns a status of "complete" or "incomplete"
-def get_handover_status(data, errors):
-    outstanding_tasks = data["outstanding_tasks"]
-    bau_tasks = data["bau_tasks"]
-
-    if len(errors) != 0 or (len(outstanding_tasks) == 0 and len(bau_tasks) == 0):
-        return "incomplete" 
-    else:
-        return "complete"
-
-# Get task deadline for sorting
-def get_deadline(task):
-    return datetime.strptime(task["deadline"], "%d/%m/%Y")
-
-# Sort outstanding tasks by earliest to latest deadline
-def sort_outstanding_tasks(data):
-    outstanding_tasks = data["outstanding_tasks"]
-
-    sorted_tasks = sorted(outstanding_tasks, key=get_deadline)
-    return sorted_tasks
-
-# Format deadline as DD/MMM/YYYY
-def format_deadline(deadline):
-    date = datetime.strptime(deadline, "%d/%m/%Y")
-    return date.strftime("%d %b %Y")
-
-# Return completed handover data
-def process_handover(data):
-    errors = validate_handover(data)
-    status = get_handover_status(data, errors)
-
-    if status == "incomplete":
+    def to_dict(self):
         return {
-            "status": status,
-            "errors": errors
+            "task": self.__name,
+            "description": self.__description,
+            "owners": list(self.__owners)
         }
 
-    sorted_tasks = sort_outstanding_tasks(data)
 
-    # Format deadlines on a copy to preserve raw data in standard DD/MM/YYYY format
-    formatted_tasks = copy.deepcopy(sorted_tasks)
-    for task in formatted_tasks:
-        task["deadline"] = format_deadline(task["deadline"])
+class OutstandingTask(Task):
+    def __init__(self, name, description, owners, deadline):
+        super().__init__(name, description, owners)
+        self.__deadline = deadline
 
-    return {
-        "status": status,
-        "outstanding_tasks": formatted_tasks,
-        "bau_tasks": data["bau_tasks"],
-        "important_information": data["important_information"]
-    }
+    def validate(self):
+        errors = super().validate()
+
+        if not self.__deadline or not self.__deadline.strip():
+            errors.append("missing_deadline")
+        elif not self.validate_deadline():
+            errors.append("invalid_deadline")
+
+        return errors
+
+    def validate_deadline(self):
+        try:
+            deadline_date = datetime.strptime(self.__deadline, "%d/%m/%Y").date()
+            return deadline_date >= date.today()
+        except (ValueError, TypeError):
+            return False
+
+    def get_deadline(self):
+        return datetime.strptime(self.__deadline, "%d/%m/%Y")
+
+    def to_dict(self):
+        data = super().to_dict()
+        data["deadline"] = self.__deadline
+        return data
+
+
+class BAUTask(Task):
+    def validate(self):
+        return super().validate()
+
+
+class Handover:
+    def __init__(self, data):
+        self.__outstanding_tasks = []
+        self.__bau_tasks = []
+        self.__important_information = copy.deepcopy(data["important_information"])
+
+        for task_data in data["outstanding_tasks"]:
+            task = OutstandingTask(
+                task_data["task"],
+                task_data["description"],
+                task_data["owners"],
+                task_data["deadline"]
+            )
+            self.__outstanding_tasks.append(task)
+
+        for task_data in data["bau_tasks"]:
+            task = BAUTask(
+                task_data["task"],
+                task_data["description"],
+                task_data["owners"]
+            )
+            self.__bau_tasks.append(task)
+
+    def collect_task_errors(self, tasks, task_type):
+        errors = []
+
+        for index, task in enumerate(tasks, start=1):
+            task_errors = task.validate()
+
+            if task_errors:
+                errors.append({
+                    "type": task_type,
+                    "index": index,
+                    "task": task.get_name(),
+                    "errors": task_errors
+                })
+
+        return errors
+
+    def validate(self):
+        errors = self.collect_task_errors(
+            self.__outstanding_tasks, "outstanding"
+        )
+
+        bau_errors = self.collect_task_errors(
+            self.__bau_tasks, "bau"
+        )
+
+        errors.extend(bau_errors)
+
+        if not self.__outstanding_tasks and not self.__bau_tasks:
+            errors.append({
+                "type": "handover",
+                "errors": ["no_tasks"]
+            })
+
+        return errors
+
+    def process(self):
+        errors = self.validate()
+
+        if errors:
+            return {
+                "status": "incomplete",
+                "errors": errors
+            }
+
+        sorted_tasks = sorted(
+            self.__outstanding_tasks,
+            key=OutstandingTask.get_deadline
+        )
+
+        outstanding_records = []
+        for task in sorted_tasks:
+            record = task.to_dict()
+            record["deadline"] = task.get_deadline().strftime("%d %b %Y")
+            outstanding_records.append(record)
+
+        bau_records = []
+        for task in self.__bau_tasks:
+            bau_records.append(task.to_dict())
+
+        return {
+            "status": "complete",
+            "outstanding_tasks": outstanding_records,
+            "bau_tasks": bau_records,
+            "important_information": copy.deepcopy(self.__important_information)
+        }

@@ -1,5 +1,6 @@
 
 import sys
+from datetime import date, timedelta
 from pathlib import Path
 import pytest
 
@@ -76,7 +77,7 @@ def test_handover_file_with_mocked_ai(monkeypatch):
                 "task": "Complete website testing",
                 "description": "Test the login module.",
                 "owners": ["Sarah Lim"],
-                "deadline": "25/10/2026",
+                "deadline": (date.today() + timedelta(days=7)).strftime("%d/%m/%Y"),
             }
         ],
         "bau_tasks": [
