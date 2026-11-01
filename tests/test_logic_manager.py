@@ -18,7 +18,7 @@ def test_past_deadline_is_invalid():
 
 
 def test_wrong_deadline_format_is_invalid():
-    assert logic_manager.validate_deadline("2026-10-15") is False
+    assert logic_manager.validate_deadline("2026-10-25") is False
 
 
 def test_empty_deadline_is_invalid():
@@ -133,13 +133,13 @@ def test_valid_handover_fixture_with_hardcoded_response():
                 "task": "Complete website migration testing",
                 "description": "Test all website functions before deployment.",
                 "owners": ["Sarah Lim"],
-                "deadline": "15/10/2026",
+                "deadline": "25/10/2026",
             },
             {
                 "task": "Prepare deployment documentation",
                 "description": "Document the deployment procedure and rollback steps.",
                 "owners": ["Daniel Lee"],
-                "deadline": "17/10/2026",
+                "deadline": "27/10/2026",
             },
         ],
         "bau_tasks": [],

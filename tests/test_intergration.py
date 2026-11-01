@@ -76,7 +76,7 @@ def test_handover_file_with_mocked_ai(monkeypatch):
                 "task": "Complete website testing",
                 "description": "Test the login module.",
                 "owners": ["Sarah Lim"],
-                "deadline": "15/10/2026",
+                "deadline": "25/10/2026",
             }
         ],
         "bau_tasks": [
