@@ -15,6 +15,29 @@ EMPLOYEES_FILE = DATA_DIR / "employees.json"
 
 
 # ===========================================================================
+# EMPLOYEE
+# One registered employee: their ID, name and department.
+# ===========================================================================
+
+class Employee:
+    def __init__(self, employee_id, name, department):
+        # Encapsulation: (-) Private attributes
+        self.__employee_id = employee_id
+        self.__name = name
+        self.__department = department
+
+    # Getters: the only way other code can read the employee's details
+    def get_employee_id(self):
+        return self.__employee_id
+
+    def get_name(self):
+        return self.__name
+
+    def get_department(self):
+        return self.__department
+
+
+# ===========================================================================
 # File helpers - read and write the whole JSON file
 # Used by the CRUD functions below; main.py does not call these directly.
 # ===========================================================================
