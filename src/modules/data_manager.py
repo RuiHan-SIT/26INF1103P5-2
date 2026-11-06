@@ -35,6 +35,58 @@ class Employee:
 
     def get_department(self):
         return self.__department
+    
+    
+# ===========================================================================
+# EMPLOYEE REGISTRY
+# Loads data/employees.json once and keeps every registered employee as an
+# Employee object, so the program can look people up by their employee ID.
+# ===========================================================================
+
+class EmployeeRegistry:
+    def __init__(self, filepath=EMPLOYEES_FILE):
+        # Encapsulation: (-) Private attributes
+        self.__filepath = Path(filepath)
+
+        # Aggregation: the registry holds Employee objects, keyed by employee ID
+        self.__employees = self.__load()
+
+    # (-) Private: reads the JSON file and turns each entry into an Employee.
+    # Returns an empty dictionary if the file is missing, unreadable or not in the right format.
+    def __load(self):
+        if not self.__filepath.exists():
+            return {}
+
+        try:
+            with open(self.__filepath, "r", encoding="utf-8") as file:
+                data = json.load(file)
+        except (OSError, json.JSONDecodeError) as err:
+            logger.error("Could not load employee registry: %s", err)
+            return {}
+
+        if not isinstance(data, dict):
+            logger.error("Employee registry %s is not a dictionary.", self.__filepath)
+            return {}
+
+        employees = {}
+        for employee_id, details in data.items():
+            # Skip any entry that isn't in the expected {"name": ..., "department": ...} form
+            if not isinstance(details, dict):
+                continue
+
+            employees[employee_id] = Employee(
+                employee_id,
+                details.get("name", ""),
+                details.get("department", "")
+            )
+
+        return employees
+
+    # (+) Public: returns the Employee with this ID, or None if the ID isn't registered
+    def get_employee(self, employee_id):
+        return self.__employees.get(employee_id)  
+    
+    
 
 
 # ===========================================================================
