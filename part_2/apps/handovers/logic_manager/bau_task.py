@@ -1,7 +1,6 @@
 from datetime import datetime
 from .task import Task
 
-
 class BAUTask(Task):
     def __init__(self, name, description, owners, frequency, start_date, end_date=None, task_id=None, owner_ids=None):
         super().__init__(name, description, owners, task_id, owner_ids)
@@ -12,6 +11,7 @@ class BAUTask(Task):
     def validate(self):
         errors = super().validate()
 
+        # BAU tasks need a frequency and start date; the end date is optional.
         if not self.__frequency or not self.__frequency.strip():
             errors.append("missing_frequency")
         elif self.__frequency.strip().lower() not in ["weekly", "monthly", "yearly"]:
