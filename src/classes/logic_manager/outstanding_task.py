@@ -1,10 +1,14 @@
+import copy
 from datetime import datetime, date
 from classes.logic_manager.task import Task
 
 class OutstandingTask(Task):
-    def __init__(self, name, description, owners, deadline):
-        super().__init__(name, description, owners)
+    def __init__(self, name, description, owners, deadline, task_id=None, owner_ids=None, subtasks=None):
+        super().__init__(name, description, owners, task_id, owner_ids)
         self.__deadline = deadline
+        if subtasks is None:
+            subtasks = []
+        self.__subtasks = copy.deepcopy(subtasks)
 
     def validate(self):
         errors = super().validate()
@@ -29,4 +33,5 @@ class OutstandingTask(Task):
     def to_dict(self):
         data = super().to_dict()
         data["deadline"] = self.__deadline
+        data["subtasks"] = copy.deepcopy(self.__subtasks)
         return data

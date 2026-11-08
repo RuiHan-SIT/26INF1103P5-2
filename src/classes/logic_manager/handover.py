@@ -13,7 +13,10 @@ class Handover:
                 task_data["task"],
                 task_data["description"],
                 task_data["owners"],
-                task_data["deadline"]
+                task_data["deadline"],
+                task_id=task_data.get("task_id"),
+                owner_ids=task_data.get("owner_ids"),
+                subtasks=task_data.get("subtasks")
             )
             self.__outstanding_tasks.append(task)
 
@@ -21,7 +24,12 @@ class Handover:
             task = BAUTask(
                 task_data["task"],
                 task_data["description"],
-                task_data["owners"]
+                task_data["owners"],
+                frequency=task_data.get("frequency", ""),
+                start_date=task_data.get("start_date", ""),
+                end_date=task_data.get("end_date", ""),
+                task_id=task_data.get("task_id"),
+                owner_ids=task_data.get("owner_ids")
             )
             self.__bau_tasks.append(task)
 
@@ -77,7 +85,6 @@ class Handover:
         outstanding_records = []
         for task in sorted_tasks:
             record = task.to_dict()
-            record["deadline"] = task.get_deadline().strftime("%d %b %Y")
             outstanding_records.append(record)
 
         bau_records = []
