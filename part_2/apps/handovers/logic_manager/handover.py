@@ -50,6 +50,56 @@ class Handover:
 
         return errors
 
+    def update_task(self, task_type, task_id, task_changes):
+        if task_type == "outstanding":
+            tasks = self.__outstanding_tasks
+        elif task_type == "bau":
+            tasks = self.__bau_tasks
+        else:
+            return {"status": "invalid", "errors": ["invalid_task_type"]}
+
+        for index, current_task in enumerate(tasks):
+            updated_data = current_task.to_dict()
+
+            if updated_data.get("task_id") == task_id:
+                updated_data.update(task_changes)
+                if "owners" in task_changes and "owner_ids" not in task_changes:
+                    # Changed owner names must be matched again before IDs stay linked.
+                    updated_data["owner_ids"] = []
+                updated_data["task_id"] = task_id
+
+                # Check an edited copy before replacing the current task.
+                if task_type == "outstanding":
+                    updated_task = OutstandingTask(
+                        updated_data["task"],
+                        updated_data["description"],
+                        updated_data["owners"],
+                        updated_data["deadline"],
+                        task_id=updated_data.get("task_id"),
+                        owner_ids=updated_data.get("owner_ids"),
+                        subtasks=updated_data.get("subtasks")
+                    )
+                else:
+                    updated_task = BAUTask(
+                        updated_data["task"],
+                        updated_data["description"],
+                        updated_data["owners"],
+                        frequency=updated_data.get("frequency"),
+                        start_date=updated_data.get("start_date"),
+                        end_date=updated_data.get("end_date"),
+                        task_id=updated_data.get("task_id"),
+                        owner_ids=updated_data.get("owner_ids")
+                    )
+
+                errors = updated_task.validate()
+                if errors:
+                    return {"status": "invalid", "errors": errors}
+
+                tasks[index] = updated_task
+                return {"status": "updated", "task": updated_task.to_dict()}
+
+        return {"status": "not_found", "errors": ["task_not_found"]}
+
     def validate(self):
         errors = self.collect_task_errors(
             self.__outstanding_tasks, "outstanding"
