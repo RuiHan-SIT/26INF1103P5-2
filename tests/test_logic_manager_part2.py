@@ -411,3 +411,74 @@ def test_yearly_bau_on_february_29_occurs_on_february_28_in_non_leap_year():
     )
 
     assert dates == [datetime(2025, 2, 28).date()]
+
+
+def test_edit_revalidates_task_and_saves_valid_changes():
+    deadline = (date.today() + timedelta(days=10)).strftime("%d/%m/%Y")
+    handover = Handover({
+        "outstanding_tasks": [{
+            "task_id": "OUT-1", "task": "Report", "description": "Old text",
+            "owners": ["Alice"], "owner_ids": ["E001"],
+            "deadline": deadline, "subtasks": []
+        }],
+        "bau_tasks": [],
+        "important_information": []
+    })
+
+    result = handover.update_task(
+        "outstanding", "OUT-1", {"description": "Updated text"}
+    )
+
+    assert result["status"] == "updated"
+    assert result["task"]["description"] == "Updated text"
+    assert result["task"]["task"] == "Report"
+    assert handover.process()["outstanding_tasks"][0]["description"] == "Updated text"
+
+
+def test_invalid_task_edit_keeps_the_original_task():
+    deadline = (date.today() + timedelta(days=20)).strftime("%d/%m/%Y")
+    planned_date = (date.today() + timedelta(days=10)).strftime("%d/%m/%Y")
+    earlier_deadline = (date.today() + timedelta(days=5)).strftime("%d/%m/%Y")
+    handover = Handover({
+        "outstanding_tasks": [{
+            "task_id": "OUT-1", "task": "Report", "description": "Prepare it",
+            "owners": ["Alice"], "owner_ids": ["E001"],
+            "deadline": deadline,
+            "subtasks": [{
+                "subtask_id": "S001", "task": "Draft",
+                "planned_date": planned_date, "dependencies": []
+            }]
+        }],
+        "bau_tasks": [],
+        "important_information": []
+    })
+
+    result = handover.update_task(
+        "outstanding", "OUT-1", {"deadline": earlier_deadline}
+    )
+
+    assert result == {
+        "status": "invalid",
+        "errors": ["subtask_1_planned_date_after_deadline"]
+    }
+    saved_task = handover.process()["outstanding_tasks"][0]
+    assert saved_task["deadline"] == deadline
+    assert saved_task["subtasks"][0]["planned_date"] == planned_date
+
+
+def test_invalid_bau_edit_keeps_the_original_frequency():
+    handover = Handover({
+        "outstanding_tasks": [],
+        "bau_tasks": [{
+            "task_id": "BAU-1", "task": "Review logs",
+            "description": "Check system logs", "owners": ["Alice"],
+            "owner_ids": ["E001"], "frequency": "weekly",
+            "start_date": "01/11/2026", "end_date": None
+        }],
+        "important_information": []
+    })
+
+    result = handover.update_task("bau", "BAU-1", {"frequency": "daily"})
+
+    assert result == {"status": "invalid", "errors": ["invalid_frequency"]}
+    assert handover.process()["bau_tasks"][0]["frequency"] == "weekly"
