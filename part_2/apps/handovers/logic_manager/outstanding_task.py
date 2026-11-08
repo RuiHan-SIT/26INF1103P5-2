@@ -14,6 +14,7 @@ class OutstandingTask(Task):
     def validate(self):
         errors = super().validate()
 
+        # Outstanding tasks require a valid deadline.
         if not self.__deadline or not self.__deadline.strip():
             errors.append("missing_deadline")
         elif not self.validate_deadline():
@@ -41,6 +42,7 @@ class OutstandingTask(Task):
         except (ValueError, TypeError):
             deadline_date = None
 
+        # Keep earlier IDs and dates to check later subtasks against them.
         for index, subtask in enumerate(self.__subtasks, start=1):
             if not isinstance(subtask, dict):
                 errors.append(f"subtask_{index}_invalid")
@@ -97,6 +99,7 @@ class OutstandingTask(Task):
 
         return errors
 
+    # A subtask can be completed only after all its dependencies.
     def can_complete_subtask(self, subtask_id, completed_subtask_ids):
         for subtask in self.__subtasks:
             if not isinstance(subtask, dict):

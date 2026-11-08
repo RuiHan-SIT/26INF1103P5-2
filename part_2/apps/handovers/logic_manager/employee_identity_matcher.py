@@ -1,15 +1,16 @@
 from difflib import SequenceMatcher
 
-
 class EmployeeIdentityMatcher:
     FUZZY_THRESHOLD = 0.70
 
     def __init__(self, employees):
         self.__employees = employees
 
+    # Ignore case and spaces during the first, exact matching level.
     def normalize_name(self, name):
         return name.strip().lower().replace(" ", "")
 
+    # Compare name words while allowing different order or missing parts.
     def name_components_match(self, first_name, second_name):
         first_parts = first_name.strip().lower().split()
         second_parts = second_name.strip().lower().split()

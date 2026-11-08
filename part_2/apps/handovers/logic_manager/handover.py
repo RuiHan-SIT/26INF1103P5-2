@@ -8,6 +8,7 @@ class Handover:
         self.__bau_tasks = []
         self.__important_information = copy.deepcopy(data["important_information"])
 
+        # Create task objects so each task type can validate its own fields.
         for task_data in data["outstanding_tasks"]:
             task = OutstandingTask(
                 task_data["task"],
@@ -71,6 +72,7 @@ class Handover:
     def process(self):
         errors = self.validate()
 
+        # Only create the final output when every task passes validation.
         if errors:
             return {
                 "status": "incomplete",

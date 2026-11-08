@@ -13,6 +13,7 @@ class Task(ABC):
     def get_name(self):
         return self.__name
 
+    # Child classes call this to check fields shared by every task.
     @abstractmethod
     def validate(self):
         errors = []
