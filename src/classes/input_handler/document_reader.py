@@ -8,7 +8,7 @@ class DocumentReader:
     def __init__(self):
         self.file_validator = FileValidator()
 
-    def read_docx(self, uploaded_file):
+    def read_document(self, uploaded_file):
 
         #validate the file before reading
         self.file_validator.validate_file(uploaded_file)
@@ -19,7 +19,10 @@ class DocumentReader:
         uploaded_file.seek(0)
 
         if filename.endswith(".txt"):
-            return self.read_docx(uploaded_file)
+            return self.read_txt(uploaded_file)
+        
+        if filename.endswith(".docx"):
+                    return self.read_docx(uploaded_file)
 
     def read_txt(self, uploaded_file):
 

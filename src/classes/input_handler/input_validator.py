@@ -28,7 +28,7 @@ class InputValidator:
         }
 
         sensitive_keywords = [
-            "password"
+            "password",
             "passport"
         ]
 
