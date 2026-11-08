@@ -1,10 +1,11 @@
 import copy
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from apps.handovers.logic_manager.bau_task import BAUTask
 from apps.handovers.logic_manager.handover import Handover
 from apps.handovers.logic_manager.employee_identity_matcher import EmployeeIdentityMatcher
 from apps.handovers.logic_manager.outstanding_task import OutstandingTask
+from apps.handovers.logic_manager.workload_validator import WorkloadValidator
 
 
 def test_bau_keeps_new_fields():
@@ -302,3 +303,111 @@ def test_identity_match_level_three_suggests_fuzzy_match_with_score():
     assert result[0]["matches"][0]["similarity"] >= 70
 
 
+def test_workload_warns_after_four_items_across_handovers():
+    handovers = [
+        {"outstanding_tasks": [
+            {"task": "First report", "owner_ids": ["E001"], "subtasks": [
+                {"planned_date": "12/11/2026"},
+                {"planned_date": "12/11/2026"}
+            ]}
+        ], "bau_tasks": []},
+        {"outstanding_tasks": [
+            {"task": "Second report", "owner_ids": ["E001"], "subtasks": [
+                {"planned_date": "12/11/2026"},
+                {"planned_date": "12/11/2026"},
+                {"planned_date": "12/11/2026"}
+            ]}
+        ], "bau_tasks": []}
+    ]
+
+    warnings = WorkloadValidator().check_workload(
+        handovers, "12/11/2026", "12/11/2026"
+    )
+
+    assert warnings == [{
+        "type": "daily_workload_exceeded",
+        "employee_id": "E001",
+        "date": "12/11/2026",
+        "count": 5,
+        "limit": 4,
+        "tasks": ["First report"] * 2 + ["Second report"] * 3
+    }]
+
+
+def test_workload_counts_bau_occurrences_and_skips_unscheduled_tasks():
+    handovers = [{
+        "outstanding_tasks": [
+            {"task": "Unscheduled", "owner_ids": ["E001"], "subtasks": []}
+        ],
+        "bau_tasks": [
+            {"task": "Weekly audit A", "owner_ids": ["E001"],
+             "frequency": "weekly", "start_date": "01/11/2026",
+             "end_date": None},
+            {"task": "Weekly audit B", "owner_ids": ["E001"],
+             "frequency": "weekly", "start_date": "01/11/2026",
+             "end_date": None},
+            {"task": "Weekly audit C", "owner_ids": ["E001"],
+             "frequency": "weekly", "start_date": "01/11/2026",
+             "end_date": None}
+        ]
+    }]
+
+    warnings = WorkloadValidator(daily_limit=2).check_workload(
+        handovers, "08/11/2026", "08/11/2026"
+    )
+
+    assert warnings[0]["count"] == 3
+    assert warnings[0]["tasks"] == [
+        "Weekly audit A", "Weekly audit B", "Weekly audit C"
+    ]
+
+
+def test_monthly_bau_uses_last_day_when_start_day_is_not_in_month():
+    validator = WorkloadValidator()
+    task = {
+        "frequency": "monthly",
+        "start_date": "31/01/2026",
+        "end_date": None
+    }
+
+    dates = validator.get_bau_occurrence_dates(
+        task, datetime(2026, 2, 1).date(), datetime(2026, 2, 28).date()
+    )
+
+    assert dates == [datetime(2026, 2, 28).date()]
+
+
+
+def test_exactly_four_items_does_not_create_a_warning():
+    handovers = [{
+        "outstanding_tasks": [{
+            "task": "Report", "owner_ids": ["E001"], "subtasks": [
+                {"planned_date": "12/11/2026"},
+                {"planned_date": "12/11/2026"},
+                {"planned_date": "12/11/2026"},
+                {"planned_date": "12/11/2026"}
+            ]
+        }],
+        "bau_tasks": []
+    }]
+
+    warnings = WorkloadValidator().check_workload(
+        handovers, "12/11/2026", "12/11/2026"
+    )
+
+    assert warnings == []
+
+
+def test_yearly_bau_on_february_29_occurs_on_february_28_in_non_leap_year():
+    validator = WorkloadValidator()
+    task = {
+        "frequency": "yearly",
+        "start_date": "29/02/2024",
+        "end_date": None
+    }
+
+    dates = validator.get_bau_occurrence_dates(
+        task, datetime(2025, 2, 28).date(), datetime(2025, 2, 28).date()
+    )
+
+    assert dates == [datetime(2025, 2, 28).date()]
