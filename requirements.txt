@@ -6,3 +6,4 @@ scrubadub
 pydantic
 json-repair
 pytest
+python-docx
