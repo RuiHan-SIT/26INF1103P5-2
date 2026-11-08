@@ -5,6 +5,16 @@
 {% block content %}
 <section class="welcome-card">
     <h2>Welcome to Handover Management System</h2>
-    <p>Upload or paste your handover document to analyze outstanding tasks, deadlines, and priorities.</p>
+    <p>Upload a Word handover document to begin.</p>
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Upload document</button>
+    </form>
+
+    {% if uploaded_filename %}
+        <p>{{ uploaded_filename }} was received.</p>
+    {% endif %}
 </section>
 {% endblock %}

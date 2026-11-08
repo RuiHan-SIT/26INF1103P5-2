@@ -1,6 +1,6 @@
 import copy
-from classes.logic_manager.outstanding_task import OutstandingTask
-from classes.logic_manager.bau_task import BAUTask
+from .outstanding_task import OutstandingTask
+from .bau_task import BAUTask
 
 class Handover:
     def __init__(self, data):
@@ -25,9 +25,9 @@ class Handover:
                 task_data["task"],
                 task_data["description"],
                 task_data["owners"],
-                frequency=task_data.get("frequency", ""),
-                start_date=task_data.get("start_date", ""),
-                end_date=task_data.get("end_date", ""),
+                frequency=task_data.get("frequency"),
+                start_date=task_data.get("start_date"),
+                end_date=task_data.get("end_date"),
                 task_id=task_data.get("task_id"),
                 owner_ids=task_data.get("owner_ids")
             )
@@ -97,3 +97,5 @@ class Handover:
             "bau_tasks": bau_records,
             "important_information": copy.deepcopy(self.__important_information)
         }
+
+
