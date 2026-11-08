@@ -1,122 +1,151 @@
 # AI Handover Assistant
 
-INF1103 Programming Project (Group P5-2)
+> **INF1103 Programming Project (Group P5-2)**  
+> An intelligent system for processing, sanitizing, and tracking employee work handovers using Gemini AI.
 
-When someone leaves, goes on leave or moves to another role, they usually write a handover for whoever is taking over their work. These notes are often messy and miss things like who owns a task or when it's due. Our program takes the handover notes, uses Gemini to sort them into outstanding tasks, routine (BAU) tasks and important info, and makes sure every task has an owner and a proper deadline before it gets saved. The person taking over can then pull up the handover using the previous employee's ID.
+---
 
-## How to use it
+## 📖 About the Project
 
-Run the program and pick an option from the menu:
+When an employee resigns, takes extended leave, or transfers roles, they prepare a handover for the colleague taking over their responsibilities. These notes often arrive as unstructured text missing critical details such as task ownership, deadlines, or dependencies.
 
-1. **Create a new handover** - enter your employee ID, then type your handover notes, use `file:<filename>` to load a .txt file from `data/handovers/`, or drag a .txt file into the terminal. If anything is missing (owner, deadline, etc.) the program will ask you to fill it in. Once it's complete, it's saved to `data/handovers.json` and a summary .txt is created in `data/summaries/`.
-2. **View a handover** - enter the ID of the person who handed over, then your own ID. You'll see their latest handover and who has viewed it before. Your view gets added to the history.
-3. **Delete a handover** - enter your ID, choose which of your handovers to delete and confirm. Both the saved record and the summary file are removed.
+This project uses Gemini AI and natural language processing to:
+- Extract and categorize **Outstanding Tasks** vs. **Routine (BAU) Tasks**.
+- Validate task owners, deadlines, and priorities.
+- Sanitize sensitive personal data (NRIC, passport numbers, passwords).
+- Offer both a **CLI prototype (Part 1)** and a **Django Web Application (Part 2)**.
 
-Note: you can only use employee IDs that are in `data/employees.json`.
+---
 
-A few rules the program checks:
-- Handovers can't contain sensitive info like NRIC/FIN, passport numbers, emails or passwords
-- Files have to be .txt, not empty, and under 5MB
-- Outstanding tasks need a task name, description, owner and a deadline (DD/MM/YYYY, today or later)
-- Routine tasks need a task name, description and owner
-
-## Setup
-
-1. Install the libraries (we recommend using a virtual environment):
-```
-py -m venv .venv
-.venv\Scripts\activate
-py -m pip install -r requirements.txt
-```
-
-2. Make a copy of `.env.example`, rename it to `.env` and put your Gemini API key in it:
-```
-GEMINI_API_KEY=your-key-here
-```
-Don't commit your `.env` file! It's already in `.gitignore`.
-
-## Running the program
-
-From the project folder:
-```
-python src/main.py
-```
-
-### Running the tests
-```
-python -m pytest -v
-```
-The tests don't call Gemini, the AI responses are mocked. More details on the test cases are in `tests/README.md`.
-
-## Docker
-
-Make sure Docker Desktop is open first.
-
-To pull the latest changes and build the image (this also runs the tests):
-```
-powershell -ExecutionPolicy Bypass -File .\update.ps1
-```
-
-There are two ways to run the program in Docker:
-
-**Option 1: quick run (data is not kept)**
-```
-docker run --rm -it --env-file .env handover-app
-```
-Everything works, but anything you save only lasts until the program closes. The container gets wiped. Good for a quick demo. If you want to view or delete a handover you just made, answer `y` when it asks if you want to do another action.
-
-**Option 2: keep your data**
-```
-docker run --rm -it --env-file .env -v "${PWD}/data:/app/data" handover-app
-```
-The `-v` part links your `data` folder to the container, so saved handovers (`data/handovers.json`) and summary files (`data/summaries/`) stay on your computer after the program closes. Use this one if you want to come back to a handover later.
-
-Note: `${PWD}` works in PowerShell. In Command Prompt use `%cd%` instead.
-
-To run only the tests in Docker:
-```
-docker run --rm handover-app pytest -v
-```
-
-## Project structure
+## 🗂 Project Structure
 
 ```text
 26INF1103P5-2/
-├── .env.example                 # template for your .env file
-├── Dockerfile
-├── update.ps1                   # pulls latest code and builds the docker image
-├── requirements.txt
-├── ProjectInitialDetails.md     # problem statement and business rules
 │
-├── src/
-│   ├── main.py                  # main menu and program flow
-│   ├── offline_demo.py          # runs the program without calling the API
-│   ├── prepare_offline_response.py
-│   ├── model/
-│   │   └── handover_model.py    # pydantic schema for the AI output
-│   ├── modules/
-│   │   ├── input_handler.py     # user input, file checks, sensitive info detection
-│   │   ├── gemini_router.py     # sends the handover to Gemini and checks the response
-│   │   ├── logic_manager.py     # checks required fields and deadlines, sorts tasks
-│   │   ├── data_manager.py      # saves, reads, updates and deletes handovers
-│   │   └── output.py            # prints results and creates the summary .txt files
-│   └── utils/
-│       ├── config.py            # file paths
-│       ├── gemini_client.py     # Gemini API setup
-│       ├── llm_prompt.py        # prompt for the AI
-│       └── logger.py
+├── part_2/                      # 🌟 Part 2: Django Web Application (SQLite)
+│   ├── manage.py                # Django CLI tool
+│   ├── config/                  # Django project configuration & settings
+│   ├── apps/handovers/          # Handover features (models, views, services, urls)
+│   ├── templates/               # Web layout and page templates
+│   ├── static/                  # CSS, JS, and image assets
+│   ├── media/                   # Uploaded handover files
+│   └── README.md                # Detailed guide for Part 2 web application
 │
-├── data/
-│   ├── employees.json           # list of employees that can use the program
-│   ├── handovers/               # sample handover .txt files
-│   ├── offline_responses/       # saved AI responses for the offline demo
-│   ├── handovers.json           # saved handovers (not committed)
-│   └── summaries/               # summary .txt files (not committed)
+├── src/                         # Part 1: Terminal / CLI Prototype
+│   ├── main.py                  # CLI entry point
+│   ├── offline_demo.py          # Offline demonstration script
+│   ├── modules/                 # Handlers for inputs, gemini router, logic, & storage
+│   ├── model/                   # Pydantic schemas for AI output
+│   └── utils/                   # Config, logger, and Gemini client
 │
-└── tests/                       # pytest test files
+├── data/                        # Sample data, employees, & mock responses
+├── tests/                       # Unit and integration test suites
+│
+├── requirements.txt             # Python dependencies (Django, Gemini, Pydantic, etc.)
+├── .env.example                 # Template for environment variables (API keys)
+├── .gitignore                   # Ignore rules for virtualenvs, keys, SQLite, and media
+├── Dockerfile                   # Docker container configuration
+└── update.ps1                   # Docker build & test script
 ```
 
-## For the team
+---
 
-- If you add a new library, remember to add it to `requirements.txt`
-- Pull before you start working and before you push
+## 🚀 Quick Start Guide
+
+### 1. Initial Setup
+
+1. **Clone the repository and enter the directory**:
+   ```powershell
+   git clone https://github.com/RuiHan-SIT/26INF1103P5-2.git
+   cd 26INF1103P5-2
+   ```
+
+2. **Create and activate a virtual environment**:
+   ```powershell
+   python -m venv .venv
+   .\.venv\Scripts\activate
+   ```
+
+3. **Install dependencies**:
+   ```powershell
+   pip install -r requirements.txt
+   ```
+
+4. **Set up API Key**:
+   Create a `.env` file in the project root (or inside `part_2/`):
+   ```env
+   GEMINI_API_KEY=your-gemini-api-key-here
+   ```
+
+---
+
+## 🌐 Running Part 2: Django Web Application (Recommended)
+
+Part 2 is the full-featured web app using **Django** and a local **SQLite** database.
+
+```powershell
+# 1. Navigate into part_2
+cd part_2
+
+# 2. Run database migrations (creates SQLite tables)
+python manage.py migrate
+
+# 3. (Optional) Create an admin superuser
+python manage.py createsuperuser
+
+# 4. Start the Django web server
+python manage.py runserver
+```
+
+Open your browser and visit:
+- **Web App**: [http://127.0.0.1:8000/](http://127.0.0.1:8000/)
+- **Admin Panel**: [http://127.0.0.1:8000/admin/](http://127.0.0.1:8000/admin/)
+
+👉 *For detailed architecture, model details, and app guidelines, see [**`part_2/README.md`**](file:///D:/Project/School/26INF1103P5-2/part_2/README.md).*
+
+---
+
+## 💻 Running Part 1: Terminal / CLI Prototype
+
+To run the interactive command-line interface:
+
+```powershell
+python src/main.py
+```
+
+### CLI Menu Options:
+1. **Create a new handover** — Enter employee ID, enter notes or load a `.txt` file from `data/handovers/`.
+2. **View a handover** — Search and view handovers by employee ID with audit history.
+3. **Delete a handover** — Remove previously saved records.
+
+---
+
+## 🧪 Running Tests
+
+To run the test suite across the project:
+
+```powershell
+python -m pytest -v
+```
+
+---
+
+## 🐳 Docker (CLI Prototype)
+
+To build and run the CLI application via Docker:
+
+```powershell
+# Build image
+powershell -ExecutionPolicy Bypass -File .\update.ps1
+
+# Run with persistent data
+docker run --rm -it --env-file .env -v "${PWD}/data:/app/data" handover-app
+```
+
+---
+
+## 🔒 Security & Git Hygiene
+
+- **API Keys**: Never commit `.env` files to git.
+- **Databases**: SQLite databases (`*.sqlite3`) are ignored by [`.gitignore`](file:///D:/Project/School/26INF1103P5-2/.gitignore) and kept local.
+- **Uploads**: User media (`media/`) is ignored to prevent cluttering version control.

@@ -1,6 +1,42 @@
-.venv
-.env
+# Python & Bytecode
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual Environments
+.venv/
+venv/
+env/
+ENV/
+
+# Environment Variables & Secrets
+.env
+.env.*
+!.env.example
+
+# Django Artifacts & Local Database (SQLite & Uploads)
+*.sqlite3
+db.sqlite3
+/media/
+part_2/media/
+/staticfiles/
+part_2/staticfiles/
+
+# Part 1 Local Data
 data/handovers.json
 data/summaries/
+
+# Testing & Quality
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# OS Metadata
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Logs
+*.log
