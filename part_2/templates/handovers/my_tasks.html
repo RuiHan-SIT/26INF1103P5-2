@@ -1,0 +1,199 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Tasks | TeamAid</title>
+    <link rel="stylesheet" href="{% static 'css/my_tasks.css' %}">
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar">
+            <a class="brand" href="#" aria-label="TeamAid home">
+                <span class="brand-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M7 4.5h10a2 2 0 0 1 2 2v13H5v-13a2 2 0 0 1 2-2Z"/><path d="M9 4.5v-1h6v1M8.5 9h7M8.5 13h7M8.5 17h4"/></svg>
+                </span>
+                <span class="brand-name">TeamAid<span>Handover Assistant</span></span>
+            </a>
+
+            <nav class="side-nav" aria-label="Main navigation">
+                <a class="nav-link" href="/" aria-label="Create Handover">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5h10a2 2 0 0 1 2 2v13H5v-13a2 2 0 0 1 2-2Z"/><path d="M9 4.5v-1h6v1M8.5 10h7M8.5 14h7"/></svg>
+                    <span>Create Handover</span>
+                </a>
+                <a class="nav-link active" href="#my-tasks" aria-current="page" aria-label="My Tasks">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 9h16M8 13h3M8 16h6"/></svg>
+                    <span>My Tasks</span>
+                </a>
+                <a class="nav-link" href="#history" aria-label="History">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 8A8 8 0 1 1 4 13"/><path d="M4 4v4h4M12 7v5l3 2"/></svg>
+                    <span>History</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-spacer"></div>
+            <div class="profile-card">
+                <span class="avatar" aria-hidden="true">D</span>
+                <span class="profile-text"><strong>Demo Employee</strong><small>E001</small></span>
+                <span class="profile-menu" aria-hidden="true">•••</span>
+            </div>
+        </aside>
+
+        <main class="main-content" id="my-tasks">
+            <header class="page-header">
+                <div>
+                    <p class="eyebrow">YOUR WORKSPACE</p>
+                    <h1>My Tasks</h1>
+                    <p class="page-subtitle">Your assigned tasks and planned schedule.</p>
+                </div>
+                <button class="today-button" type="button">Today</button>
+            </header>
+
+            <section class="calendar-toolbar" aria-label="Task calendar legend">
+                <div class="legend">
+                    <span class="legend-item"><i class="legend-dot planned"></i>Planned task</span>
+                    <span class="legend-item"><i class="legend-dot deadline"></i>Deadline</span>
+                    <span class="legend-item"><i class="legend-dot bau"></i>BAU recurring</span>
+                </div>
+                <span class="mock-label"><span></span>Demo data</span>
+            </section>
+
+            <section class="calendar-layout" aria-label="My task calendar">
+                <div class="calendar-card">
+                    <div class="calendar-heading">
+                        <div class="month-control" aria-label="Calendar month">
+                            <span class="month-arrow" aria-hidden="true">‹</span>
+                            <h2>November <span>2026</span></h2>
+                            <span class="month-arrow" aria-hidden="true">›</span>
+                        </div>
+                        <button class="view-button" type="button">Month <span aria-hidden="true">⌄</span></button>
+                    </div>
+
+                    <div class="calendar-grid" role="grid" aria-label="November 2026">
+                        <div class="weekday" role="columnheader">Mon</div>
+                        <div class="weekday" role="columnheader">Tue</div>
+                        <div class="weekday" role="columnheader">Wed</div>
+                        <div class="weekday" role="columnheader">Thu</div>
+                        <div class="weekday" role="columnheader">Fri</div>
+                        <div class="weekday weekend" role="columnheader">Sat</div>
+                        <div class="weekday weekend" role="columnheader">Sun</div>
+
+                        <div class="day outside" role="gridcell"><span>26</span></div>
+                        <div class="day outside" role="gridcell"><span>27</span></div>
+                        <div class="day outside" role="gridcell"><span>28</span></div>
+                        <div class="day outside" role="gridcell"><span>29</span></div>
+                        <div class="day outside" role="gridcell"><span>30</span></div>
+                        <div class="day outside weekend" role="gridcell"><span>31</span></div>
+                        <div class="day weekend" role="gridcell"><span>1</span></div>
+
+                        <div class="day" role="gridcell"><span>2</span></div>
+                        <div class="day" role="gridcell"><span>3</span></div>
+                        <div class="day" role="gridcell"><span>4</span></div>
+                        <div class="day" role="gridcell"><span>5</span></div>
+                        <div class="day" role="gridcell"><span>6</span></div>
+                        <div class="day weekend" role="gridcell"><span>7</span></div>
+                        <div class="day weekend" role="gridcell"><span>8</span></div>
+
+                        <div class="day" role="gridcell"><span>9</span></div>
+                        <div class="day" role="gridcell"><span>10</span></div>
+                        <div class="day" role="gridcell"><span>11</span></div>
+                        <div class="day" role="gridcell"><span>12</span></div>
+                        <div class="day has-bau" role="gridcell"><span>13</span></div>
+                        <div class="day weekend" role="gridcell"><span>14</span></div>
+                        <div class="day weekend" role="gridcell"><span>15</span></div>
+
+                        <div class="day" role="gridcell"><span>16</span></div>
+                        <div class="day" role="gridcell"><span>17</span></div>
+                        <div class="day selected has-planned" role="gridcell" aria-selected="true"><span>18</span></div>
+                        <div class="day has-planned" role="gridcell"><span>19</span></div>
+                        <div class="day has-deadline" role="gridcell"><span>20</span></div>
+                        <div class="day weekend" role="gridcell"><span>21</span></div>
+                        <div class="day weekend" role="gridcell"><span>22</span></div>
+
+                        <div class="day" role="gridcell"><span>23</span></div>
+                        <div class="day" role="gridcell"><span>24</span></div>
+                        <div class="day" role="gridcell"><span>25</span></div>
+                        <div class="day" role="gridcell"><span>26</span></div>
+                        <div class="day has-bau" role="gridcell"><span>27</span></div>
+                        <div class="day weekend" role="gridcell"><span>28</span></div>
+                        <div class="day weekend" role="gridcell"><span>29</span></div>
+
+                        <div class="day"><span>30</span></div>
+                        <div class="day outside"><span>1</span></div>
+                        <div class="day outside"><span>2</span></div>
+                        <div class="day outside"><span>3</span></div>
+                        <div class="day outside"><span>4</span></div>
+                        <div class="day outside weekend"><span>5</span></div>
+                        <div class="day outside weekend"><span>6</span></div>
+                    </div>
+
+                    <div class="calendar-footnote">
+                        <span class="status-dot"></span>
+                        Dates shown are sample tasks for the frontend preview.
+                    </div>
+                </div>
+
+                <aside class="task-panel" aria-labelledby="selected-date-title">
+                    <div class="task-panel-header">
+                        <div>
+                            <p class="eyebrow">SELECTED DAY</p>
+                            <h2 id="selected-date-title">Wednesday, 18 Nov</h2>
+                            <p class="selected-year">2026</p>
+                        </div>
+                        <span class="task-count">2 tasks</span>
+                    </div>
+
+                    <div class="task-list">
+                        <article class="task-item">
+                            <label class="task-check">
+                                <input type="checkbox" aria-label="Mark Gather project information complete">
+                                <span></span>
+                            </label>
+                            <div class="task-copy">
+                                <h3>1.1 Gather project information</h3>
+                                <p>From handover <strong>H-0009</strong></p>
+                            </div>
+                            <span class="task-tag planned-tag">Planned</span>
+                            <span class="task-chevron" aria-hidden="true">›</span>
+                        </article>
+
+                        <article class="task-item">
+                            <label class="task-check">
+                                <input type="checkbox" aria-label="Mark Analyse information complete">
+                                <span></span>
+                            </label>
+                            <div class="task-copy">
+                                <h3>1.2 Analyse information</h3>
+                                <p>From handover <strong>H-0009</strong></p>
+                            </div>
+                            <span class="task-tag planned-tag">Planned</span>
+                            <span class="task-chevron" aria-hidden="true">›</span>
+                        </article>
+                    </div>
+
+                    <div class="upcoming-section">
+                        <div class="upcoming-heading">
+                            <h3>Coming up</h3>
+                            <span>Next 7 days</span>
+                        </div>
+                        <div class="upcoming-item">
+                            <span class="upcoming-date deadline-date">20<br><small>NOV</small></span>
+                            <span class="upcoming-copy"><strong>Submit security report</strong><small>Deadline · H-0009</small></span>
+                        </div>
+                        <div class="upcoming-item">
+                            <span class="upcoming-date bau-date">27<br><small>NOV</small></span>
+                            <span class="upcoming-copy"><strong>Weekly audit summary</strong><small>BAU · Recurring</small></span>
+                        </div>
+                    </div>
+
+                    <div class="panel-footer">
+                        <span class="footer-avatar">D</span>
+                        <span>Showing sample tasks for <strong>Demo Employee</strong></span>
+                    </div>
+                </aside>
+            </section>
+        </main>
+    </div>
+</body>
+</html>
