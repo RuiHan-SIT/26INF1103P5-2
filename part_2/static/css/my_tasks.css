@@ -868,3 +868,604 @@ a {
         transition-duration: 0.01ms !important;
     }
 }
+
+/* Keep the large areas neutral so the purple accents stay subtle. */
+:root {
+    --page: #111315;
+    --sidebar: #191b1e;
+    --surface: #1d2024;
+    --surface-raised: #292d32;
+    --border: #373b41;
+    --purple-dark: #302b3c;
+}
+
+.nav-link.active {
+    color: var(--text);
+    background: #292b31;
+    border-color: #41434a;
+    box-shadow: inset 3px 0 0 var(--purple);
+}
+
+.profile-card {
+    position: relative;
+}
+
+.profile-menu {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    margin-left: auto;
+    color: var(--muted);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    letter-spacing: 2px;
+    cursor: pointer;
+}
+
+.profile-menu:hover,
+.profile-menu[aria-expanded="true"] {
+    color: var(--text);
+    background: var(--surface-raised);
+    border-color: var(--border);
+}
+
+.profile-popover {
+    position: absolute;
+    z-index: 5;
+    right: 0;
+    bottom: 58px;
+    display: grid;
+    gap: 5px;
+    min-width: 190px;
+    padding: 14px;
+    background: #24272c;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+    font-size: 12px;
+}
+
+.profile-popover[hidden] {
+    display: none;
+}
+
+.profile-popover span,
+.profile-popover small {
+    color: var(--muted);
+}
+
+.month-arrow {
+    padding: 0;
+    cursor: pointer;
+}
+
+.month-arrow:hover {
+    color: var(--text);
+    background: #303239;
+    border-color: #555961;
+}
+
+.view-button {
+    appearance: auto;
+    cursor: pointer;
+}
+
+.calendar-days {
+    display: contents;
+}
+
+.day {
+    width: 100%;
+    padding: 0;
+    border-top: 0;
+    border-left: 0;
+    cursor: pointer;
+}
+
+.day:hover {
+    background: #282b30;
+}
+
+.day:focus-visible,
+.today-button:focus-visible,
+.month-arrow:focus-visible,
+.view-button:focus-visible,
+.profile-menu:focus-visible {
+    position: relative;
+    z-index: 1;
+    outline: 2px solid var(--purple);
+    outline-offset: -3px;
+}
+
+.day-markers {
+    position: absolute;
+    bottom: 5px;
+    display: flex !important;
+    gap: 3px;
+    width: auto !important;
+    height: auto !important;
+}
+
+.day-marker {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+}
+
+.day-marker.planned { background: var(--purple); }
+.day-marker.deadline { background: var(--pink); }
+.day-marker.bau { background: var(--mint); }
+
+.day.selected {
+    background: #292b31;
+}
+
+.day.selected span:first-child {
+    color: #201a37;
+    background: var(--purple);
+    font-weight: 800;
+}
+
+.day.selected .day-markers {
+    bottom: 4px;
+}
+
+.task-item.completed .task-copy h3 {
+    color: var(--soft);
+    text-decoration: line-through;
+}
+
+.empty-tasks {
+    margin: 20px 0;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+/* On a desktop, the calendar and task panel use the available screen height. */
+@media (min-width: 1051px) {
+    html,
+    body {
+        height: 100%;
+        overflow: hidden;
+    }
+
+    .app-shell {
+        height: 100vh;
+        height: 100dvh;
+        min-height: 0;
+    }
+
+    .sidebar {
+        height: 100vh;
+        height: 100dvh;
+        min-height: 0;
+    }
+
+    .main-content {
+        height: 100vh;
+        height: 100dvh;
+        min-height: 0;
+        display: grid;
+        grid-template-rows: auto auto minmax(0, 1fr);
+        gap: 12px;
+        padding-top: clamp(20px, 4vh, 42px);
+        padding-bottom: clamp(18px, 3vh, 36px);
+        overflow: hidden;
+    }
+
+    .page-header,
+    .calendar-toolbar {
+        margin-bottom: 0;
+    }
+
+    .calendar-layout {
+        min-height: 0;
+        align-items: stretch;
+    }
+
+    .calendar-card,
+    .task-panel {
+        min-height: 0;
+        height: 100%;
+    }
+
+    .calendar-card {
+        display: flex;
+        flex-direction: column;
+        padding-top: 16px;
+        padding-bottom: 12px;
+    }
+
+    .calendar-heading {
+        margin-bottom: 10px;
+    }
+
+    .calendar-grid {
+        flex: 1;
+        min-height: 0;
+        grid-template-rows: 34px repeat(6, minmax(0, 1fr));
+    }
+
+    .calendar-grid.week-view {
+        grid-template-rows: 34px minmax(0, 1fr);
+    }
+
+    .weekday,
+    .day {
+        min-height: 0;
+    }
+
+    .calendar-footnote {
+        margin-top: 9px;
+    }
+
+    .task-panel {
+        display: flex;
+        flex-direction: column;
+        padding-top: 17px;
+    }
+
+    .task-list {
+        min-height: 0;
+        overflow: auto;
+    }
+}
+
+@media (max-height: 720px) and (min-width: 1051px) {
+    .main-content {
+        gap: 8px;
+        padding-top: 14px;
+        padding-bottom: 14px;
+    }
+
+    .page-header h1 {
+        font-size: 28px;
+    }
+
+    .page-subtitle {
+        margin-top: 3px;
+        font-size: 12px;
+    }
+
+    .calendar-toolbar {
+        margin: 0;
+    }
+
+    .calendar-card,
+    .task-panel {
+        padding-top: 12px;
+        padding-bottom: 10px;
+    }
+}
+
+@media (max-width: 1050px) {
+    .app-shell {
+        min-height: 100vh;
+    }
+
+    .main-content {
+        height: auto;
+        min-height: 100vh;
+        overflow: visible;
+    }
+
+    .calendar-layout {
+        align-items: start;
+    }
+
+    .calendar-card,
+    .task-panel {
+        height: auto;
+    }
+
+    .calendar-grid {
+        grid-template-rows: none;
+    }
+}
+
+.deadline-tag {
+    color: #ffc4d7;
+    background: var(--pink-dark);
+}
+
+.bau-tag {
+    color: #a7e8cb;
+    background: var(--mint-dark);
+}
+
+/* Hover stays around the date number, like a calendar day chip. */
+.day:hover {
+    background: transparent;
+}
+
+.day:not(.selected):hover span:first-child {
+    color: var(--text);
+    background: #303239;
+}
+
+.day.selected {
+    background: transparent;
+}
+
+.view-picker {
+    position: relative;
+}
+
+.view-button {
+    min-width: 90px;
+    min-height: 36px;
+    justify-content: space-between;
+    padding: 0 12px;
+    color: var(--text);
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.view-chevron {
+    color: var(--muted);
+    font-size: 16px;
+    line-height: 1;
+}
+
+.view-menu {
+    position: absolute;
+    z-index: 10;
+    top: calc(100% + 7px);
+    right: 0;
+    display: grid;
+    min-width: 136px;
+    padding: 5px;
+    background: #24272c;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.38);
+}
+
+.view-menu[hidden] {
+    display: none;
+}
+
+.view-option {
+    padding: 8px 10px;
+    color: var(--muted);
+    background: transparent;
+    border: 0;
+    border-radius: 8px;
+    font: inherit;
+    font-size: 12px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.view-option:hover,
+.view-option.active {
+    color: var(--text);
+    background: #34373e;
+}
+
+.view-option:focus-visible {
+    outline: 2px solid var(--purple);
+    outline-offset: -2px;
+}
+
+@media (max-width: 700px) {
+    .view-button {
+        min-height: 32px;
+        min-width: 80px;
+        padding: 0 9px;
+        font-size: 11px;
+    }
+}
+
+.day.selected .day-markers {
+    color: inherit;
+    background: transparent;
+    box-shadow: none;
+    font-weight: normal;
+}
+
+/* Keep each date cell clear; only the number circle changes on hover or selection. */
+.day,
+.day.weekend,
+.day.outside,
+.day:hover,
+.day:active,
+.day.selected {
+    background: transparent;
+}
+
+.view-button {
+    color: #f7f4ff;
+    background: #493875;
+    border-color: #66538f;
+}
+
+.view-button:hover,
+.view-button[aria-expanded="true"] {
+    background: #554287;
+    border-color: #806bb1;
+}
+
+.view-chevron {
+    position: relative;
+    display: block;
+    width: 9px;
+    height: 9px;
+    flex: 0 0 9px;
+    color: transparent;
+    font-size: 0;
+    line-height: 0;
+}
+
+.view-chevron::before {
+    position: absolute;
+    top: 1px;
+    left: 1px;
+    width: 6px;
+    height: 6px;
+    border-right: 1.5px solid #e3dbf8;
+    border-bottom: 1.5px solid #e3dbf8;
+    content: "";
+    transform: rotate(45deg);
+}
+
+/* Use one rounded purple treatment for the calendar controls and menu. */
+.month-arrow {
+    border-radius: 11px;
+    background: #302b3c;
+    border-color: #514477;
+}
+
+.month-arrow:hover {
+    background: #493875;
+    border-color: #66538f;
+}
+
+.view-button {
+    border-radius: 11px;
+}
+
+.view-menu {
+    padding: 6px;
+    background: #292431;
+    border-color: #66538f;
+    border-radius: 13px;
+}
+
+.view-option {
+    border-radius: 9px;
+}
+
+.view-option:hover,
+.view-option.active {
+    color: #f7f4ff;
+    background: #493875;
+}
+
+/* Leave some breathing room under the calendar on taller desktop screens. */
+@media (min-width: 1051px) {
+    .calendar-layout {
+        height: min(835px, calc(100dvh - 170px));
+        align-self: start;
+    }
+}
+
+@media (max-height: 650px) and (min-width: 1051px) {
+    html,
+    body {
+        height: auto;
+        min-height: 100%;
+        overflow: auto;
+    }
+
+    .app-shell {
+        height: auto;
+        min-height: 100vh;
+    }
+
+    .sidebar,
+    .main-content {
+        height: auto;
+        min-height: 100vh;
+    }
+
+    .main-content {
+        grid-template-rows: auto auto minmax(400px, auto);
+        overflow: visible;
+    }
+
+    .calendar-layout {
+        height: auto;
+        min-height: 400px;
+    }
+}
+
+.month-arrow {
+    line-height: 0;
+}
+
+.month-chevron {
+    display: block;
+    width: 8px;
+    height: 8px;
+    border-top: 1.7px solid #d8caff;
+    border-right: 1.7px solid #d8caff;
+}
+
+.month-chevron.previous {
+    transform: rotate(-135deg);
+}
+
+.month-chevron.next {
+    transform: rotate(45deg);
+}
+
+.profile-action {
+    width: 100%;
+    margin-top: 8px;
+    padding: 8px 10px;
+    color: var(--text);
+    background: #493875;
+    border: 1px solid #66538f;
+    border-radius: 9px;
+    font: inherit;
+    font-size: 12px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.profile-action:hover {
+    background: #554287;
+}
+
+.account-feedback {
+    max-width: 210px;
+    color: var(--muted);
+    line-height: 1.4;
+}
+
+.account-feedback[hidden] {
+    display: none;
+}
+
+.dependency-note {
+    display: block;
+    margin-top: 5px;
+    color: var(--pink);
+    font-size: 10px;
+}
+
+.task-check input:disabled + span {
+    border-color: #514f61;
+    opacity: 0.55;
+}
+
+.calendar-actions {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+}
+
+.calendar-actions .today-button {
+    min-height: 36px;
+    padding: 0 12px;
+    border-radius: 11px;
+    font-size: 12px;
+}
+
+@media (max-width: 700px) {
+    .calendar-actions {
+        gap: 6px;
+    }
+
+    .calendar-actions .today-button {
+        min-height: 32px;
+        padding: 0 8px;
+        font-size: 10px;
+    }
+}

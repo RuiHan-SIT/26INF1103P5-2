@@ -35,7 +35,14 @@
             <div class="profile-card">
                 <span class="avatar" aria-hidden="true">D</span>
                 <span class="profile-text"><strong>Demo Employee</strong><small>E001</small></span>
-                <span class="profile-menu" aria-hidden="true">•••</span>
+                <button class="profile-menu" id="profile-menu-button" type="button" aria-label="Open employee menu" aria-expanded="false" aria-controls="profile-menu">•••</button>
+                <div class="profile-popover" id="profile-menu" hidden>
+                    <strong>Demo Employee</strong>
+                    <span>Employee ID: E001</span>
+                    <small>Demo account</small>
+                    <button class="profile-action logout-action" id="logout-action" type="button">Log out</button>
+                    <small class="account-feedback" id="account-feedback" aria-live="polite" hidden></small>
+                </div>
             </div>
         </aside>
 
@@ -46,7 +53,6 @@
                     <h1>My Tasks</h1>
                     <p class="page-subtitle">Your assigned tasks and planned schedule.</p>
                 </div>
-                <button class="today-button" type="button">Today</button>
             </header>
 
             <section class="calendar-toolbar" aria-label="Task calendar legend">
@@ -55,21 +61,31 @@
                     <span class="legend-item"><i class="legend-dot deadline"></i>Deadline</span>
                     <span class="legend-item"><i class="legend-dot bau"></i>BAU recurring</span>
                 </div>
-                <span class="mock-label"><span></span>Demo data</span>
             </section>
 
             <section class="calendar-layout" aria-label="My task calendar">
                 <div class="calendar-card">
                     <div class="calendar-heading">
                         <div class="month-control" aria-label="Calendar month">
-                            <span class="month-arrow" aria-hidden="true">‹</span>
-                            <h2>November <span>2026</span></h2>
-                            <span class="month-arrow" aria-hidden="true">›</span>
+                            <button class="month-arrow" id="prev-period" type="button" aria-label="Previous month"><span class="month-chevron previous" aria-hidden="true"></span></button>
+                            <h2 id="month-label">November <span>2026</span></h2>
+                            <button class="month-arrow" id="next-period" type="button" aria-label="Next month"><span class="month-chevron next" aria-hidden="true"></span></button>
                         </div>
-                        <button class="view-button" type="button">Month <span aria-hidden="true">⌄</span></button>
+                        <div class="calendar-actions">
+                            <button class="today-button" id="today-button" type="button">Today</button>
+                            <div class="view-picker">
+                                <button class="view-button" id="calendar-view-button" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="calendar-view-menu">
+                                    <span id="calendar-view-label">Month</span>
+                                    <span class="view-chevron" aria-hidden="true"></span>
+                                </button>
+                                <div class="view-menu" id="calendar-view-menu" role="menu" aria-label="Calendar view" hidden>
+                                    <button class="view-option active" type="button" role="menuitemradio" aria-checked="true" data-view="month">Month</button>
+                                    <button class="view-option" type="button" role="menuitemradio" aria-checked="false" data-view="week">Week</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-
-                    <div class="calendar-grid" role="grid" aria-label="November 2026">
+<div class="calendar-grid" role="grid" aria-label="November 2026">
                         <div class="weekday" role="columnheader">Mon</div>
                         <div class="weekday" role="columnheader">Tue</div>
                         <div class="weekday" role="columnheader">Wed</div>
@@ -77,54 +93,7 @@
                         <div class="weekday" role="columnheader">Fri</div>
                         <div class="weekday weekend" role="columnheader">Sat</div>
                         <div class="weekday weekend" role="columnheader">Sun</div>
-
-                        <div class="day outside" role="gridcell"><span>26</span></div>
-                        <div class="day outside" role="gridcell"><span>27</span></div>
-                        <div class="day outside" role="gridcell"><span>28</span></div>
-                        <div class="day outside" role="gridcell"><span>29</span></div>
-                        <div class="day outside" role="gridcell"><span>30</span></div>
-                        <div class="day outside weekend" role="gridcell"><span>31</span></div>
-                        <div class="day weekend" role="gridcell"><span>1</span></div>
-
-                        <div class="day" role="gridcell"><span>2</span></div>
-                        <div class="day" role="gridcell"><span>3</span></div>
-                        <div class="day" role="gridcell"><span>4</span></div>
-                        <div class="day" role="gridcell"><span>5</span></div>
-                        <div class="day" role="gridcell"><span>6</span></div>
-                        <div class="day weekend" role="gridcell"><span>7</span></div>
-                        <div class="day weekend" role="gridcell"><span>8</span></div>
-
-                        <div class="day" role="gridcell"><span>9</span></div>
-                        <div class="day" role="gridcell"><span>10</span></div>
-                        <div class="day" role="gridcell"><span>11</span></div>
-                        <div class="day" role="gridcell"><span>12</span></div>
-                        <div class="day has-bau" role="gridcell"><span>13</span></div>
-                        <div class="day weekend" role="gridcell"><span>14</span></div>
-                        <div class="day weekend" role="gridcell"><span>15</span></div>
-
-                        <div class="day" role="gridcell"><span>16</span></div>
-                        <div class="day" role="gridcell"><span>17</span></div>
-                        <div class="day selected has-planned" role="gridcell" aria-selected="true"><span>18</span></div>
-                        <div class="day has-planned" role="gridcell"><span>19</span></div>
-                        <div class="day has-deadline" role="gridcell"><span>20</span></div>
-                        <div class="day weekend" role="gridcell"><span>21</span></div>
-                        <div class="day weekend" role="gridcell"><span>22</span></div>
-
-                        <div class="day" role="gridcell"><span>23</span></div>
-                        <div class="day" role="gridcell"><span>24</span></div>
-                        <div class="day" role="gridcell"><span>25</span></div>
-                        <div class="day" role="gridcell"><span>26</span></div>
-                        <div class="day has-bau" role="gridcell"><span>27</span></div>
-                        <div class="day weekend" role="gridcell"><span>28</span></div>
-                        <div class="day weekend" role="gridcell"><span>29</span></div>
-
-                        <div class="day"><span>30</span></div>
-                        <div class="day outside"><span>1</span></div>
-                        <div class="day outside"><span>2</span></div>
-                        <div class="day outside"><span>3</span></div>
-                        <div class="day outside"><span>4</span></div>
-                        <div class="day outside weekend"><span>5</span></div>
-                        <div class="day outside weekend"><span>6</span></div>
+                        <div class="calendar-days" id="calendar-days" role="rowgroup"></div>
                     </div>
 
                     <div class="calendar-footnote">
@@ -138,61 +107,16 @@
                         <div>
                             <p class="eyebrow">SELECTED DAY</p>
                             <h2 id="selected-date-title">Wednesday, 18 Nov</h2>
-                            <p class="selected-year">2026</p>
+                            <p class="selected-year" id="selected-year">2026</p>
                         </div>
-                        <span class="task-count">2 tasks</span>
+                        <span class="task-count" id="task-count">2 tasks</span>
                     </div>
 
-                    <div class="task-list">
-                        <article class="task-item">
-                            <label class="task-check">
-                                <input type="checkbox" aria-label="Mark Gather project information complete">
-                                <span></span>
-                            </label>
-                            <div class="task-copy">
-                                <h3>1.1 Gather project information</h3>
-                                <p>From handover <strong>H-0009</strong></p>
-                            </div>
-                            <span class="task-tag planned-tag">Planned</span>
-                            <span class="task-chevron" aria-hidden="true">›</span>
-                        </article>
-
-                        <article class="task-item">
-                            <label class="task-check">
-                                <input type="checkbox" aria-label="Mark Analyse information complete">
-                                <span></span>
-                            </label>
-                            <div class="task-copy">
-                                <h3>1.2 Analyse information</h3>
-                                <p>From handover <strong>H-0009</strong></p>
-                            </div>
-                            <span class="task-tag planned-tag">Planned</span>
-                            <span class="task-chevron" aria-hidden="true">›</span>
-                        </article>
-                    </div>
-
-                    <div class="upcoming-section">
-                        <div class="upcoming-heading">
-                            <h3>Coming up</h3>
-                            <span>Next 7 days</span>
-                        </div>
-                        <div class="upcoming-item">
-                            <span class="upcoming-date deadline-date">20<br><small>NOV</small></span>
-                            <span class="upcoming-copy"><strong>Submit security report</strong><small>Deadline · H-0009</small></span>
-                        </div>
-                        <div class="upcoming-item">
-                            <span class="upcoming-date bau-date">27<br><small>NOV</small></span>
-                            <span class="upcoming-copy"><strong>Weekly audit summary</strong><small>BAU · Recurring</small></span>
-                        </div>
-                    </div>
-
-                    <div class="panel-footer">
-                        <span class="footer-avatar">D</span>
-                        <span>Showing sample tasks for <strong>Demo Employee</strong></span>
-                    </div>
+                    <div class="task-list" id="task-list" aria-live="polite"></div>
                 </aside>
             </section>
         </main>
     </div>
+    <script src="../../static/js/my_tasks.js" defer></script>
 </body>
 </html>
