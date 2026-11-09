@@ -19,6 +19,7 @@ urlpatterns = [
     ),
     path('', views.home, name='home'),
     path('create-handover/', views.create_handover, name='create_handover'),
+    path('history/', views.handover_history, name='handover_history'),
 ]
 path('my-tasks/', views.my_tasks, name='my_tasks'),
 path('history/', views.history, name='history'),
