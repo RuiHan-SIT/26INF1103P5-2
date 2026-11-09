@@ -6,9 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>History | Handover Assistant</title>
     <!-- my_tasks.css provides the shared sidebar, theme colours and page layout -->
-    <link rel="stylesheet" href="{% static 'css/my_tasks.css' %}?v=2">
+    <link rel="stylesheet" href="{% static 'css/my_tasks.css' %}?v=5">
     <!-- history.css only adds what is specific to this page (search, table, status badges) -->
-    <link rel="stylesheet" href="{% static 'css/history.css' %}">
+    <link rel="stylesheet" href="{% static 'css/history.css' %}?v=3">
 </head>
 <body>
     <div class="app-shell">
@@ -78,13 +78,13 @@
                     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
                     <input type="search" name="q" value="{{ query }}" placeholder="Search handover ID or title...">
                 </label>
+                <button class="search-button" type="submit">Search</button>
                 <select id="status-filter" name="status" aria-label="Filter by status">
                     <option value="">All statuses</option>
                     {% for choice in status_choices %}
                     <option value="{{ choice }}" {% if choice == selected_status %}selected{% endif %}>{{ choice }}</option>
                     {% endfor %}
                 </select>
-                <button class="search-button" type="submit">Search</button>
                 {% if query or selected_status %}
                 <a class="clear-link" href="{% url 'handovers:handover_history' %}">Clear</a>
                 {% endif %}
@@ -124,7 +124,28 @@
                         {% endfor %}
                     </tbody>
                 </table>
-                <p class="history-footnote">Showing {{ handovers|length }} of {{ total_count }} handovers</p>
+                <div class="history-footer">
+                    {% if total_count %}
+                    <p class="history-footnote">Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ total_count }} handovers</p>
+                    {% else %}
+                    <p class="history-footnote">Showing 0 of 0 handovers</p>
+                    {% endif %}
+                    {% if page_obj.paginator.num_pages > 1 %}
+                    <nav class="history-pagination" aria-label="History pages">
+                        {% if page_obj.has_previous %}
+                        <a href="?q={{ query|urlencode }}&amp;status={{ selected_status|urlencode }}&amp;page={{ page_obj.previous_page_number }}">Previous</a>
+                        {% else %}
+                        <span class="pagination-disabled" aria-disabled="true">Previous</span>
+                        {% endif %}
+                        <span class="page-count">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+                        {% if page_obj.has_next %}
+                        <a href="?q={{ query|urlencode }}&amp;status={{ selected_status|urlencode }}&amp;page={{ page_obj.next_page_number }}">Next</a>
+                        {% else %}
+                        <span class="pagination-disabled" aria-disabled="true">Next</span>
+                        {% endif %}
+                    </nav>
+                    {% endif %}
+                </div>
             </section>
         </main>
     </div>

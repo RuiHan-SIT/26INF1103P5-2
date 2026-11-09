@@ -1385,6 +1385,37 @@ a {
     }
 }
 
+/* Keep the sidebar in place while the page content scrolls on desktop screens. */
+@media (min-width: 1051px) {
+    html,
+    body {
+        height: 100%;
+        overflow: hidden;
+    }
+
+    .app-shell {
+        height: 100vh;
+        height: 100dvh;
+        min-height: 0;
+    }
+
+    .sidebar {
+        height: 100vh;
+        height: 100dvh;
+        min-height: 0;
+        overflow-y: auto;
+    }
+
+    .main-content {
+        height: 100vh;
+        height: 100dvh;
+        min-height: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+}
+
 .month-arrow {
     line-height: 0;
 }
