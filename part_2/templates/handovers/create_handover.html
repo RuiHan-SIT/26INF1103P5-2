@@ -30,15 +30,21 @@
             </nav>
 
             <div class="user-profile">
-                <p>E001</p>
-                <p>Goh Rui Han</p>
+                {% if employee %}
+                    <p>{{ employee.name }}</p>
+                    <p>{{ employee.employee_id }}</p>
+                {% else %}
+                    <p>{{ request.user.username }}</p>
+                    <p>Employee profile unavailable</p>
+                {% endif %}
             </div>
         </aside>
 
         <main class="main-content">
-
+            
             <h1>Create Handover</h1>
             <p> Upload a handover document and let AI extract and plan the tasks for you</p>
+            
 
             <section class="upload-card">
 
