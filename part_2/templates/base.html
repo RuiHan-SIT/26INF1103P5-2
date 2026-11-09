@@ -13,9 +13,18 @@
         <div class="container">
             <h1>Handover Management System</h1>
             <nav>
-                <a href="{% url 'handovers:home' %}">Home</a>
-                <a href="/admin/">Admin</a>
-            </nav>
+    <a href="{% url 'handovers:home' %}">Home</a>
+    <a href="/admin/">Admin</a>
+
+    {% if user.is_authenticated %}
+        <span>Welcome, {{ user.username }}</span>
+
+        <form method="POST" action="{% url 'handovers:logout' %}">
+            {% csrf_token %}
+            <button type="submit">Logout</button>
+        </form>
+    {% endif %}
+</nav>
         </div>
     </header>
 

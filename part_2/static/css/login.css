@@ -1,0 +1,128 @@
+
+/* General page styling */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background: #f3f0fa;
+    min-height: 100vh;
+}
+
+/* Center the login card */
+.login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+/* Login card */
+.login-card {
+    background: white;
+    width: 100%;
+    max-width: 420px;
+    padding: 40px;
+    border-radius: 18px;
+    box-shadow: 0 8px 30px rgba(80, 50, 120, 0.10);
+}
+
+/* Logo and heading */
+.logo {
+    text-align: center;
+    margin-bottom: 35px;
+}
+
+.logo h1 {
+    color: #7453a6;
+    font-size: 25px;
+    margin-bottom: 8px;
+}
+
+.logo p {
+    color: #999;
+    font-size: 13px;
+}
+
+/* Welcome section */
+.welcome-text {
+    margin-bottom: 25px;
+}
+
+.welcome-text h2 {
+    color: #302742;
+    font-size: 24px;
+    margin-bottom: 8px;
+}
+
+.welcome-text p {
+    color: #888;
+    font-size: 14px;
+}
+
+/* Input fields */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #40364f;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 13px;
+    border: 1px solid #ddd5eb;
+    border-radius: 9px;
+    font-size: 14px;
+    outline: none;
+}
+
+.form-group input:focus {
+    border-color: #9271c5;
+    box-shadow: 0 0 0 3px rgba(146, 113, 197, 0.12);
+}
+
+/* Login button */
+.login-button {
+    width: 100%;
+    padding: 14px;
+    background: #8060b1;
+    color: white;
+    border: none;
+    border-radius: 9px;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.login-button:hover {
+    background: #684895;
+}
+
+/* Registration link */
+.register-link {
+    text-align: center;
+    margin-top: 25px;
+    font-size: 13px;
+    color: #888;
+}
+
+.register-link a {
+    color: #8060b1;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.register-link a:hover {
+    text-decoration: underline;
+}
