@@ -1,3 +1,4 @@
+import copy
 import logging
 from typing import Any, Dict, Optional
 
@@ -19,7 +20,14 @@ class HandoverCoordinator:
     - Sends structured prompts to the LLM service (Gemini).
     - Delegates raw JSON parsing and cleanup to utils.json_helper.
     - Delegates schema validation and normalization to apps.schema.
+    - Returns a clean fallback structure if AI extraction fails.
     """
+
+    FALLBACK_DATA = {
+        "outstanding_tasks": [],
+        "bau_tasks": [],
+        "important_information": []
+    }
 
     def __init__(self, llm_service: Optional[LLMService] = None):
         """
@@ -44,12 +52,12 @@ class HandoverCoordinator:
         if not handover_content or not handover_content.strip():
             return {
                 "success": False,
-                "data": None,
+                "data": copy.deepcopy(self.FALLBACK_DATA),
                 "error_message": "Handover content cannot be empty."
             }
 
         try:
-            # 1. Orchestrate LLM call
+            # 1. Orchestrate LLM call from GEMINI.py
             raw_response = self.__llm_service.generate(
                 prompt=handover_content,
                 system_instruction=HANDOVER_REVIEW_PROMPT
@@ -71,14 +79,14 @@ class HandoverCoordinator:
             logger.warning("Handover review processing failed: %s", err)
             return {
                 "success": False,
-                "data": None,
+                "data": copy.deepcopy(self.FALLBACK_DATA),
                 "error_message": str(err)
             }
         except Exception as err:
             logger.exception("Unexpected error during handover coordination: %s", err)
             return {
                 "success": False,
-                "data": None,
+                "data": copy.deepcopy(self.FALLBACK_DATA),
                 "error_message": f"An unexpected error occurred during handover processing: {err}"
             }
 

@@ -13,7 +13,7 @@ class MyTasksTemplateTests(SimpleTestCase):
         self.assertIn('id="task-list"', page)
         self.assertIn('id="prev-period"', page)
         self.assertIn('id="next-period"', page)
-        self.assertIn('id="calendar-view-button"', page)
+        self.assertIn('id="today-button"', page)
 
     def test_calendar_stylesheet_is_available(self):
         self.assertIsNotNone(find("css/my_tasks.css"))
