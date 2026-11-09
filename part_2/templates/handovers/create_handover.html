@@ -16,15 +16,15 @@
             <h2>Handover Assistant</h2>
 
             <nav>
-                <a href="#" class="active">
+                <a href="{% url 'handovers:create_handover' %}" class="active">
                     Create Handover
                 </a>
 
-                <a href="#">
+                <a href="{% url 'handovers:my_tasks' %}">
                     My Tasks
                 </a>
                 
-                <a href="#">
+                <a href="{% url 'handovers:history' %}">
                     History
                 </a>
             </nav>

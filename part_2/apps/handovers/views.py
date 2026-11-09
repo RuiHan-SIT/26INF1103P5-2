@@ -26,18 +26,11 @@ def create_handover(request):
     employee = getattr(request.user, "employee", None)
 
     if request.method == "POST":
-        print("POST REQUIRED RECEIVED")
-        print("FILES", request.FILES)
         form = HandoverUploadForm(request.POST, request.FILES)
 
         if form.is_valid():
-            print("Form is valid!")
             uploaded_file = form.cleaned_data["document"]
             uploaded_filename = uploaded_file.name
-
-        else:
-            print("Form is invalid!")
-            print("ERRORS:", form.errors)
     else:
         form = HandoverUploadForm()
 
@@ -46,3 +39,11 @@ def create_handover(request):
         "uploaded_filename": uploaded_filename,
         "employee": employee,
     })
+@login_required(login_url='handovers:login')
+def my_tasks(request):
+    return render(request, "handovers/my_tasks.html")
+
+
+@login_required(login_url='handovers:login')
+def history(request):
+    return render(request, "handovers/history.html")

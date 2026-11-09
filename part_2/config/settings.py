@@ -101,5 +101,5 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Authentication redirects
 LOGIN_URL = 'handovers:login'
-LOGIN_REDIRECT_URL = 'handovers:home'
+LOGIN_REDIRECT_URL = '/create-handover/'
 LOGOUT_REDIRECT_URL = 'handovers:login'
