@@ -98,3 +98,8 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Authentication redirects
+LOGIN_URL = 'handovers:login'
+LOGIN_REDIRECT_URL = 'handovers:home'
+LOGOUT_REDIRECT_URL = 'handovers:login'
