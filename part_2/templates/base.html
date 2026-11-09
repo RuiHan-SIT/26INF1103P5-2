@@ -17,7 +17,7 @@
     <a href="/admin/">Admin</a>
 
     {% if user.is_authenticated %}
-        <span>Welcome, {{ user.username }}</span>
+        <span>Welcome, {{ employee_name|default:user.username }}</span>
 
         <form method="POST" action="{% url 'handovers:logout' %}">
             {% csrf_token %}

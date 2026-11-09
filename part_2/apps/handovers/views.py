@@ -14,9 +14,14 @@ def home(request):
     else:
         form = HandoverUploadForm()
 
+    try:
+        employee_name = request.user.employee.name
+    except:
+        employee_name = request.user.username
+
     return render(request, "handovers/home.html", {
         "title": "Handover Management System",
         "form": form,
-        "uploaded_filename": uploaded_filename
+        "uploaded_filename": uploaded_filename,
+        "employee_name": employee_name,
     })
-
