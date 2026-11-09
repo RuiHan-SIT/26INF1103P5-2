@@ -188,3 +188,13 @@ footer {
 .dashboard .sidebar .user-profile{
     margin-top: auto;
 }
+
+.upload-area.drag-over{
+    border-color:#6751b8;
+    border-style: solid;
+    background-color: #eee8ff;
+}
+
+.file-preview[hidden]{
+    display: none;
+}
