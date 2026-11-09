@@ -20,7 +20,6 @@ def home(request):
         "uploaded_filename": uploaded_filename
     })
 
-<<<<<<< HEAD
 
 STATUS_CHOICES = ["Completed", "Needs clarification"]
 
@@ -63,5 +62,3 @@ def handover_history(request):
         "status_choices": STATUS_CHOICES,
         "total_count": len(SAMPLE_HANDOVERS),
     })
-=======
->>>>>>> origin/main
