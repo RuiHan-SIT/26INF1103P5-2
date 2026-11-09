@@ -1,7 +1,6 @@
 const displayedDate = new Date();
 let selectedDate = new Date();
 displayedDate.setDate(1);
-let calendarView = "month";
 const completedTasks = new Set();
 const calendarTasksElement = document.getElementById("calendar-tasks-data");
 const calendarTasks = calendarTasksElement ? JSON.parse(calendarTasksElement.textContent) : [];
@@ -11,6 +10,7 @@ calendarTasks.forEach((task) => {
 });
 
 const calendarDays = document.getElementById("calendar-days");
+const calendarWeekdays = document.getElementById("calendar-weekdays");
 const calendarGrid = document.querySelector(".calendar-grid");
 const monthLabel = document.getElementById("month-label");
 const selectedDateTitle = document.getElementById("selected-date-title");
@@ -32,9 +32,23 @@ function dateFromKey(key) {
 
 function startOfWeek(date) {
     const firstDay = new Date(date);
-    firstDay.setDate(date.getDate() - ((date.getDay() + 6) % 7));
+    firstDay.setDate(date.getDate() - date.getDay());
     firstDay.setHours(0, 0, 0, 0);
     return firstDay;
+}
+
+function renderWeekdayHeadings(startDate, numberOfDays) {
+    calendarWeekdays.replaceChildren();
+    for (let index = 0; index < numberOfDays; index += 1) {
+        const date = new Date(startDate);
+        date.setDate(startDate.getDate() + index);
+        const heading = document.createElement("div");
+        heading.className = "weekday";
+        if (date.getDay() === 0 || date.getDay() === 6) heading.classList.add("weekend");
+        heading.setAttribute("role", "columnheader");
+        heading.textContent = date.toLocaleDateString("en", { weekday: "short" });
+        calendarWeekdays.appendChild(heading);
+    }
 }
 
 function isBauScheduled(task, key) {
@@ -102,34 +116,16 @@ function renderCalendar() {
     const year = displayedDate.getFullYear();
     const month = displayedDate.getMonth();
     calendarDays.replaceChildren();
-
-    if (calendarView === "month") {
-        monthLabel.innerHTML = `${displayedDate.toLocaleDateString("en", { month: "long" })} <span>${year}</span>`;
-        calendarGrid.setAttribute("aria-label", `${displayedDate.toLocaleDateString("en", { month: "long" })} ${year}`);
-        const firstDay = new Date(year, month, 1);
-        const gridStart = new Date(year, month, 1 - ((firstDay.getDay() + 6) % 7));
-        for (let index = 0; index < 42; index += 1) {
-            const dayDate = new Date(gridStart);
-            dayDate.setDate(gridStart.getDate() + index);
-            calendarDays.appendChild(makeCalendarDay(dayDate, month));
-        }
-        calendarGrid.classList.remove("week-view");
-    } else {
-        const weekStart = startOfWeek(selectedDate);
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekStart.getDate() + 6);
-        monthLabel.textContent = weekStart.getMonth() === weekEnd.getMonth()
-            ? `${weekStart.toLocaleDateString("en", { month: "short", day: "numeric" })}–${weekEnd.toLocaleDateString("en", { day: "numeric" })}, ${year}`
-            : `${weekStart.toLocaleDateString("en", { month: "short", day: "numeric" })}–${weekEnd.toLocaleDateString("en", { month: "short", day: "numeric" })}, ${year}`;
-        calendarGrid.setAttribute("aria-label", "Selected week");
-        for (let index = 0; index < 7; index += 1) {
-            const dayDate = new Date(weekStart);
-            dayDate.setDate(weekStart.getDate() + index);
-            calendarDays.appendChild(makeCalendarDay(dayDate, selectedDate.getMonth()));
-        }
-        calendarGrid.classList.add("week-view");
+    monthLabel.innerHTML = `${displayedDate.toLocaleDateString("en", { month: "long" })} <span>${year}</span>`;
+    calendarGrid.setAttribute("aria-label", `${displayedDate.toLocaleDateString("en", { month: "long" })} ${year}`);
+    const firstDay = new Date(year, month, 1);
+    const gridStart = new Date(year, month, 1 - firstDay.getDay());
+    renderWeekdayHeadings(gridStart, 7);
+    for (let index = 0; index < 42; index += 1) {
+        const dayDate = new Date(gridStart);
+        dayDate.setDate(gridStart.getDate() + index);
+        calendarDays.appendChild(makeCalendarDay(dayDate, month));
     }
-
     renderSelectedDay();
 }
 
@@ -221,15 +217,10 @@ function renderSelectedDay() {
 }
 
 function moveCalendar(amount) {
-    if (calendarView === "month") {
-        const originalDay = selectedDate.getDate();
-        displayedDate.setMonth(displayedDate.getMonth() + amount);
-        const lastDay = new Date(displayedDate.getFullYear(), displayedDate.getMonth() + 1, 0).getDate();
-        selectedDate = new Date(displayedDate.getFullYear(), displayedDate.getMonth(), Math.min(originalDay, lastDay));
-    } else {
-        selectedDate.setDate(selectedDate.getDate() + amount * 7);
-        displayedDate.setFullYear(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
-    }
+    const originalDay = selectedDate.getDate();
+    displayedDate.setMonth(displayedDate.getMonth() + amount);
+    const lastDay = new Date(displayedDate.getFullYear(), displayedDate.getMonth() + 1, 0).getDate();
+    selectedDate = new Date(displayedDate.getFullYear(), displayedDate.getMonth(), Math.min(originalDay, lastDay));
     renderCalendar();
 }
 
@@ -240,47 +231,6 @@ document.getElementById("today-button").addEventListener("click", () => {
     displayedDate.setFullYear(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
     renderCalendar();
 });
-const viewButton = document.getElementById("calendar-view-button");
-const viewMenu = document.getElementById("calendar-view-menu");
-const viewLabel = document.getElementById("calendar-view-label");
-const viewOptions = document.querySelectorAll(".view-option");
-
-viewButton.addEventListener("click", () => {
-    const isOpen = viewButton.getAttribute("aria-expanded") === "true";
-    viewButton.setAttribute("aria-expanded", String(!isOpen));
-    viewMenu.hidden = isOpen;
-});
-
-viewOptions.forEach((option) => {
-    option.addEventListener("click", () => {
-        calendarView = option.dataset.view;
-        viewLabel.textContent = option.textContent;
-        viewOptions.forEach((viewOption) => {
-            const isSelected = viewOption === option;
-            viewOption.classList.toggle("active", isSelected);
-            viewOption.setAttribute("aria-checked", String(isSelected));
-        });
-        viewMenu.hidden = true;
-        viewButton.setAttribute("aria-expanded", "false");
-        renderCalendar();
-    });
-});
-
-document.addEventListener("click", (event) => {
-    if (!viewMenu.contains(event.target) && !viewButton.contains(event.target)) {
-        viewMenu.hidden = true;
-        viewButton.setAttribute("aria-expanded", "false");
-    }
-});
-
-document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-        viewMenu.hidden = true;
-        viewButton.setAttribute("aria-expanded", "false");
-        viewButton.focus();
-    }
-});
-
 const profileButton = document.getElementById("profile-menu-button");
 const profilePopover = document.getElementById("profile-menu");
 profileButton.addEventListener("click", () => {

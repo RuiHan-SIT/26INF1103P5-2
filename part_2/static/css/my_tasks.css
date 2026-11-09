@@ -369,6 +369,10 @@ a {
     border-left: 1px solid #302f43;
 }
 
+.calendar-weekdays {
+    display: contents;
+}
+
 .weekday,
 .day {
     display: grid;
@@ -1086,10 +1090,6 @@ a {
         flex: 1;
         min-height: 0;
         grid-template-rows: 34px repeat(6, minmax(0, 1fr));
-    }
-
-    .calendar-grid.week-view {
-        grid-template-rows: 34px minmax(0, 1fr);
     }
 
     .weekday,

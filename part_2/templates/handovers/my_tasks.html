@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Tasks | Handover Assistant</title>
-    <link rel="stylesheet" href="{% static 'css/my_tasks.css' %}?v=2">
+    <link rel="stylesheet" href="{% static 'css/my_tasks.css' %}?v=4">
 </head>
 <body>
     <div class="app-shell">
@@ -85,26 +85,10 @@
                         </div>
                         <div class="calendar-actions">
                             <button class="today-button" id="today-button" type="button">Today</button>
-                            <div class="view-picker">
-                                <button class="view-button" id="calendar-view-button" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="calendar-view-menu">
-                                    <span id="calendar-view-label">Month</span>
-                                    <span class="view-chevron" aria-hidden="true"></span>
-                                </button>
-                                <div class="view-menu" id="calendar-view-menu" role="menu" aria-label="Calendar view" hidden>
-                                    <button class="view-option active" type="button" role="menuitemradio" aria-checked="true" data-view="month">Month</button>
-                                    <button class="view-option" type="button" role="menuitemradio" aria-checked="false" data-view="week">Week</button>
-                                </div>
-                            </div>
                         </div>
                     </div>
 <div class="calendar-grid" role="grid" aria-label="November 2026">
-                        <div class="weekday" role="columnheader">Mon</div>
-                        <div class="weekday" role="columnheader">Tue</div>
-                        <div class="weekday" role="columnheader">Wed</div>
-                        <div class="weekday" role="columnheader">Thu</div>
-                        <div class="weekday" role="columnheader">Fri</div>
-                        <div class="weekday weekend" role="columnheader">Sat</div>
-                        <div class="weekday weekend" role="columnheader">Sun</div>
+                        <div class="calendar-weekdays" id="calendar-weekdays" role="row"></div>
                         <div class="calendar-days" id="calendar-days" role="rowgroup"></div>
                     </div>
 
@@ -130,6 +114,6 @@
         </main>
     </div>
     {{ calendar_tasks|json_script:"calendar-tasks-data" }}
-    <script src="{% static 'js/my_tasks.js' %}" defer></script>
+    <script src="{% static 'js/my_tasks.js' %}?v=4" defer></script>
 </body>
 </html>
