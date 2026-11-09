@@ -1,0 +1,123 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>History | Handover Assistant</title>
+    <!-- my_tasks.css provides the shared sidebar, theme colours and page layout -->
+    <link rel="stylesheet" href="{% static 'css/my_tasks.css' %}">
+    <!-- history.css only adds what is specific to this page (search, table, status badges) -->
+    <link rel="stylesheet" href="{% static 'css/history.css' %}">
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar">
+            <a class="brand" href="{% url 'handovers:home' %}" aria-label="Handover Assistant home">
+                <span class="brand-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M7 4.5h10a2 2 0 0 1 2 2v13H5v-13a2 2 0 0 1 2-2Z"/><path d="M9 4.5v-1h6v1M8.5 9h7M8.5 13h7M8.5 17h4"/></svg>
+                </span>
+                <span class="brand-name">Handover Assistant</span>
+            </a>
+
+            <nav class="side-nav" aria-label="Main navigation">
+                <a class="nav-link" href="{% url 'handovers:home' %}" aria-label="Create Handover">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5h10a2 2 0 0 1 2 2v13H5v-13a2 2 0 0 1 2-2Z"/><path d="M9 4.5v-1h6v1M8.5 10h7M8.5 14h7"/></svg>
+                    <span>Create Handover</span>
+                </a>
+                <!-- TODO: point this at the My Tasks route once it exists -->
+                <a class="nav-link" href="#" aria-label="My Tasks">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 9h16M8 13h3M8 16h6"/></svg>
+                    <span>My Tasks</span>
+                </a>
+                <a class="nav-link active" href="{% url 'handovers:handover_history' %}" aria-current="page" aria-label="History">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 8A8 8 0 1 1 4 13"/><path d="M4 4v4h4M12 7v5l3 2"/></svg>
+                    <span>History</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-spacer"></div>
+            <div class="profile-card">
+                <span class="avatar" aria-hidden="true">D</span>
+                <span class="profile-text"><strong>Demo Employee</strong><small>E001</small></span>
+                <button class="profile-menu" id="profile-menu-button" type="button" aria-label="Open employee menu" aria-expanded="false" aria-controls="profile-menu">•••</button>
+                <div class="profile-popover" id="profile-menu" hidden>
+                    <strong>Demo Employee</strong>
+                    <span>Employee ID: E001</span>
+                    <small>Demo account</small>
+                    <button class="profile-action logout-action" id="logout-action" type="button">Log out</button>
+                    <small class="account-feedback" id="account-feedback" aria-live="polite" hidden></small>
+                </div>
+            </div>
+        </aside>
+
+        <main class="main-content" id="history">
+            <header class="page-header">
+                <div>
+                    <p class="eyebrow">YOUR WORKSPACE</p>
+                    <h1>Handover History</h1>
+                    <p class="page-subtitle">View and manage your created handovers.</p>
+                </div>
+                <a class="create-button" href="{% url 'handovers:home' %}">+ Create Handover</a>
+            </header>
+
+            <!-- Search and filter: a normal GET form, so the view reads ?q= and ?status= -->
+            <form class="history-toolbar" method="get" action="{% url 'handovers:handover_history' %}" role="search">
+                <label class="search-box">
+                    <span class="visually-hidden">Search handovers</span>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
+                    <input type="search" name="q" value="{{ query }}" placeholder="Search handover ID or title...">
+                </label>
+                <select name="status" aria-label="Filter by status">
+                    <option value="">All statuses</option>
+                    {% for choice in status_choices %}
+                    <option value="{{ choice }}" {% if choice == selected_status %}selected{% endif %}>{{ choice }}</option>
+                    {% endfor %}
+                </select>
+                <button class="search-button" type="submit">Search</button>
+                {% if query or selected_status %}
+                <a class="clear-link" href="{% url 'handovers:handover_history' %}">Clear</a>
+                {% endif %}
+            </form>
+
+            <section class="history-card" aria-label="Handover list">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Handover ID</th>
+                            <th scope="col">Title</th>
+                            <th scope="col">Created On</th>
+                            <th scope="col" class="col-center">Tasks</th>
+                            <th scope="col">Status</th>
+                            <th scope="col" class="col-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for h in handovers %}
+                        <tr>
+                            <td class="id-cell">{{ h.id }}</td>
+                            <td>{{ h.title }}</td>
+                            <td>{{ h.created_on }}</td>
+                            <td class="col-center">{{ h.tasks }}</td>
+                            <td><span class="status-badge status-{{ h.status|slugify }}">{{ h.status }}</span></td>
+                            <td class="col-center">
+                                <!-- TODO: link to the handover detail page once it exists -->
+                                <a class="view-link" href="#" aria-label="View {{ h.id }}" title="View handover">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.8"/></svg>
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="empty-row">No handovers found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <p class="history-footnote">Showing {{ handovers|length }} of {{ total_count }} handovers</p>
+            </section>
+        </main>
+    </div>
+    <script src="{% static 'js/history.js' %}" defer></script>
+</body>
+</html>
