@@ -5,4 +5,5 @@ app_name = 'handovers'
 
 urlpatterns = [
     path('', views.home, name='home'),
+    path('history/', views.handover_history, name='handover_history'),
 ]
