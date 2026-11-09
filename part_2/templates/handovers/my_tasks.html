@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Tasks | Handover Assistant</title>
+    <link rel="stylesheet" href="../../static/css/my_tasks.css">
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar">
+            <a class="brand" href="#" aria-label="Handover Assistant home">
+                <span class="brand-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M7 4.5h10a2 2 0 0 1 2 2v13H5v-13a2 2 0 0 1 2-2Z"/><path d="M9 4.5v-1h6v1M8.5 9h7M8.5 13h7M8.5 17h4"/></svg>
+                </span>
+                <span class="brand-name">Handover Assistant</span>
+            </a>
+
+            <nav class="side-nav" aria-label="Main navigation">
+                <a class="nav-link" href="/" aria-label="Create Handover">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5h10a2 2 0 0 1 2 2v13H5v-13a2 2 0 0 1 2-2Z"/><path d="M9 4.5v-1h6v1M8.5 10h7M8.5 14h7"/></svg>
+                    <span>Create Handover</span>
+                </a>
+                <a class="nav-link active" href="#my-tasks" aria-current="page" aria-label="My Tasks">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 9h16M8 13h3M8 16h6"/></svg>
+                    <span>My Tasks</span>
+                </a>
+                <a class="nav-link" href="#history" aria-label="History">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 8A8 8 0 1 1 4 13"/><path d="M4 4v4h4M12 7v5l3 2"/></svg>
+                    <span>History</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-spacer"></div>
+            <div class="profile-card">
+                <span class="avatar" aria-hidden="true">D</span>
+                <span class="profile-text"><strong>Demo Employee</strong><small>E001</small></span>
+                <button class="profile-menu" id="profile-menu-button" type="button" aria-label="Open employee menu" aria-expanded="false" aria-controls="profile-menu">•••</button>
+                <div class="profile-popover" id="profile-menu" hidden>
+                    <strong>Demo Employee</strong>
+                    <span>Employee ID: E001</span>
+                    <small>Demo account</small>
+                    <button class="profile-action logout-action" id="logout-action" type="button">Log out</button>
+                    <small class="account-feedback" id="account-feedback" aria-live="polite" hidden></small>
+                </div>
+            </div>
+        </aside>
+
+        <main class="main-content" id="my-tasks">
+            <header class="page-header">
+                <div>
+                    <p class="eyebrow">YOUR WORKSPACE</p>
+                    <h1>My Tasks</h1>
+                    <p class="page-subtitle">Your assigned tasks and planned schedule.</p>
+                </div>
+            </header>
+
+            <section class="calendar-toolbar" aria-label="Task calendar legend">
+                <div class="legend">
+                    <span class="legend-item"><i class="legend-dot planned"></i>Planned task</span>
+                    <span class="legend-item"><i class="legend-dot deadline"></i>Deadline</span>
+                    <span class="legend-item"><i class="legend-dot bau"></i>BAU recurring</span>
+                </div>
+            </section>
+
+            <section class="calendar-layout" aria-label="My task calendar">
+                <div class="calendar-card">
+                    <div class="calendar-heading">
+                        <div class="month-control" aria-label="Calendar month">
+                            <button class="month-arrow" id="prev-period" type="button" aria-label="Previous month"><span class="month-chevron previous" aria-hidden="true"></span></button>
+                            <h2 id="month-label">November <span>2026</span></h2>
+                            <button class="month-arrow" id="next-period" type="button" aria-label="Next month"><span class="month-chevron next" aria-hidden="true"></span></button>
+                        </div>
+                        <div class="calendar-actions">
+                            <button class="today-button" id="today-button" type="button">Today</button>
+                            <div class="view-picker">
+                                <button class="view-button" id="calendar-view-button" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="calendar-view-menu">
+                                    <span id="calendar-view-label">Month</span>
+                                    <span class="view-chevron" aria-hidden="true"></span>
+                                </button>
+                                <div class="view-menu" id="calendar-view-menu" role="menu" aria-label="Calendar view" hidden>
+                                    <button class="view-option active" type="button" role="menuitemradio" aria-checked="true" data-view="month">Month</button>
+                                    <button class="view-option" type="button" role="menuitemradio" aria-checked="false" data-view="week">Week</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+<div class="calendar-grid" role="grid" aria-label="November 2026">
+                        <div class="weekday" role="columnheader">Mon</div>
+                        <div class="weekday" role="columnheader">Tue</div>
+                        <div class="weekday" role="columnheader">Wed</div>
+                        <div class="weekday" role="columnheader">Thu</div>
+                        <div class="weekday" role="columnheader">Fri</div>
+                        <div class="weekday weekend" role="columnheader">Sat</div>
+                        <div class="weekday weekend" role="columnheader">Sun</div>
+                        <div class="calendar-days" id="calendar-days" role="rowgroup"></div>
+                    </div>
+
+                    <div class="calendar-footnote">
+                        <span class="status-dot"></span>
+                        Dates shown are sample tasks for the frontend preview.
+                    </div>
+                </div>
+
+                <aside class="task-panel" aria-labelledby="selected-date-title">
+                    <div class="task-panel-header">
+                        <div>
+                            <p class="eyebrow">SELECTED DAY</p>
+                            <h2 id="selected-date-title">Wednesday, 18 Nov</h2>
+                            <p class="selected-year" id="selected-year">2026</p>
+                        </div>
+                        <span class="task-count" id="task-count">2 tasks</span>
+                    </div>
+
+                    <div class="task-list" id="task-list" aria-live="polite"></div>
+                </aside>
+            </section>
+        </main>
+    </div>
+    <script src="../../static/js/my_tasks.js" defer></script>
+</body>
+</html>
