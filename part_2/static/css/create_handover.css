@@ -165,10 +165,6 @@ footer {
     opacity: 0;
 }
 
-.upload-area:focus-within{
-    outline: 3px solid #6751b8;
-    outline-offset:
-}
 
 .user-profile{
     margin-top: auto;
