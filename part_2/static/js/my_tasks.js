@@ -1,7 +1,14 @@
-const displayedDate = new Date(2026, 10, 1);
-let selectedDate = new Date(2026, 10, 18);
+const displayedDate = new Date();
+let selectedDate = new Date();
+displayedDate.setDate(1);
 let calendarView = "month";
 const completedTasks = new Set();
+const calendarTasksElement = document.getElementById("calendar-tasks-data");
+const calendarTasks = calendarTasksElement ? JSON.parse(calendarTasksElement.textContent) : [];
+
+calendarTasks.forEach((task) => {
+    if (task.completed) completedTasks.add(task.id);
+});
 
 const calendarDays = document.getElementById("calendar-days");
 const calendarGrid = document.querySelector(".calendar-grid");
@@ -10,39 +17,6 @@ const selectedDateTitle = document.getElementById("selected-date-title");
 const selectedYear = document.getElementById("selected-year");
 const taskList = document.getElementById("task-list");
 const taskCount = document.getElementById("task-count");
-
-const sampleTasks = [
-    {
-        id: "gather-information",
-        title: "1.1 Gather project information",
-        handover: "H-0009",
-        type: "planned",
-        date: "2026-11-18"
-    },
-    {
-        id: "analyse-information",
-        title: "1.2 Analyse information",
-        handover: "H-0009",
-        type: "planned",
-        date: "2026-11-19",
-        dependencies: ["gather-information"]
-    },
-    {
-        id: "submit-security-report",
-        title: "Submit security report",
-        handover: "H-0009",
-        type: "deadline",
-        date: "2026-11-20"
-    },
-    {
-        id: "weekly-audit",
-        title: "Weekly audit summary",
-        handover: "H-0010",
-        type: "bau",
-        startDate: "2026-11-13",
-        endDate: null
-    }
-];
 
 function dateKey(date) {
     const year = date.getFullYear();
@@ -63,20 +37,21 @@ function startOfWeek(date) {
     return firstDay;
 }
 
+function isBauScheduled(task, key) {
+    if (!task.startDate || key < task.startDate || (task.endDate && key > task.endDate)) return false;
+    const date = dateFromKey(key);
+    const start = dateFromKey(task.startDate);
+    if (task.frequency === "weekly") return Math.floor((date - start) / 86400000) % 7 === 0;
+    if (task.frequency === "monthly") return date.getDate() === start.getDate();
+    if (task.frequency === "yearly") return date.getMonth() === start.getMonth() && date.getDate() === start.getDate();
+    return key === task.startDate;
+}
+
 function getTasksForDate(date) {
     const key = dateKey(date);
-    return sampleTasks.filter((task) => {
-        if (task.type !== "bau") {
-            return task.date === key;
-        }
-
-        if (key < task.startDate || (task.endDate && key > task.endDate)) {
-            return false;
-        }
-
-        const daysSinceStart = (dateFromKey(key) - dateFromKey(task.startDate)) / 86400000;
-        return daysSinceStart % 7 === 0;
-    });
+    return calendarTasks.filter((task) => task.type === "bau"
+        ? isBauScheduled(task, key)
+        : task.date === key);
 }
 
 function makeCalendarDay(date, visibleMonth) {
@@ -158,6 +133,35 @@ function renderCalendar() {
     renderSelectedDay();
 }
 
+async function saveCompletion(task, completed, checkbox) {
+    checkbox.disabled = true;
+    try {
+        const response = await fetch(`/my-tasks/subtasks/${task.subtaskId}/status/`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": getCookie("csrftoken"),
+            },
+            body: JSON.stringify({ completed }),
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Could not save task progress.");
+        task.completed = result.completed;
+        if (completed) completedTasks.add(task.id);
+        else completedTasks.delete(task.id);
+        renderSelectedDay();
+    } catch (error) {
+        checkbox.checked = !completed;
+        window.alert(error.message);
+        checkbox.disabled = false;
+    }
+}
+
+function getCookie(name) {
+    const cookie = document.cookie.split(";").map((item) => item.trim()).find((item) => item.startsWith(`${name}=`));
+    return cookie ? decodeURIComponent(cookie.slice(name.length + 1)) : "";
+}
+
 function renderSelectedDay() {
     selectedDateTitle.textContent = selectedDate.toLocaleDateString("en", {
         weekday: "long", day: "numeric", month: "short"
@@ -186,16 +190,13 @@ function renderSelectedDay() {
         checkbox.type = "checkbox";
         checkbox.checked = completedTasks.has(task.id);
         const dependenciesComplete = !task.dependencies || task.dependencies.every((dependency) => completedTasks.has(dependency));
-        checkbox.disabled = !dependenciesComplete;
-        checkbox.title = dependenciesComplete ? "" : "Complete the earlier subtask first.";
+        const canMarkDone = task.type === "planned" && !checkbox.checked;
+        checkbox.disabled = task.type !== "planned" || (canMarkDone && !dependenciesComplete);
+        checkbox.title = task.type !== "planned" ? "Only planned subtasks can be marked complete here." : dependenciesComplete ? "" : "Complete the required earlier subtask first.";
         checkbox.setAttribute("aria-label", `Mark ${task.title} complete`);
         const checkmark = document.createElement("span");
         label.append(checkbox, checkmark);
-        checkbox.addEventListener("change", () => {
-            if (checkbox.checked) completedTasks.add(task.id);
-            else completedTasks.delete(task.id);
-            item.classList.toggle("completed", checkbox.checked);
-        });
+        checkbox.addEventListener("change", () => saveCompletion(task, checkbox.checked, checkbox));
 
         const copy = document.createElement("div");
         copy.className = "task-copy";
@@ -204,16 +205,16 @@ function renderSelectedDay() {
         const source = document.createElement("p");
         source.textContent = `From handover ${task.handover}`;
         copy.append(title, source);
-        if (!dependenciesComplete) {
+        if (task.dependencies?.length && !dependenciesComplete) {
             const dependencyNote = document.createElement("small");
             dependencyNote.className = "dependency-note";
-            dependencyNote.textContent = "Complete 1.1 Gather project information first.";
+            dependencyNote.textContent = "Complete the required earlier subtask first.";
             copy.appendChild(dependencyNote);
         }
 
         const tag = document.createElement("span");
         tag.className = `task-tag ${task.type}-tag`;
-        tag.textContent = task.type === "bau" ? "BAU" : task.type === "deadline" ? "Deadline" : "Planned";
+        tag.textContent = task.type === "bau" ? "BAU" : task.type === "deadline" ? "Deadline" : completedTasks.has(task.id) ? "Completed" : "Planned";
         item.append(label, copy, tag);
         taskList.appendChild(item);
     });
@@ -298,12 +299,6 @@ document.addEventListener("keydown", (event) => {
         profilePopover.hidden = true;
         profileButton.setAttribute("aria-expanded", "false");
     }
-});
-const logoutAction = document.getElementById("logout-action");
-const accountFeedback = document.getElementById("account-feedback");
-logoutAction.addEventListener("click", () => {
-    accountFeedback.textContent = "Log out will work once the login route is connected.";
-    accountFeedback.hidden = false;
 });
 
 renderCalendar();

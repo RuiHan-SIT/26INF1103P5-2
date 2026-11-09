@@ -1469,3 +1469,38 @@ a {
         font-size: 10px;
     }
 }
+
+
+.profile-popover form {
+    margin: 0;
+}
+
+
+.profile-popover a.profile-password-action,
+.profile-popover a.profile-password-action:link,
+.profile-popover a.profile-password-action:visited,
+.profile-popover a.profile-password-action:active {
+    display: inline-block;
+    width: fit-content;
+    margin: 0;
+    padding: 0;
+    color: var(--purple);
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    font-size: 12px;
+    line-height: 1.4;
+    text-decoration: none !important;
+    text-decoration-line: none !important;
+}
+
+.profile-popover a.profile-password-action:hover {
+    color: #c3b6ff;
+    background: transparent;
+    text-decoration: none !important;
+}
+
+.profile-popover a.profile-password-action:focus-visible {
+    outline: 1px solid var(--purple);
+    outline-offset: 3px;
+}

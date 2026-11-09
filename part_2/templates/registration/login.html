@@ -9,7 +9,7 @@
 
     <title>AI Handover Auditor | Login</title>
 
-    <link rel="stylesheet" href="{% static 'css/login.css' %}">
+    <link rel="stylesheet" href="{% static 'css/login.css' %}?v=2">
 </head>
 
 <body>
@@ -19,33 +19,30 @@
         <div class="login-card">
 
             <div class="logo">
-                <h1>AI Handover Auditor</h1>
+                <h1>AI Handover Assistant</h1>
                 <p>Smart. Secure. Seamless.</p>
             </div>
 
-            <div class="welcome-text">
-                <h2>Welcome Back</h2>
+            <div class="welcome-text", align="center">
+                <h2>Welcome</h2>
                 <p>Please enter your details to continue.</p>
             </div>
 
             <form method="POST">
                 {% csrf_token %}
 
-                {% if form.errors %}
-                    <p class="error-message">
-                        Invalid username or password. Please try again.
-                    </p>
-                {% endif %}
-
                 <div class="form-group">
-                    <label for="id_username">Username</label>
+                    <label for="id_username">Employee ID</label>
                     <input
                         type="text"
                         name="username"
                         id="id_username"
-                        placeholder="Enter your username"
+                        placeholder="Enter your employee ID"
                         required
                     >
+                    {% if form.errors %}
+                        <p class="error-message">Invalid username or password. Please try again.</p>
+                    {% endif %}
                 </div>
 
                 <div class="form-group">

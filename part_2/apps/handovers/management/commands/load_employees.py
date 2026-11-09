@@ -37,7 +37,12 @@ class Command(BaseCommand):
                 user, user_is_new = User.objects.get_or_create(username=employee_id)
                 if user_is_new:
                     user.set_password(options["password"])
-                    user.save()
+
+                # Save an email when the employee fixture includes one.
+                if details.get("email"):
+                    user.email = details["email"].strip()
+
+                user.save()
 
                 # Employee row, linked to the login account
                 _, employee_is_new = Employee.objects.update_or_create(

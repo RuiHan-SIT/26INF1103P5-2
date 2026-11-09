@@ -87,3 +87,26 @@ uploadArea.addEventListener("drop", function(event){
 
 })
     
+
+const profileButton = document.getElementById("profile-menu-button");
+const profilePopover = document.getElementById("profile-menu");
+
+profileButton.addEventListener("click", () => {
+    const isOpen = profileButton.getAttribute("aria-expanded") === "true";
+    profileButton.setAttribute("aria-expanded", String(!isOpen));
+    profilePopover.hidden = isOpen;
+});
+
+document.addEventListener("click", (event) => {
+    if (!profilePopover.contains(event.target) && !profileButton.contains(event.target)) {
+        profilePopover.hidden = true;
+        profileButton.setAttribute("aria-expanded", "false");
+    }
+});
+
+document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+        profilePopover.hidden = true;
+        profileButton.setAttribute("aria-expanded", "false");
+    }
+});

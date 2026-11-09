@@ -4,6 +4,7 @@ Django settings for part_2 project.
 
 from pathlib import Path
 
+
 # Build paths inside the project: BASE_DIR points to 'part_2/'
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -101,5 +102,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Authentication redirects
 LOGIN_URL = 'handovers:login'
-LOGIN_REDIRECT_URL = '/create-handover/'
+LOGIN_REDIRECT_URL = 'handovers:home'
 LOGOUT_REDIRECT_URL = 'handovers:login'
+
+
+# Print reset emails in the runserver terminal during local development.
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+DEFAULT_FROM_EMAIL = "noreply@handover-assistant.local"
