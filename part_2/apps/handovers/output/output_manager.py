@@ -1,118 +1,126 @@
-# output_manager.py
 from .constants import (
     COMPLETE_STATUSES,
     INCOMPLETE_STATUSES,
     STATUS_COMPLETE,
     STATUS_INCOMPLETE,
     VIEWING_HEADING,
-    WIDTH,
 )
 from .summary_file_store import SummaryFileStore
 from .summary_formatter import SummaryFormatter
 
 
 class OutputManager:
-    """The class main.py uses. It shows the status, prints or saves the summary, and records who viewed a handover.
-
-    It does not build the text or handle files itself. It asks SummaryFormatter and SummaryFileStore to do those jobs.
-    """
+    """Prepares handover output for the GUI."""
 
     def __init__(self):
-        
+        # Each helper class handles a separate job
         self._formatter = SummaryFormatter()
         self._store = SummaryFileStore()
 
-    def show_output(self, result, user_details, save_file=True):
-        """Main method called with the logic manager's result.
+    def show_output(self, result, user_details=None, save_file=False):
+        """Return information that a Django view can pass to a template."""
+        status = str(result.get("status", "Unknown")).strip()
+        normalized_status = status.lower()
 
-        save_file=True : show the status, then save the summary if complete.
-        save_file=False: only print the summary in the terminal if complete.
-        Returns the saved file name, or None.
-        """
+        is_complete = normalized_status in COMPLETE_STATUSES
+        is_incomplete = normalized_status in INCOMPLETE_STATUSES
+
+        output = {
+            "status": self._status_label(normalized_status, status),
+            "is_complete": is_complete,
+            "missing": [],
+            "data": result,
+            "summary": "",
+            "filename": None,
+            "error": None,
+        }
+
+        if is_incomplete:
+            output["missing"] = self._missing_lines(result)
+
+        # Don't format or save a summary for an incomplete handover
+        if not is_complete:
+            return output
+
+        output["summary"] = self._formatter.format(result, user_details)
+
+        # Saving a separate text file is optional; the GUI can display the
+        # summary without writing an extra file
         if save_file:
-            self.show_status(result)
+            try:
+                output["filename"] = self._store.save(
+                    output["summary"],
+                    user_details or {},
+                )
+            except OSError as error:
+                output["error"] = f"Could not save summary file: {error}"
 
-        # Only a complete handover gets a summary
-        if result.get("status") not in COMPLETE_STATUSES:
-            return None
-
-        summary_text = self._formatter.format(result, user_details)
-
-        if save_file:
-            return self._save_summary(summary_text, user_details)
-
-        print("\n" + summary_text)
-        return None
-
-    def show_status(self, result):
-        """Print the handover status, and what is missing if it is incomplete."""
-        status = result.get("status", "Unknown")
-
-        # Choose the text to display for this status
-        if status in COMPLETE_STATUSES:
-            label = STATUS_COMPLETE
-        elif status in INCOMPLETE_STATUSES:
-            label = STATUS_INCOMPLETE
-        else:
-            label = str(status)
-
-        print("\n" + "=" * WIDTH)
-        print("STATUS: " + label.upper())
-        print("=" * WIDTH)
-
-        if status in INCOMPLETE_STATUSES:
-            # Some versions of the result use "errors" instead of "missing_info"
-            missing_info = result.get("missing_info", result.get("errors", []))
-            self._print_missing_info(missing_info)
-            print("\nPlease resolve the items above, then run the handover again.")
+        return output
 
     def record_view(self, filename, name, employee_id):
-        """Record that someone viewed a saved handover. Returns True if it worked."""
+        """Add a viewing record to an optional saved text summary."""
         if not filename:
-            print("\n[Warning] No filename linked to this handover.")
-            return False
-
-        if not self._store.exists(filename):
-            print("\n[Warning] Handover summary file not found.")
-            return False
+            return False, "No filename linked to this handover."
 
         try:
-            # Add the heading only if this is the first viewer
+            if not self._store.exists(filename):
+                return False, "Handover summary file not found."
+
             current_text = self._store.read(filename)
+
+            # Add the heading if this is the first viewing record
             is_first_view = VIEWING_HEADING not in current_text
-
-            entry = self._formatter.format_viewing_entry(name, employee_id, is_first_view)
+            entry = self._formatter.format_viewing_entry(
+                name,
+                employee_id,
+                is_first_view,
+            )
             self._store.append(filename, entry)
-            return True
-        except OSError as error:  # e.g. file is locked or disk problem
-            print(f"\n[Error] Could not update viewing history: {error}")
-            return False
 
-    # ---- private helper methods ----
+        except (OSError, ValueError) as error:
+            return False, f"Could not update viewing history: {error}"
 
-    def _save_summary(self, summary_text, user_details):
-        """Save the summary file. Returns the file name, or None if it failed."""
-        try:
-            filename = self._store.save(summary_text, user_details)
-        except OSError as error:  # e.g. no permission to write
-            print(f"\n[Error] Could not save summary file: {error}")
+        return True, "Viewing history updated."
+
+    def read_summary(self, filename):
+        """Read a saved text summary, or return None if it doesn't exist."""
+        if not filename:
             return None
 
-        print(f"\nHandover file saved to: {filename}")
-        return filename
+        try:
+            if self._store.exists(filename):
+                return self._store.read(filename)
+        except (OSError, ValueError):
+            return None
 
-    def _print_missing_info(self, missing_info):
-        """List the items that need clarification."""
-        if not missing_info:
-            return
+        return None
 
-        print("\nClarification needed:")
+    def _status_label(self, normalized_status, original_status):
+        if normalized_status in COMPLETE_STATUSES:
+            return STATUS_COMPLETE
+
+        if normalized_status in INCOMPLETE_STATUSES:
+            return STATUS_INCOMPLETE
+
+        return original_status
+
+    def _missing_lines(self, result):
+        # The logic manager may call these entries "errors" instead
+        missing_info = result.get("missing_info") or result.get("errors") or []
+        lines = []
+
         for item in missing_info:
             if isinstance(item, dict):
-                # Item looks like {"task": "Deploy", "errors": ["No owner"]}
                 label = item.get("task", item.get("type", "Handover"))
-                details = ", ".join(item.get("errors", []))
-                print(f"  - {label}: {details or item}")
+                errors = item.get("errors", [])
+
+                if isinstance(errors, list):
+                    details = ", ".join(str(error) for error in errors)
+                else:
+                    details = str(errors)
+
+                lines.append(f"{label}: {details or item}")
             else:
-                # Item is just a plain text message
-                print(f"  - {item}")
+                lines.append(str(item))
+
+        return lines

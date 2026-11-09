@@ -4,31 +4,38 @@ from .constants import NOT_SPECIFIED, WIDTH
 
 
 class SummaryFormatter:
-    """Builds the TEXT of the handover summary.
-
-    It only creates text. It does not print anything and does not save files (that is the job of OutputManager and SummaryFileStore).
-    """
+    """Turns handover data into readable summary text."""
 
     def format(self, result, user_details=None):
-        """Return the whole handover summary as one string."""
-        # .get(key, []) gives an empty list if the key is missing, so no crash
         outstanding_tasks = result.get("outstanding_tasks", [])
-        routine_tasks = result.get("bau_tasks", [])
-        important_info = result.get("important_information", [])
+        bau_tasks = result.get("bau_tasks", [])
+        important_information = result.get("important_information", [])
 
-        total_tasks = len(outstanding_tasks) + len(routine_tasks)
+        # Count both task groups for the summary header.
+        total_tasks = len(outstanding_tasks) + len(bau_tasks)
 
-        lines = []
-        lines += self._header_lines(total_tasks, user_details)
-        lines += self._task_lines("OUTSTANDING TASKS", outstanding_tasks, show_deadline=True)
-        lines += self._task_lines("ROUTINE TASKS", routine_tasks, show_deadline=False)
-        lines += self._info_lines(important_info)
+        lines = self._header_lines(total_tasks, user_details)
+        lines.extend(
+            self._task_lines(
+                "OUTSTANDING TASKS",
+                outstanding_tasks,
+                show_deadline=True,
+            )
+        )
+        lines.extend(
+            self._task_lines(
+                "ROUTINE (BAU) TASKS",
+                bau_tasks,
+                show_deadline=False,
+            )
+        )
+        lines.extend(self._information_lines(important_information))
 
-        return "\n".join(lines)
+        return "\n".join(lines).rstrip()
 
     def format_viewing_entry(self, name, employee_id, is_first_view):
-        """Return the text to add to the file when someone views a handover."""
         viewed_on = datetime.now().strftime("%d %b %Y %H:%M:%S")
+
         entry = (
             f"Viewed by    : {name}\n"
             f"Employee ID  : {employee_id}\n"
@@ -36,32 +43,20 @@ class SummaryFormatter:
         )
 
         if is_first_view:
-            # The first viewer also gets the VIEWING HISTORY heading
-            return ("\n\n\n" + "=" * WIDTH + "\n"
-                    + "VIEWING HISTORY\n"
-                    + "=" * WIDTH + "\n"
-                    + entry)
+            # Add the heading only for the first person who views the summary.
+            return (
+                "\n\n\n"
+                + "=" * WIDTH
+                + "\n"
+                + "VIEWING HISTORY\n"
+                + "=" * WIDTH
+                + "\n"
+                + entry
+            )
 
-        # Later viewers just get a blank line and their entry
         return "\n" + entry
 
-    # ---- private helper methods (the leading _ means "only used inside this class") ----
-
-    def _clean(self, value):
-        """Turn a value into text. Use 'Not specified' if it is missing or empty."""
-        if value is None or str(value).strip() == "":
-            return NOT_SPECIFIED
-        return str(value).strip()
-
-    def _owners_text(self, owners):
-        """Owners can be a list like ['John', 'Sam'] or a string like 'Tom'."""
-        if isinstance(owners, list):
-            # Join the names with commas, skipping empty ones
-            owners = ", ".join(str(name).strip() for name in owners if name)
-        return self._clean(owners)
-
     def _header_lines(self, total_tasks, user_details):
-        """The top part: title, date and employee details."""
         lines = [
             "=" * WIDTH,
             "HANDOVER SUMMARY",
@@ -69,42 +64,91 @@ class SummaryFormatter:
             f"Generated on  : {datetime.now():%Y-%m-%d %H:%M}",
         ]
 
-        # Only show employee details if we were given them
         if user_details:
-            name = user_details.get("name", "N/A")
-            employee_id = user_details.get("employee_id", "N/A")
+            name = self._clean(user_details.get("name"))
+            employee_id = self._clean(user_details.get("employee_id"))
             lines.append(f"Employee      : {name} (ID: {employee_id})")
-            if user_details.get("department"):
-                lines.append(f"Department    : {user_details['department']}")
+
+            department = user_details.get("department")
+            if department:
+                lines.append(f"Department    : {self._clean(department)}")
 
         lines.append(f"Tasks         : {total_tasks}")
-        lines.append("")  
+        lines.append("")
         return lines
 
-    def _task_lines(self, title, tasks, show_deadline):
-        """One group of tasks (outstanding or routine)."""
+    def _task_lines(self, heading, tasks, show_deadline):
         if not tasks:
-            return []  # no tasks, so no section at all
+            return []
 
-        lines = [title, "-" * WIDTH]
+        lines = [heading, "-" * WIDTH]
 
-    
         for number, task in enumerate(tasks, start=1):
-            lines.append(f"Task {number}: {self._clean(task.get('task'))}")
+            # Some data uses "task"; database-style data may use "title".
+            title = task.get("task", task.get("title"))
+            lines.append(f"Task {number}: {self._clean(title)}")
             lines.append(f"    Owner       : {self._owners_text(task.get('owners'))}")
-            lines.append(f"    Description : {self._clean(task.get('description'))}")
-            if show_deadline:  
+            lines.append(
+                f"    Description : {self._clean(task.get('description'))}"
+            )
+
+            if show_deadline:
                 lines.append(f"    Deadline    : {self._clean(task.get('deadline'))}")
+            else:
+                lines.append(f"    Frequency   : {self._clean(task.get('frequency'))}")
+                lines.append(f"    Start date  : {self._clean(task.get('start_date'))}")
+                lines.append(f"    End date    : {self._clean(task.get('end_date'))}")
+
+            priority = task.get("priority")
+            if priority:
+                lines.append(f"    Priority    : {self._clean(priority)}")
+
+            # Subtasks are optional, so this adds nothing if they are absent
+            lines.extend(self._subtask_lines(task.get("subtasks", [])))
             lines.append("")
+
         return lines
 
-    def _info_lines(self, important_info):
-        """The important information section, shown as bullet points."""
-        if not important_info:
+    def _subtask_lines(self, subtasks):
+        if not subtasks:
+            return []
+
+        lines = ["    Subtasks:"]
+        for number, subtask in enumerate(subtasks, start=1):
+            title = subtask.get("task", subtask.get("title"))
+            planned_date = self._clean(subtask.get("planned_date"))
+            lines.append(
+                f"      {number}. {self._clean(title)} "
+                f"(planned: {planned_date})"
+            )
+
+            dependencies = subtask.get("dependencies", [])
+            if dependencies:
+                lines.append(
+                    f"         Depends on: {self._owners_text(dependencies)}"
+                )
+
+        return lines
+
+    def _information_lines(self, information):
+        if not information:
             return []
 
         lines = ["IMPORTANT INFORMATION", "-" * WIDTH]
-        for item in important_info:
+        for item in information:
             lines.append(f"* {self._clean(item)}")
-        lines.append("")
+
         return lines
+
+    def _owners_text(self, owners):
+        # Join multiple owners into one readable line.
+        if isinstance(owners, (list, tuple)):
+            owners = ", ".join(str(owner) for owner in owners if owner)
+
+        return self._clean(owners)
+
+    def _clean(self, value):
+        if value is None or str(value).strip() == "":
+            return NOT_SPECIFIED
+
+        return str(value).strip()
