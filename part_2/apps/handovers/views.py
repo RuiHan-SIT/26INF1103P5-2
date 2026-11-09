@@ -1,6 +1,9 @@
 from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
 from .forms import HandoverUploadForm
 
+
+@login_required(login_url='handovers:login')
 def home(request):
     uploaded_filename = None
 
@@ -17,6 +20,7 @@ def home(request):
         "uploaded_filename": uploaded_filename
     })
 
+<<<<<<< HEAD
 
 STATUS_CHOICES = ["Completed", "Needs clarification"]
 
@@ -59,3 +63,5 @@ def handover_history(request):
         "status_choices": STATUS_CHOICES,
         "total_count": len(SAMPLE_HANDOVERS),
     })
+=======
+>>>>>>> origin/main
