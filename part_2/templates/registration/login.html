@@ -30,6 +30,7 @@
 
             <form method="POST">
                 {% csrf_token %}
+                <input type="hidden" name="next" value="{{ next }}">                                                                                                                                                                                                                                             
 
                 <div class="form-group">
                     <label for="id_username">Employee ID</label>
