@@ -1,0 +1,82 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang = "en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Create Handover</title>
+        
+        <link rel ="stylesheet" href = "{% static 'css/create_handover.css' %}">
+
+    </head>
+    <body>
+    <div class="dashboard">
+
+        <aside class ="sidebar">
+            <h2>Handover Assistant</h2>
+
+            <nav>
+                <a href="{% url 'handovers:create_handover' %}" class="active">
+                    Create Handover
+                </a>
+
+                <a href="#">
+                    My Tasks
+                </a>
+                
+                <a href="{% url 'handovers:handover_history' %}">
+                    History
+                </a>
+            </nav>
+
+            <div class="user-profile">
+                {% if employee %}
+                    <p>{{ employee.name }}</p>
+                    <p>{{ employee.employee_id }}</p>
+                {% else %}
+                    <p>{{ request.user.username }}</p>
+                    <p>Employee profile unavailable</p>
+                {% endif %}
+            </div>
+        </aside>
+
+        <main class="main-content">
+            
+            <h1>Create Handover</h1>
+            <p> Upload a handover document and let AI extract and plan the tasks for you</p>
+            
+
+            <section class="upload-card">
+
+                <form method="POST" enctype="multipart/form-data">
+                    {% csrf_token %}
+
+                    <label for="document" class="upload-area" id="uploadArea">
+                        <div class="upload-icon"><div id="x2191"></div></div>
+
+                        <h3>Drag and drop a file here, or click to upload</h3>
+                        <p> Supported formats: DOCX, TXT (MAX 10MB)</p>
+                        <input
+                        type="file"
+                        id="document"
+                        name="document"
+                        class="file-input"
+                        accept=".txt,.docx"
+                        required
+                        >
+                    </label>
+                    <div class="file-preview" id="filePreview" hidden>
+                        <span id="fileName"></span>
+                        <button type="button" id="removeFile">&times;</button>
+                    </div>
+
+                    <button type="submit" class="extract-btn">
+                        Extract Tasks with AI
+                    </button>
+                </form>
+            </section>
+        </main>
+    </div>
+    <script src="{% static 'js/create_handover.js' %}"></script>
+</body>
+</html>

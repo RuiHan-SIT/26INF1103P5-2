@@ -20,6 +20,33 @@ def home(request):
         "uploaded_filename": uploaded_filename
     })
 
+@login_required(login_url='handovers:login')
+def create_handover(request):
+    uploaded_filename = None
+    employee = getattr(request.user, "employee", None)
+
+    if request.method == "POST":
+        form = HandoverUploadForm(request.POST, request.FILES)
+
+        if form.is_valid():
+            uploaded_file = form.cleaned_data["document"]
+            uploaded_filename = uploaded_file.name
+    else:
+        form = HandoverUploadForm()
+
+    return render(request, "handovers/create_handover.html", {
+        "form": form,
+        "uploaded_filename": uploaded_filename,
+        "employee": employee,
+    })
+@login_required(login_url='handovers:login')
+def my_tasks(request):
+    return render(request, "handovers/my_tasks.html")
+
+
+@login_required(login_url='handovers:login')
+def history(request):
+    return render(request, "handovers/history.html")
 
 STATUS_CHOICES = ["Completed", "Needs clarification"]
 
