@@ -19,4 +19,9 @@ urlpatterns = [
     ),
     path('', views.home, name='home'),
     path('history/', views.handover_history, name='handover_history'),
+    path(
+    "history/<int:handover_id>/download/",
+    views.download_completed_handover,
+    name="download_completed_handover",
+),
 ]
