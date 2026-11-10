@@ -13,7 +13,7 @@ class HandoverRepository:
     # CREATE
     #=======================================
 
-    # Essentially savees an approved h/over with all it's tasks and subtasks, then links its upload
+    # Essentially saves an approved h/over with all it's tasks and subtasks, then links its upload
     def save_handover(self, employee, upload, processed_data):
         # After the logic manager has validated, the said h/over will be saved
         # Everything inside the "with" block is saved together, or nothing is saved if an error happens
