@@ -262,8 +262,7 @@ def create_handover(request):
                 return redirect("handovers:home")
 
             if action == "cancel":
-                upload.file.delete(save=False)
-                upload.delete()
+                HandoverRepository().delete_upload(upload)
                 request.session.pop(PENDING_UPLOAD_KEY, None)
                 request.session.pop(PENDING_DATA_KEY, None)
                 return redirect("handovers:home")
