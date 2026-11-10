@@ -20,23 +20,6 @@
     min-height: 500px;
 }
 
-.upload-card #chat-form .chat-messages{
-    padding: 24px;
-    gap: 14px;
-    align-items: flex-start;
-    width: 100%;
-}
-
-.upload-card #chat-form .chat-input-container{
-    display: flex;
-    align-items: center;
-    width: 100%;
-}
-
-.upload-card #chat-form #chat-message{
-    flex: 1;
-    min-width: 0;
-}
 
 .upload-card #chat-form .chat-header {
     width: 100%;
@@ -210,45 +193,6 @@
     transition: border-color 150ms ease, background 150ms ease;
 }
 
-.upload-area:hover,
-.upload-area.drag-over {
-    background: #29263b;
-    border-color: var(--purple);
-}
-
-.upload-icon {
-    display: grid;
-    width: 64px;
-    height: 64px;
-    margin-bottom: 20px;
-    place-items: center;
-    color: var(--purple);
-    background: var(--purple-dark);
-    border: 1px solid #51447e;
-    border-radius: 18px;
-}
-
-.upload-icon svg {
-    width: 30px;
-    height: 30px;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 1.7;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-}
-
-.upload-area h2 {
-    margin: 0;
-    font-size: clamp(17px, 2vw, 21px);
-    letter-spacing: -0.02em;
-}
-
-.upload-area p {
-    margin: 9px 0 0;
-    color: var(--muted);
-    font-size: 13px;
-}
 
 .file-input {
     position: absolute;
@@ -771,7 +715,7 @@
     position: relative;
 }
 
-.chat-container .drag-over{
+.chat-container.drag-over{
     outline: 2px dashed var(--purple);
     outline-offset: 5px;
     background: rgba(163, 139, 255, 0.08);

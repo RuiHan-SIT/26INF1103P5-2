@@ -1,5 +1,5 @@
 const fileInput = document.getElementById("document");
-const uploadArea = document.getElementById(".chat-container");
+const uploadArea = document.querySelector(".chat-container");
 const dropOverlay = document.getElementById("dropOverlay");
 const filePreview = document.getElementById("filePreview");
 const fileName = document.getElementById("fileName");

@@ -139,6 +139,8 @@
                                 <input type="hidden" name="demo_owner_name" value="{{ owner.owner_name }}">
                                 {% endif %}
 
+                                <legend>Verify task owner</legend>
+
                                 <fieldset class="owner-review">
                                     {% if preview_mode %}<input type="hidden" name="demo_owner_name"
                                         value="{{ owner.owner_name }}">{% endif %}
@@ -275,7 +277,7 @@
 
                         <!-- Drag and drop overlay -->
                         <div class="drop-overlay" id="dropOverlay" hidden>
-                            <span>📄</span>
+                            <span class="drop-icon">&#x1F4C4;</span>
                             <h3>Drop your document here</h3>
                             <p>TXT or DOCX · Maximum 10 MB</p>
                         </div>
@@ -317,7 +319,7 @@
                         <div class="chat-input-container">
 
                             <label for="document" class="attach-btn" title="Attach document">
-                                📎
+                                &#x1F4CE;
                             </label>
 
                             <input type="file" id="document" name="document" class="file-input" accept=".txt,.docx">
