@@ -1,51 +1,75 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create Handover | Handover Assistant</title>
     <link rel="stylesheet" href="{% static 'css/my_tasks.css' %}?v=5">
-    <link rel="stylesheet" href="{% static 'css/create_handover.css' %}?v=8">
+    <link rel="stylesheet" href="{% static 'css/create_handover.css' %}?v=11">
 </head>
+
 <body>
     <div class="app-shell">
         <aside class="sidebar">
             <a class="brand" href="{% url 'handovers:home' %}" aria-label="Handover Assistant home">
                 <span class="brand-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24"><path d="M7 4.5h10a2 2 0 0 1 2 2v13H5v-13a2 2 0 0 1 2-2Z"/><path d="M9 4.5v-1h6v1M8.5 9h7M8.5 13h7M8.5 17h4"/></svg>
+                    <svg viewBox="0 0 24 24">
+                        <path d="M7 4.5h10a2 2 0 0 1 2 2v13H5v-13a2 2 0 0 1 2-2Z" />
+                        <path d="M9 4.5v-1h6v1M8.5 9h7M8.5 13h7M8.5 17h4" />
+                    </svg>
                 </span>
                 <span class="brand-name">Handover Assistant</span>
             </a>
 
             <nav class="side-nav" aria-label="Main navigation">
-                <a class="nav-link active" href="{% url 'handovers:home' %}" aria-current="page" aria-label="Create Handover">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5h10a2 2 0 0 1 2 2v13H5v-13a2 2 0 0 1 2-2Z"/><path d="M9 4.5v-1h6v1M8.5 10h7M8.5 14h7"/></svg>
+                <a class="nav-link active" href="{% url 'handovers:home' %}" aria-current="page"
+                    aria-label="Create Handover">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M7 4.5h10a2 2 0 0 1 2 2v13H5v-13a2 2 0 0 1 2-2Z" />
+                        <path d="M9 4.5v-1h6v1M8.5 10h7M8.5 14h7" />
+                    </svg>
                     <span>Create Handover</span>
                 </a>
                 <a class="nav-link" href="{% url 'handovers:my_tasks' %}" aria-label="My Tasks">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 9h16M8 13h3M8 16h6"/></svg>
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <rect x="4" y="5" width="16" height="15" rx="2" />
+                        <path d="M8 3v4M16 3v4M4 9h16M8 13h3M8 16h6" />
+                    </svg>
                     <span>My Tasks</span>
                 </a>
                 <a class="nav-link" href="{% url 'handovers:handover_history' %}" aria-label="History">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 8A8 8 0 1 1 4 13"/><path d="M4 4v4h4M12 7v5l3 2"/></svg>
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M4.5 8A8 8 0 1 1 4 13" />
+                        <path d="M4 4v4h4M12 7v5l3 2" />
+                    </svg>
                     <span>History</span>
                 </a>
             </nav>
 
             <div class="sidebar-spacer"></div>
             <div class="profile-card">
-                <span class="avatar" aria-hidden="true">{% if employee %}{{ employee.name|first|upper }}{% else %}{{ request.user.username|first|upper }}{% endif %}</span>
-                <span class="profile-text">
+
+                <span class="avatar" aria-hidden="true">
                     {% if employee %}
-                        <strong>{{ employee.name }}</strong>
-                        <small>{{ employee.employee_id }}</small>
+                    {{ employee.name|first|upper }}
                     {% else %}
-                        <strong>{{ request.user.username }}</strong>
-                        <small>Employee profile unavailable</small>
+                    {{ request.user.username|first|upper }}
                     {% endif %}
                 </span>
-                <button class="profile-menu" id="profile-menu-button" type="button" aria-label="Open account menu" aria-expanded="false" aria-controls="profile-menu">•••</button>
+
+                <span class="profile-text">
+                    {% if employee %}
+                    <strong>{{ employee.name }}</strong>
+                    <small>{{ employee.employee_id }}</small>
+                    {% else %}
+                    <strong>{{ request.user.username }}</strong>
+                    <small>Employee profile unavailable</small>
+                    {% endif %}
+                </span>
+                <button class="profile-menu" id="profile-menu-button" type="button" aria-label="Open account menu"
+                    aria-expanded="false" aria-controls="profile-menu">•••</button>
                 <div class="profile-popover" id="profile-menu" hidden>
                     <strong>Account</strong>
                     <small>Signed in</small>
@@ -63,181 +87,282 @@
                 <div>
                     <p class="eyebrow">YOUR WORKSPACE</p>
                     <h1>Create Handover</h1>
-                    <p class="page-subtitle">Upload a handover document and let AI extract and plan the tasks for you.</p>
+                    <p class="page-subtitle">Upload a handover document and let AI extract and plan the tasks for you.
+                    </p>
                 </div>
             </header>
 
             {% if review_mode %}
-                <section class="review-card" aria-label="Review extracted handover">
-                    <div class="review-heading">
-                        <div>
-                            <p class="eyebrow">{% if preview_mode %}NO-AI SAMPLE{% else %}AI EXTRACTION{% endif %}</p>
-                            <h2>Review handover</h2>
-                            <p class="page-subtitle">{% if preview_mode %}Try owner matching with sample names. This preview does not call AI or save a handover.{% else %}Check the extracted tasks, confirm each employee, and answer any questions before saving.{% endif %}</p>
-                        </div>
-                        {% if uploaded_filename %}<span class="review-file">{{ uploaded_filename }}</span>{% endif %}
+            <section class="review-card" aria-label="Review extracted handover">
+                <div class="review-heading">
+                    <div>
+                        <p class="eyebrow">{% if preview_mode %}NO-AI SAMPLE{% else %}AI EXTRACTION{% endif %}</p>
+                        <h2>Review handover</h2>
+                        <p class="page-subtitle">{% if preview_mode %}Try owner matching with sample names. This preview
+                            does not call AI or save a handover.{% else %}Check the extracted tasks, confirm each
+                            employee, and answer any questions before saving.{% endif %}</p>
                     </div>
+                    {% if uploaded_filename %}<span class="review-file">{{ uploaded_filename }}</span>{% endif %}
+                </div>
 
-                    {% if review_error %}
-                        <p class="review-error" role="alert">{{ review_error }}</p>
+                {% if review_error %}
+                <p class="review-error" role="alert">{{ review_error }}</p>
+                {% endif %}
+
+                <form method="post" class="review-form">
+                    {% csrf_token %}
+
+                    {% for section in review_sections %}
+                    <section class="review-section">
+                        <h3>{{ section.title }}</h3>
+                        {% for task in section.tasks %}
+                        <article class="review-task">
+                            <div class="review-task-heading">
+                                <h4>{{ task.title }}</h4>
+                                {% if task.description %}<p>{{ task.description }}</p>{% endif %}
+                            </div>
+                            {% if task.clarification_questions %}
+                            <div class="clarification-panel">
+                                <h5>AI needs a little more context</h5>
+                                {% for question in task.clarification_questions %}
+                                <label for="{{ question.field_name }}">{{ question.question }}</label>
+                                <textarea id="{{ question.field_name }}" name="{{ question.field_name }}" rows="2"
+                                    placeholder="Add the details you know"></textarea>
+                                {% endfor %}
+                                <p>Answer any questions, then choose “Ask AI to refine” for another AI pass.</p>
+                            </div>
+                            {% endif %}
+
+                            {% for owner in task.owner_reviews %}
+                            <fieldset class="owner-review">
+                                {% if preview_mode %}
+                                <input type="hidden" name="demo_owner_name" value="{{ owner.owner_name }}">
+                                {% endif %}
+
+                                <fieldset class="owner-review">
+                                    {% if preview_mode %}<input type="hidden" name="demo_owner_name"
+                                        value="{{ owner.owner_name }}">{% endif %}
+                                    <legend>Verify task owner</legend>
+                                    <p class="owner-task-context"><span>{{ owner.task_type_label }}</span><strong>{{
+                                            owner.task_title }}</strong></p>
+                                    <p class="owner-extracted">Name from document: <strong>{{ owner.owner_name
+                                            }}</strong>
+                                    </p>
+                                    <p class="owner-match-label">{{ owner.match_label }}.</p>
+                                    <div class="owner-suggestions-step" data-owner-suggestions>
+                                        <h5>Possible matches</h5>
+                                        <p>Select the correct employee or search the directory if neither matches.</p>
+                                        <div class="employee-choice-list suggested-employee-list">
+                                            {% for choice in owner.suggested_choices %}
+                                            <label class="employee-choice" data-employee-choice>
+                                                <input type="radio" name="{{ owner.field_name }}"
+                                                    value="{{ choice.employee_id }}" required>
+                                                <span>
+                                                    <strong>{{ choice.name }}</strong>
+
+                                                    <small>
+                                                        {{ choice.department }} · Possible match
+                                                        {% if choice.similarity %} ({{ choice.similarity }}%){% endif %}
+                                                    </small>
+
+                                                </span>
+                                            </label>
+                                            {% empty %}
+                                            <p>No suggested employees found. Search the directory to choose one.</p>
+                                            {% endfor %}
+                                        </div>
+                                        <label class="employee-choice employee-directory-link">
+                                            <input type="radio" name="{{ owner.field_name }}" value="__directory__"
+                                                data-directory-option required>
+                                            <span><strong>Neither — search employee directory</strong></span>
+                                        </label>
+                                    </div>
+
+                                    <div class="owner-directory-step" data-owner-directory hidden>
+                                        <button class="directory-back" type="button" data-back-suggestions>Back</button>
+                                        <h5>Search employee directory</h5>
+                                        <label class="employee-search-label" for="search-{{ owner.field_name }}">Search
+                                            by
+                                            employee name</label>
+                                        <input class="employee-search" id="search-{{ owner.field_name }}" type="search"
+                                            placeholder="Enter full or partial name..."
+                                            data-employee-search="{{ owner.field_name }}">
+                                        <label class="employee-search-label"
+                                            for="department-{{ owner.field_name }}">Filter
+                                            by department</label>
+                                        <select class="employee-department-filter"
+                                            id="department-{{ owner.field_name }}"
+                                            data-department-filter="{{ owner.field_name }}">
+                                            <option value="">All departments</option>
+                                            {% for department in owner.departments %}
+                                            <option value="{{ department|lower }}">{{ department }}</option>
+                                            {% endfor %}
+                                        </select>
+                                        <div class="employee-choice-list directory-employee-list"
+                                            data-employee-list="{{ owner.field_name }}">
+                                            {% for choice in owner.directory_choices %}
+                                            <label class="employee-choice" data-employee-choice
+                                                data-search="{{ choice.name|lower }} {{ choice.department|lower }}">
+                                                <input type="radio" name="{{ owner.field_name }}"
+                                                    value="{{ choice.employee_id }}" required>
+                                                <span>
+                                                    <strong>{{ choice.name }}</strong>
+                                                    <small>{{ choice.department }}</small>
+                                                </span>
+                                            </label>
+                                            {% empty %}
+                                            <p>No employees are available in the directory.</p>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    <div class="owner-confirmed" data-owner-confirmed hidden>
+                                        <p>Employee confirmed: <strong data-confirmed-name></strong></p>
+                                        <button class="directory-back" type="button" data-change-owner>Change
+                                            selection</button>
+                                    </div>
+                                    <input type="hidden" name="{{ owner.confirmation_field }}" value=""
+                                        data-owner-confirmation>
+                                    <button class="confirm-employee-button" type="button" data-confirm-owner
+                                        disabled>Confirm</button>
+                                </fieldset>
+                                {% endfor %}
+                        </article>
+                        {% endfor %}
+                    </section>
+                    {% empty %}
+                    <p class="review-empty">AI did not find any tasks in this document. You can cancel and upload a
+                        clearer handover.</p>
+                    {% endfor %}
+
+                    {% if important_information %}
+                    <section class="review-section important-information">
+                        <h3>Important information</h3>
+                        <ul>{% for item in important_information %}<li>{{ item }}</li>{% endfor %}</ul>
+                    </section>
                     {% endif %}
 
-                    <form method="post" class="review-form">
-                        {% csrf_token %}
-
-                        {% for section in review_sections %}
-                            <section class="review-section">
-                                <h3>{{ section.title }}</h3>
-                                {% for task in section.tasks %}
-                                    <article class="review-task">
-                                        <div class="review-task-heading">
-                                            <h4>{{ task.title }}</h4>
-                                            {% if task.description %}<p>{{ task.description }}</p>{% endif %}
-                                        </div>
-                                        {% if task.clarification_questions %}
-                                            <div class="clarification-panel">
-                                                <h5>AI needs a little more context</h5>
-                                                {% for question in task.clarification_questions %}
-                                                    <label for="{{ question.field_name }}">{{ question.question }}</label>
-                                                    <textarea id="{{ question.field_name }}" name="{{ question.field_name }}" rows="2" placeholder="Add the details you know"></textarea>
-                                                {% endfor %}
-                                                <p>Answer any questions, then choose “Ask AI to refine” for another AI pass.</p>
-                                            </div>
-                                        {% endif %}
-
-                                        {% for owner in task.owner_reviews %}
-                                            <fieldset class="owner-review">
-                                                {% if preview_mode %}<input type="hidden" name="demo_owner_name" value="{{ owner.owner_name }}">{% endif %}
-                                                <legend>Verify task owner</legend>
-                                                <p class="owner-task-context"><span>{{ owner.task_type_label }}</span><strong>{{ owner.task_title }}</strong></p>
-                                                <p class="owner-extracted">Name from document: <strong>{{ owner.owner_name }}</strong></p>
-                                                <p class="owner-match-label">{{ owner.match_label }}.</p>
-                                                <div class="owner-suggestions-step" data-owner-suggestions>
-                                                    <h5>Possible matches</h5>
-                                                    <p>Select the correct employee or search the directory if neither matches.</p>
-                                                    <div class="employee-choice-list suggested-employee-list">
-                                                        {% for choice in owner.suggested_choices %}
-                                                            <label class="employee-choice" data-employee-choice>
-                                                                <input type="radio" name="{{ owner.field_name }}" value="{{ choice.employee_id }}" required>
-                                                                <span>
-                                                                    <strong>{{ choice.name }}</strong>
-                                                                    <small>{{ choice.department }} · Possible match{% if choice.similarity %} ({{ choice.similarity }}%){% endif %}</small>
-                                                                </span>
-                                                            </label>
-                                                        {% empty %}
-                                                            <p>No suggested employees found. Search the directory to choose one.</p>
-                                                        {% endfor %}
-                                                    </div>
-                                                    <label class="employee-choice employee-directory-link">
-                                                        <input type="radio" name="{{ owner.field_name }}" value="__directory__" data-directory-option required>
-                                                        <span><strong>Neither — search employee directory</strong></span>
-                                                    </label>
-                                                </div>
-
-                                                <div class="owner-directory-step" data-owner-directory hidden>
-                                                    <button class="directory-back" type="button" data-back-suggestions>Back</button>
-                                                    <h5>Search employee directory</h5>
-                                                    <label class="employee-search-label" for="search-{{ owner.field_name }}">Search by employee name</label>
-                                                    <input class="employee-search" id="search-{{ owner.field_name }}" type="search" placeholder="Enter full or partial name..." data-employee-search="{{ owner.field_name }}">
-                                                    <label class="employee-search-label" for="department-{{ owner.field_name }}">Filter by department</label>
-                                                    <select class="employee-department-filter" id="department-{{ owner.field_name }}" data-department-filter="{{ owner.field_name }}">
-                                                        <option value="">All departments</option>
-                                                        {% for department in owner.departments %}
-                                                            <option value="{{ department|lower }}">{{ department }}</option>
-                                                        {% endfor %}
-                                                    </select>
-                                                    <div class="employee-choice-list directory-employee-list" data-employee-list="{{ owner.field_name }}">
-                                                        {% for choice in owner.directory_choices %}
-                                                            <label class="employee-choice" data-employee-choice data-search="{{ choice.name|lower }} {{ choice.department|lower }}">
-                                                                <input type="radio" name="{{ owner.field_name }}" value="{{ choice.employee_id }}" required>
-                                                                <span>
-                                                                    <strong>{{ choice.name }}</strong>
-                                                                    <small>{{ choice.department }}</small>
-                                                                </span>
-                                                            </label>
-                                                        {% empty %}
-                                                            <p>No employees are available in the directory.</p>
-                                                        {% endfor %}
-                                                    </div>
-                                                </div>
-                                                <div class="owner-confirmed" data-owner-confirmed hidden>
-                                                    <p>Employee confirmed: <strong data-confirmed-name></strong></p>
-                                                    <button class="directory-back" type="button" data-change-owner>Change selection</button>
-                                                </div>
-                                                <input type="hidden" name="{{ owner.confirmation_field }}" value="" data-owner-confirmation>
-                                                <button class="confirm-employee-button" type="button" data-confirm-owner disabled>Confirm</button>
-                                            </fieldset>
-                                        {% endfor %}
-                                    </article>
-                                {% endfor %}
-                            </section>
-                        {% empty %}
-                            <p class="review-empty">AI did not find any tasks in this document. You can cancel and upload a clearer handover.</p>
-                        {% endfor %}
-
-                        {% if important_information %}
-                            <section class="review-section important-information">
-                                <h3>Important information</h3>
-                                <ul>{% for item in important_information %}<li>{{ item }}</li>{% endfor %}</ul>
-                            </section>
+                    <div class="review-actions">
+                        {% if preview_mode %}
+                        <button class="confirm-employee-button" type="submit" name="action" value="demo_confirm">View
+                            sample result</button>
+                        <button class="review-cancel" type="submit" name="action" value="demo_cancel"
+                            formnovalidate>Back to upload</button>
+                        {% else %}
+                        {% if has_clarifications %}
+                        <button class="extract-btn secondary-review-action" type="submit" name="action" value="refine"
+                            formnovalidate>✦&nbsp; Ask AI to refine</button>
                         {% endif %}
-
-                        <div class="review-actions">
-                            {% if preview_mode %}
-                                <button class="confirm-employee-button" type="submit" name="action" value="demo_confirm">View sample result</button>
-                                <button class="review-cancel" type="submit" name="action" value="demo_cancel" formnovalidate>Back to upload</button>
-                            {% else %}
-                            {% if has_clarifications %}
-                                <button class="extract-btn secondary-review-action" type="submit" name="action" value="refine" formnovalidate>✦&nbsp; Ask AI to refine</button>
-                            {% endif %}
-                            <button class="extract-btn" type="submit" name="action" value="save">Save handover</button>
-                            <button class="review-cancel" type="submit" name="action" value="cancel" formnovalidate>Cancel review</button>
-                            {% endif %}
-                        </div>
-                    </form>
-                </section>
+                        <button class="extract-btn" type="submit" name="action" value="save">Save handover</button>
+                        <button class="review-cancel" type="submit" name="action" value="cancel" formnovalidate>Cancel
+                            review</button>
+                        {% endif %}
+                    </div>
+                </form>
+            </section>
             {% else %}
-                <section class="upload-card" aria-label="Upload handover document">
-                    {% if error_message %}<p class="review-error" role="alert">{{ error_message }}</p>{% endif %}
-                    {% if form.errors %}<p class="review-error" role="alert">{{ form.document.errors|join:", " }}</p>{% endif %}
-                    <form method="post" enctype="multipart/form-data">
-                        {% csrf_token %}
-                        <label for="document" class="upload-area" id="uploadArea">
-                            <span class="upload-icon" aria-hidden="true">
-                                <svg viewBox="0 0 24 24"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"/><path d="M5 14v5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-5"/></svg>
-                            </span>
-                            <h2>Drag and drop a file here, or click to upload</h2>
-                            <p>Supported formats: DOCX, TXT · Maximum size: 10 MB</p>
-                            <input type="file" id="document" name="document" class="file-input" accept=".txt,.docx" required>
-                        </label>
+            <section class="upload-card" aria-label="Upload handover document">
+                {% if error_message %}<p class="review-error" role="alert">{{ error_message }}</p>{% endif %}
+                {% if form.errors %}
+                <p class="review-error" role="alert">
+                    {{ form.document.errors|join:", " }}
+                </p>
+                {% endif %}
+
+                <form method="post" enctype="multipart/form-data" id="chat-form">
+                    {% csrf_token %}
+
+                    <div class="chat-container">
+
+                        <!-- Drag and drop overlay -->
+                        <div class="drop-overlay" id="dropOverlay" hidden>
+                            <span>📄</span>
+                            <h3>Drop your document here</h3>
+                            <p>TXT or DOCX · Maximum 10 MB</p>
+                        </div>
+
+                        <!-- Chatbot heading -->
+                        <div class="chat-header">
+                            <h2>AI Handover Assistant</h2>
+                            <p>Upload a document or describe your handover.</p>
+                        </div>
+
+                        <!-- Conversation area -->
+
+                        <div class="chat-messages" id="chatMessages">
+
+                            <div class="bot-message">
+                                Hello! Please upload your handover document
+                                (.TXT or .DOCX) to get started.
+                            </div>
+
+                            <label for="document" class="chat-drop-hint">
+                                <span class="drop-icon">📄</span>
+                                <strong>Drag & drop your document here</strong>
+                                <span>or click here to browse files</span>
+                                <small>Supported: TXT, DOCX · Max 10 MB</small>
+                            </label>
+
+                        </div>
+
+
+                        <!-- File preview -->
                         <div class="file-preview" id="filePreview" hidden>
                             <span id="fileName"></span>
-                            <button type="button" id="removeFile" aria-label="Remove selected file">&times;</button>
+                            <button type="button" id="removeFile" aria-label="Remove selected file">
+                                &times;
+                            </button>
                         </div>
-                        <button type="submit" class="extract-btn">✦&nbsp; Extract Tasks with AI</button>
+
+                        <!-- Message input -->
+                        <div class="chat-input-container">
+
+                            <label for="document" class="attach-btn" title="Attach document">
+                                📎
+                            </label>
+
+                            <input type="file" id="document" name="document" class="file-input" accept=".txt,.docx">
+
+                            <input type="text" id="chat-message" name="message" placeholder="Type your message here..."
+                                aria-label="Chat message">
+
+                            <button type="submit" class="send-btn">
+                                Send
+                            </button>
+
+                        </div>
+                    </div>
+                </form>
+
+                <section class="owner-demo-inline" aria-label="Sample owner matching test">
+                    <h2>Test owner matching</h2>
+                    <p>Enter one sample name per line. This test does not call AI or save a handover.</p>
+                    {% if demo_error %}<p class="review-error" role="alert">{{ demo_error }}</p>{% endif %}
+                    <form method="post" class="owner-demo-form">
+                        {% csrf_token %}
+                        <label for="demo-names">Sample names</label>
+                        <textarea id="demo-names" name="demo_names" rows="3"
+                            placeholder="Tiseng&#10;Haziq">{{ demo_names }}</textarea>
+                        <button type="submit" class="review-cancel" name="action" value="preview_names">Try
+                            sample</button>
                     </form>
-                    <section class="owner-demo-inline" aria-label="Sample owner matching test">
-                        <h2>Test owner matching</h2>
-                        <p>Enter one sample name per line. This test does not call AI or save a handover.</p>
-                        {% if demo_error %}<p class="review-error" role="alert">{{ demo_error }}</p>{% endif %}
-                        <form method="post" class="owner-demo-form">
-                            {% csrf_token %}
-                            <label for="demo-names">Sample names</label>
-                            <textarea id="demo-names" name="demo_names" rows="3" placeholder="Tiseng&#10;Haziq">{{ demo_names }}</textarea>
-                            <button type="submit" class="review-cancel" name="action" value="preview_names">Try sample</button>
-                        </form>
-                        {% if demo_result %}
-                            <div class="owner-demo-result" role="status">
-                                {% for result in demo_result %}<p><strong>{{ result.extracted_name }}</strong> → {{ result.employee_name }}</p>{% endfor %}
-                                <small>Preview only. No AI was used and no handover was saved.</small>
-                            </div>
-                        {% endif %}
-                    </section>
+                    {% if demo_result %}
+                    <div class="owner-demo-result" role="status">
+                        {% for result in demo_result %}
+                        <p>
+                            <strong>{{ result.extracted_name }}</strong>
+                            → {{ result.employee_name }}
+                        </p>
+                        {% endfor %}
+                        <small>Preview only. No AI was used and no handover was saved.</small>
+                    </div>
+                    {% endif %}
                 </section>
+            </section>
 
             {% endif %}
         </main>
     </div>
-    <script src="{% static 'js/create_handover.js' %}?v=2" defer></script>
+    <script src="{% static 'js/create_handover.js' %}?v=5" defer></script>
 </body>
+
 </html>

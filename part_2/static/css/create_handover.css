@@ -8,13 +8,114 @@
     box-shadow: 0 18px 45px rgba(0, 0, 0, 0.16);
 }
 
-.upload-card form {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 20px;
+.upload-card #chat-form {
+    display: block;
+    width: 100%
 }
 
+.upload-card #chat-form .chat-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    min-height: 500px;
+}
+
+.upload-card #chat-form .chat-messages{
+    padding: 24px;
+    gap: 14px;
+    align-items: flex-start;
+    width: 100%;
+}
+
+.upload-card #chat-form .chat-input-container{
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.upload-card #chat-form #chat-message{
+    flex: 1;
+    min-width: 0;
+}
+
+.upload-card #chat-form .chat-header {
+    width: 100%;
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+}
+
+.upload-card #chat-form .chat-header h2{
+    margin: 0;
+    font-size: 20px;
+}
+
+.upload-card #chat-form .chat-header p {
+    margin: 6px 0 0;
+    color: var(--muted);
+}
+
+.upload-card #chat-form .bot-message{
+    max-width: 75%;
+    padding: 14px 18px;
+    color: var(--text);
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    font-size: 14px;
+}
+
+.upload-card #chat-form .chat-input-container{
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    padding: 15px;
+    border-top: 1px solid var(--border);
+}
+
+.upload-card #chat-form .attach-btn{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 44px;
+    width: 44px;
+    height: 44px;
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 22px;
+    cursor: pointer;
+}
+
+.upload-card #chat-form #chat-message{
+    flex: 1;
+    min-width: 0;
+    height: 44px;
+    padding: 0 14px;
+    color: var(--text);
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font: inherit;
+    font-size: 14px;
+}
+
+.upload-card #chat-form .send-btn {
+    flex-shrink: 0;
+    height: 44px;
+    padding: 0 22px;
+    color: white;
+    background: #493875;
+    border: 1px solid #66538f;
+    border-radius: 10px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.upload-card #chat-form .send-btn:hover{
+    background: #554287;
+}
 .owner-demo-inline {
     margin-top: 28px;
     padding-top: 22px;
@@ -664,4 +765,77 @@
     .review-actions button {
         width: 100%;
     }
+}
+
+.chat-container{
+    position: relative;
+}
+
+.chat-container .drag-over{
+    outline: 2px dashed var(--purple);
+    outline-offset: 5px;
+    background: rgba(163, 139, 255, 0.08);
+}
+
+.chat-container .drop-overlay{
+    position:absolute;
+    inset: 0;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(29, 32, 36,0.94);
+    border: 2px dashed var(--purple);
+    border-radius: 16px;
+    pointer-events: none;
+}
+
+.chat-container .drop-overlay[hidden]{
+    display: none;
+}
+
+/* Permanent drag and drop hint */
+
+.upload-card #chat-form .chat-drop-hint {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    align-self: center;
+
+    width: min(100%, 600px);
+    min-height: 160px;
+    margin-top: 25px;
+    padding: 24px;
+
+    background: var(--surface-raised);
+    border: 2px dashed #66538f;
+    border-radius: 14px;
+
+    color: var(--text);
+    text-align: center;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+}
+
+.chat-drop-hint:hover {
+    background: #302b3c;
+    border-color: var(--purple);
+}
+
+.chat-drop-hint .drop-icon {
+    font-size: 30px;
+    margin-bottom: 10px;
+}
+
+.chat-drop-hint strong {
+    font-size: 14px;
+}
+
+.chat-drop-hint span,
+.chat-drop-hint small {
+    margin-top: 6px;
+    color: var(--muted);
+    font-size: 12px;
 }
