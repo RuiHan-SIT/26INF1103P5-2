@@ -512,8 +512,7 @@ def update_subtask_status(request, subtask_id):
             "error": "A later dependent subtask is already complete. Undo that first."
         }, status=409)
 
-    subtask.status = "done" if mark_done else "todo"
-    subtask.save(update_fields=["status"])
+    HandoverRepository().update_subtask_status(subtask, mark_done)
     return JsonResponse({"completed": mark_done})
 
 
