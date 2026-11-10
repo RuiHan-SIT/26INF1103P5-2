@@ -11,7 +11,7 @@ from .models import Employee, Subtask, Task, Upload
 from .logic_manager.employee_identity_matcher import EmployeeIdentityMatcher
 from .logic_manager.handover import Handover as LogicHandover
 from .logic_manager.outstanding_task import OutstandingTask
-from .services.handover_persistence import save_handover_records
+from .data_manager.handover_repository import HandoverRepository
 
 
 PENDING_UPLOAD_KEY = "pending_handover_upload_id"
@@ -328,7 +328,7 @@ def create_handover(request):
                 )
 
             try:
-                save_handover_records(employee, upload, processed)
+                HandoverRepository().save_handover(employee, upload, processed)
             except (IntegrityError, ValueError) as error:
                 return render_handover_review(
                     request, employee, upload, data,
