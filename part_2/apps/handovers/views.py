@@ -11,7 +11,7 @@ from .models import Employee, Subtask, Task, Upload
 from .logic_manager.employee_identity_matcher import EmployeeIdentityMatcher
 from .logic_manager.handover import Handover as LogicHandover
 from .logic_manager.outstanding_task import OutstandingTask
-from .services.handover_persistence import save_handover_records
+from .data_manager.handover_repository import HandoverRepository
 
 
 PENDING_UPLOAD_KEY = "pending_handover_upload_id"
@@ -262,8 +262,7 @@ def create_handover(request):
                 return redirect("handovers:home")
 
             if action == "cancel":
-                upload.file.delete(save=False)
-                upload.delete()
+                HandoverRepository().delete_upload(upload)
                 request.session.pop(PENDING_UPLOAD_KEY, None)
                 request.session.pop(PENDING_DATA_KEY, None)
                 return redirect("handovers:home")
@@ -328,7 +327,7 @@ def create_handover(request):
                 )
 
             try:
-                save_handover_records(employee, upload, processed)
+                HandoverRepository().save_handover(employee, upload, processed)
             except (IntegrityError, ValueError) as error:
                 return render_handover_review(
                     request, employee, upload, data,
@@ -512,8 +511,7 @@ def update_subtask_status(request, subtask_id):
             "error": "A later dependent subtask is already complete. Undo that first."
         }, status=409)
 
-    subtask.status = "done" if mark_done else "todo"
-    subtask.save(update_fields=["status"])
+    HandoverRepository().update_subtask_status(subtask, mark_done)
     return JsonResponse({"completed": mark_done})
 
 
