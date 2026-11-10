@@ -38,13 +38,12 @@
 
             <div class="sidebar-spacer"></div>
             <div class="profile-card">
-                <span class="avatar" aria-hidden="true">G</span>
-                <span class="profile-text"><strong>Goh Rui Han</strong><small>E001</small></span>
+                <span class="avatar" aria-hidden="true">{{ request.user.username|slice:":1"|upper }}</span>
+                <span class="profile-text"><strong>{{ request.user.get_full_name|default:request.user.username }}</strong><small>{{ request.user.username }}</small></span>
                 <button class="profile-menu" id="profile-menu-button" type="button" aria-label="Open employee menu" aria-expanded="false" aria-controls="profile-menu">•••</button>
                 <div class="profile-popover" id="profile-menu" hidden>
-                    <strong>Goh Rui Han</strong>
-                    <span>Employee ID: E001</span>
-                    <small>Demo account</small>
+                    <strong>{{ request.user.get_full_name|default:request.user.username }}</strong>
+                    <span>Employee ID: {{ request.user.username }}</span>
                     <button class="profile-action logout-action" id="logout-action" type="button">Log out</button>
                     <small class="account-feedback" id="account-feedback" aria-live="polite" hidden></small>
                 </div>
@@ -56,7 +55,7 @@
                 <div>
                     <p class="eyebrow">YOUR WORKSPACE</p>
                     <h1>Handover History</h1>
-                    <p class="page-subtitle">View and manage your created handovers.</p>
+                    <p class="page-subtitle">View and download your created handovers.</p>
                 </div>
                 <a class="create-button" href="{% url 'handovers:home' %}">+ Create Handover</a>
             </header>
@@ -66,12 +65,12 @@
                 <label class="search-box">
                     <span class="visually-hidden">Search handovers</span>
                     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
-                    <input type="search" name="q" value="{{ query }}" placeholder="Search handover ID or title...">
+                    <input type="search" name="q" value="{{ query }}" placeholder="Search handover ID...">
                 </label>
                 <select name="status" aria-label="Filter by status">
                     <option value="">All statuses</option>
-                    {% for choice in status_choices %}
-                    <option value="{{ choice }}" {% if choice == selected_status %}selected{% endif %}>{{ choice }}</option>
+                    {% for value, label in status_choices %}
+                    <option value="{{ value }}" {% if value == selected_status %}selected{% endif %}>{{ label }}</option>
                     {% endfor %}
                 </select>
                 <button class="search-button" type="submit">Search</button>
@@ -85,31 +84,33 @@
                     <thead>
                         <tr>
                             <th scope="col">Handover ID</th>
-                            <th scope="col">Title</th>
                             <th scope="col">Created On</th>
                             <th scope="col" class="col-center">Tasks</th>
                             <th scope="col">Status</th>
-                            <th scope="col" class="col-center">Actions</th>
+                            <th scope="col" class="col-center">Download</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for h in handovers %}
                         <tr>
-                            <td class="id-cell">{{ h.id }}</td>
-                            <td>{{ h.title }}</td>
-                            <td>{{ h.created_on }}</td>
-                            <td class="col-center">{{ h.tasks }}</td>
-                            <td><span class="status-badge status-{{ h.status|slugify }}">{{ h.status }}</span></td>
+                            <td class="id-cell">H-{{ h.pk|stringformat:"04d" }}</td>
+                            <td>{{ h.created_at|date:"d M Y, g:i A" }}</td>
+                            <td class="col-center">{{ h.task_count }}</td>
+                            <td><span class="status-badge status-{{ h.status|slugify }}">{{ h.get_status_display }}</span></td>
                             <td class="col-center">
-                                <!-- TODO: link to the handover detail page once it exists -->
-                                <a class="view-link" href="#" aria-label="View {{ h.id }}" title="View handover">
-                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.8"/></svg>
+                                {% if h.status == "completed" %}
+                                <a class="view-link" href="{% url 'handovers:download_completed_handover' h.pk %}"
+                                   aria-label="Download handover H-{{ h.pk|stringformat:'04d' }}" title="Download Word document">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7.5 11 12 15.5 16.5 11M5 19.5h14"/></svg>
                                 </a>
+                                {% else %}
+                                <span title="Available once the handover is completed">&ndash;</span>
+                                {% endif %}
                             </td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="6" class="empty-row">No handovers found.</td>
+                            <td colspan="5" class="empty-row">No handovers found.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
