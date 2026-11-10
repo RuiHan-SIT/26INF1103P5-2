@@ -36,7 +36,7 @@ class HandoverRepository:
 
     # ---- private methods
 
-    # Saves one outsstanding task (with a deadline) along with its subtasks
+    # Saves one outstanding task (with a deadline) along with its subtasks
     def _save_outstanding_task(self, handover, index, task_data):
         task = Task.objects.create(
             handover=handover,
@@ -96,7 +96,15 @@ class HandoverRepository:
                 [subtask_records[dependency] for dependency in subtask_data["dependencies"]]
             )
 
+        #=======================================
+        # UPDATE
+        #=======================================
 
+    # Ticks a subtask as done, or back to to-do
+    def update_subtask_status(self, subtask, is_done):
+        subtask.status = "done" if is_done else "todo"
+        subtask.save(update_fields=["status"])
+        return subtask
 
     def _parse_date(self, value):
         # Turns a written date (string) into a real date
