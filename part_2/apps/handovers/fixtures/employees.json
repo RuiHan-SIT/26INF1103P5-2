@@ -1,8 +1,32 @@
 {
-    "2604707": {"name": "Rui Han", "department": "Information Technology"},
-    "2601624": {"name": "Ti Seng", "department": "Finance"},
-    "2604218": {"name": "Shakira", "department": "Human Resources"},
-    "2604249": {"name": "Rania", "department": "Marketing"},
-    "2603056": {"name": "Haziq", "department": "Operations"},
-    "2601532": {"name": "Aqmar", "department": "Sales"}
+    "2604707": {
+        "name": "Goh Rui Han",
+        "department": "Information Technology",
+        "email": "2604707@sit.singaporetech.edu.sg"
+    },
+    "2601624": {
+        "name": "Lim Ti Seng",
+        "department": "Finance",
+        "email": "2601624@sit.singaporetech.edu.sg"
+    },
+    "2604218": {
+        "name": "Nur Shakira Binte Jamil",
+        "department": "Human Resources",
+        "email": "2604218@sit.singaporetech.edu.sg"
+    },
+    "2604249": {
+        "name": "Rania Binte Mohammad Fadli",
+        "department": "Marketing",
+        "email": "2604249@sit.singaporetech.edu.sg"
+    },
+    "2603056": {
+        "name": "Muhammad Haziq Bin Hamkah",
+        "department": "Operations",
+        "email": "2603056@sit.singaporetech.edu.sg"
+    },
+    "2601532": {
+        "name": "Aqmar Haziq So Mohamed Kassim",
+        "department": "Sales",
+        "email": "2601532@sit.singaporetech.edu.sg"
+    }
 }

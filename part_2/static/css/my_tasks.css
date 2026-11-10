@@ -369,6 +369,10 @@ a {
     border-left: 1px solid #302f43;
 }
 
+.calendar-weekdays {
+    display: contents;
+}
+
 .weekday,
 .day {
     display: grid;
@@ -1088,10 +1092,6 @@ a {
         grid-template-rows: 34px repeat(6, minmax(0, 1fr));
     }
 
-    .calendar-grid.week-view {
-        grid-template-rows: 34px minmax(0, 1fr);
-    }
-
     .weekday,
     .day {
         min-height: 0;
@@ -1385,6 +1385,37 @@ a {
     }
 }
 
+/* Keep the sidebar in place while the page content scrolls on desktop screens. */
+@media (min-width: 1051px) {
+    html,
+    body {
+        height: 100%;
+        overflow: hidden;
+    }
+
+    .app-shell {
+        height: 100vh;
+        height: 100dvh;
+        min-height: 0;
+    }
+
+    .sidebar {
+        height: 100vh;
+        height: 100dvh;
+        min-height: 0;
+        overflow-y: auto;
+    }
+
+    .main-content {
+        height: 100vh;
+        height: 100dvh;
+        min-height: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+}
+
 .month-arrow {
     line-height: 0;
 }
@@ -1468,4 +1499,39 @@ a {
         padding: 0 8px;
         font-size: 10px;
     }
+}
+
+
+.profile-popover form {
+    margin: 0;
+}
+
+
+.profile-popover a.profile-password-action,
+.profile-popover a.profile-password-action:link,
+.profile-popover a.profile-password-action:visited,
+.profile-popover a.profile-password-action:active {
+    display: inline-block;
+    width: fit-content;
+    margin: 0;
+    padding: 0;
+    color: var(--purple);
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    font-size: 12px;
+    line-height: 1.4;
+    text-decoration: none !important;
+    text-decoration-line: none !important;
+}
+
+.profile-popover a.profile-password-action:hover {
+    color: #c3b6ff;
+    background: transparent;
+    text-decoration: none !important;
+}
+
+.profile-popover a.profile-password-action:focus-visible {
+    outline: 1px solid var(--purple);
+    outline-offset: 3px;
 }

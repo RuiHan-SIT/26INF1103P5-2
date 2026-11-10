@@ -6,9 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>History | Handover Assistant</title>
     <!-- my_tasks.css provides the shared sidebar, theme colours and page layout -->
-    <link rel="stylesheet" href="{% static 'css/my_tasks.css' %}">
+    <link rel="stylesheet" href="{% static 'css/my_tasks.css' %}?v=5">
     <!-- history.css only adds what is specific to this page (search, table, status badges) -->
-    <link rel="stylesheet" href="{% static 'css/history.css' %}">
+    <link rel="stylesheet" href="{% static 'css/history.css' %}?v=3">
 </head>
 <body>
     <div class="app-shell">
@@ -25,8 +25,7 @@
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5h10a2 2 0 0 1 2 2v13H5v-13a2 2 0 0 1 2-2Z"/><path d="M9 4.5v-1h6v1M8.5 10h7M8.5 14h7"/></svg>
                     <span>Create Handover</span>
                 </a>
-                <!-- TODO: point this at the My Tasks route once it exists -->
-                <a class="nav-link" href="#" aria-label="My Tasks">
+                <a class="nav-link" href="{% url 'handovers:my_tasks' %}" aria-label="My Tasks">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 9h16M8 13h3M8 16h6"/></svg>
                     <span>My Tasks</span>
                 </a>
@@ -38,15 +37,26 @@
 
             <div class="sidebar-spacer"></div>
             <div class="profile-card">
-                <span class="avatar" aria-hidden="true">G</span>
-                <span class="profile-text"><strong>Goh Rui Han</strong><small>E001</small></span>
-                <button class="profile-menu" id="profile-menu-button" type="button" aria-label="Open employee menu" aria-expanded="false" aria-controls="profile-menu">•••</button>
+                <span class="avatar" aria-hidden="true">{% if employee %}{{ employee.name|first|upper }}{% else %}{{ request.user.username|first|upper }}{% endif %}</span>
+                <span class="profile-text">
+                    {% if employee %}
+                        <strong>{{ employee.name }}</strong>
+                        <small>{{ employee.employee_id }}</small>
+                    {% else %}
+                        <strong>{{ request.user.username }}</strong>
+                        <small>Employee profile unavailable</small>
+                    {% endif %}
+                </span>
+                <button class="profile-menu" id="profile-menu-button" type="button" aria-label="Open account menu" aria-expanded="false" aria-controls="profile-menu">•••</button>
                 <div class="profile-popover" id="profile-menu" hidden>
-                    <strong>Goh Rui Han</strong>
-                    <span>Employee ID: E001</span>
-                    <small>Demo account</small>
-                    <button class="profile-action logout-action" id="logout-action" type="button">Log out</button>
-                    <small class="account-feedback" id="account-feedback" aria-live="polite" hidden></small>
+                    <strong>{% if employee %}{{ employee.name }}{% else %}{{ request.user.username }}{% endif %}</strong>
+                    {% if employee %}<span>Employee ID: {{ employee.employee_id }}</span>{% endif %}
+                    <small>Signed in</small>
+                    <a class="profile-password-action" href="{% url 'handovers:password_change' %}">Change password</a>
+                    <form method="post" action="{% url 'handovers:logout' %}">
+                        {% csrf_token %}
+                        <button class="profile-action" type="submit">Log out</button>
+                    </form>
                 </div>
             </div>
         </aside>
@@ -62,19 +72,19 @@
             </header>
 
             <!-- Search and filter: a normal GET form, so the view reads ?q= and ?status= -->
-            <form class="history-toolbar" method="get" action="{% url 'handovers:handover_history' %}" role="search">
+            <form id="history-filter-form" class="history-toolbar" method="get" action="{% url 'handovers:handover_history' %}" role="search">
                 <label class="search-box">
                     <span class="visually-hidden">Search handovers</span>
                     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
                     <input type="search" name="q" value="{{ query }}" placeholder="Search handover ID or title...">
                 </label>
-                <select name="status" aria-label="Filter by status">
+                <button class="search-button" type="submit">Search</button>
+                <select id="status-filter" name="status" aria-label="Filter by status">
                     <option value="">All statuses</option>
                     {% for choice in status_choices %}
                     <option value="{{ choice }}" {% if choice == selected_status %}selected{% endif %}>{{ choice }}</option>
                     {% endfor %}
                 </select>
-                <button class="search-button" type="submit">Search</button>
                 {% if query or selected_status %}
                 <a class="clear-link" href="{% url 'handovers:handover_history' %}">Clear</a>
                 {% endif %}
@@ -114,7 +124,28 @@
                         {% endfor %}
                     </tbody>
                 </table>
-                <p class="history-footnote">Showing {{ handovers|length }} of {{ total_count }} handovers</p>
+                <div class="history-footer">
+                    {% if total_count %}
+                    <p class="history-footnote">Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ total_count }} handovers</p>
+                    {% else %}
+                    <p class="history-footnote">Showing 0 of 0 handovers</p>
+                    {% endif %}
+                    {% if page_obj.paginator.num_pages > 1 %}
+                    <nav class="history-pagination" aria-label="History pages">
+                        {% if page_obj.has_previous %}
+                        <a href="?q={{ query|urlencode }}&amp;status={{ selected_status|urlencode }}&amp;page={{ page_obj.previous_page_number }}">Previous</a>
+                        {% else %}
+                        <span class="pagination-disabled" aria-disabled="true">Previous</span>
+                        {% endif %}
+                        <span class="page-count">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+                        {% if page_obj.has_next %}
+                        <a href="?q={{ query|urlencode }}&amp;status={{ selected_status|urlencode }}&amp;page={{ page_obj.next_page_number }}">Next</a>
+                        {% else %}
+                        <span class="pagination-disabled" aria-disabled="true">Next</span>
+                        {% endif %}
+                    </nav>
+                    {% endif %}
+                </div>
             </section>
         </main>
     </div>

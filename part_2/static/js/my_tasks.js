@@ -1,48 +1,22 @@
-const displayedDate = new Date(2026, 10, 1);
-let selectedDate = new Date(2026, 10, 18);
-let calendarView = "month";
+const displayedDate = new Date();
+let selectedDate = new Date();
+displayedDate.setDate(1);
 const completedTasks = new Set();
+const calendarTasksElement = document.getElementById("calendar-tasks-data");
+const calendarTasks = calendarTasksElement ? JSON.parse(calendarTasksElement.textContent) : [];
+
+calendarTasks.forEach((task) => {
+    if (task.completed) completedTasks.add(task.id);
+});
 
 const calendarDays = document.getElementById("calendar-days");
+const calendarWeekdays = document.getElementById("calendar-weekdays");
 const calendarGrid = document.querySelector(".calendar-grid");
 const monthLabel = document.getElementById("month-label");
 const selectedDateTitle = document.getElementById("selected-date-title");
 const selectedYear = document.getElementById("selected-year");
 const taskList = document.getElementById("task-list");
 const taskCount = document.getElementById("task-count");
-
-const sampleTasks = [
-    {
-        id: "gather-information",
-        title: "1.1 Gather project information",
-        handover: "H-0009",
-        type: "planned",
-        date: "2026-11-18"
-    },
-    {
-        id: "analyse-information",
-        title: "1.2 Analyse information",
-        handover: "H-0009",
-        type: "planned",
-        date: "2026-11-19",
-        dependencies: ["gather-information"]
-    },
-    {
-        id: "submit-security-report",
-        title: "Submit security report",
-        handover: "H-0009",
-        type: "deadline",
-        date: "2026-11-20"
-    },
-    {
-        id: "weekly-audit",
-        title: "Weekly audit summary",
-        handover: "H-0010",
-        type: "bau",
-        startDate: "2026-11-13",
-        endDate: null
-    }
-];
 
 function dateKey(date) {
     const year = date.getFullYear();
@@ -58,25 +32,40 @@ function dateFromKey(key) {
 
 function startOfWeek(date) {
     const firstDay = new Date(date);
-    firstDay.setDate(date.getDate() - ((date.getDay() + 6) % 7));
+    firstDay.setDate(date.getDate() - date.getDay());
     firstDay.setHours(0, 0, 0, 0);
     return firstDay;
 }
 
+function renderWeekdayHeadings(startDate, numberOfDays) {
+    calendarWeekdays.replaceChildren();
+    for (let index = 0; index < numberOfDays; index += 1) {
+        const date = new Date(startDate);
+        date.setDate(startDate.getDate() + index);
+        const heading = document.createElement("div");
+        heading.className = "weekday";
+        if (date.getDay() === 0 || date.getDay() === 6) heading.classList.add("weekend");
+        heading.setAttribute("role", "columnheader");
+        heading.textContent = date.toLocaleDateString("en", { weekday: "short" });
+        calendarWeekdays.appendChild(heading);
+    }
+}
+
+function isBauScheduled(task, key) {
+    if (!task.startDate || key < task.startDate || (task.endDate && key > task.endDate)) return false;
+    const date = dateFromKey(key);
+    const start = dateFromKey(task.startDate);
+    if (task.frequency === "weekly") return Math.floor((date - start) / 86400000) % 7 === 0;
+    if (task.frequency === "monthly") return date.getDate() === start.getDate();
+    if (task.frequency === "yearly") return date.getMonth() === start.getMonth() && date.getDate() === start.getDate();
+    return key === task.startDate;
+}
+
 function getTasksForDate(date) {
     const key = dateKey(date);
-    return sampleTasks.filter((task) => {
-        if (task.type !== "bau") {
-            return task.date === key;
-        }
-
-        if (key < task.startDate || (task.endDate && key > task.endDate)) {
-            return false;
-        }
-
-        const daysSinceStart = (dateFromKey(key) - dateFromKey(task.startDate)) / 86400000;
-        return daysSinceStart % 7 === 0;
-    });
+    return calendarTasks.filter((task) => task.type === "bau"
+        ? isBauScheduled(task, key)
+        : task.date === key);
 }
 
 function makeCalendarDay(date, visibleMonth) {
@@ -127,35 +116,46 @@ function renderCalendar() {
     const year = displayedDate.getFullYear();
     const month = displayedDate.getMonth();
     calendarDays.replaceChildren();
-
-    if (calendarView === "month") {
-        monthLabel.innerHTML = `${displayedDate.toLocaleDateString("en", { month: "long" })} <span>${year}</span>`;
-        calendarGrid.setAttribute("aria-label", `${displayedDate.toLocaleDateString("en", { month: "long" })} ${year}`);
-        const firstDay = new Date(year, month, 1);
-        const gridStart = new Date(year, month, 1 - ((firstDay.getDay() + 6) % 7));
-        for (let index = 0; index < 42; index += 1) {
-            const dayDate = new Date(gridStart);
-            dayDate.setDate(gridStart.getDate() + index);
-            calendarDays.appendChild(makeCalendarDay(dayDate, month));
-        }
-        calendarGrid.classList.remove("week-view");
-    } else {
-        const weekStart = startOfWeek(selectedDate);
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekStart.getDate() + 6);
-        monthLabel.textContent = weekStart.getMonth() === weekEnd.getMonth()
-            ? `${weekStart.toLocaleDateString("en", { month: "short", day: "numeric" })}–${weekEnd.toLocaleDateString("en", { day: "numeric" })}, ${year}`
-            : `${weekStart.toLocaleDateString("en", { month: "short", day: "numeric" })}–${weekEnd.toLocaleDateString("en", { month: "short", day: "numeric" })}, ${year}`;
-        calendarGrid.setAttribute("aria-label", "Selected week");
-        for (let index = 0; index < 7; index += 1) {
-            const dayDate = new Date(weekStart);
-            dayDate.setDate(weekStart.getDate() + index);
-            calendarDays.appendChild(makeCalendarDay(dayDate, selectedDate.getMonth()));
-        }
-        calendarGrid.classList.add("week-view");
+    monthLabel.innerHTML = `${displayedDate.toLocaleDateString("en", { month: "long" })} <span>${year}</span>`;
+    calendarGrid.setAttribute("aria-label", `${displayedDate.toLocaleDateString("en", { month: "long" })} ${year}`);
+    const firstDay = new Date(year, month, 1);
+    const gridStart = new Date(year, month, 1 - firstDay.getDay());
+    renderWeekdayHeadings(gridStart, 7);
+    for (let index = 0; index < 42; index += 1) {
+        const dayDate = new Date(gridStart);
+        dayDate.setDate(gridStart.getDate() + index);
+        calendarDays.appendChild(makeCalendarDay(dayDate, month));
     }
-
     renderSelectedDay();
+}
+
+async function saveCompletion(task, completed, checkbox) {
+    checkbox.disabled = true;
+    try {
+        const response = await fetch(`/my-tasks/subtasks/${task.subtaskId}/status/`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": getCookie("csrftoken"),
+            },
+            body: JSON.stringify({ completed }),
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Could not save task progress.");
+        task.completed = result.completed;
+        if (completed) completedTasks.add(task.id);
+        else completedTasks.delete(task.id);
+        renderSelectedDay();
+    } catch (error) {
+        checkbox.checked = !completed;
+        window.alert(error.message);
+        checkbox.disabled = false;
+    }
+}
+
+function getCookie(name) {
+    const cookie = document.cookie.split(";").map((item) => item.trim()).find((item) => item.startsWith(`${name}=`));
+    return cookie ? decodeURIComponent(cookie.slice(name.length + 1)) : "";
 }
 
 function renderSelectedDay() {
@@ -186,16 +186,13 @@ function renderSelectedDay() {
         checkbox.type = "checkbox";
         checkbox.checked = completedTasks.has(task.id);
         const dependenciesComplete = !task.dependencies || task.dependencies.every((dependency) => completedTasks.has(dependency));
-        checkbox.disabled = !dependenciesComplete;
-        checkbox.title = dependenciesComplete ? "" : "Complete the earlier subtask first.";
+        const canMarkDone = task.type === "planned" && !checkbox.checked;
+        checkbox.disabled = task.type !== "planned" || (canMarkDone && !dependenciesComplete);
+        checkbox.title = task.type !== "planned" ? "Only planned subtasks can be marked complete here." : dependenciesComplete ? "" : "Complete the required earlier subtask first.";
         checkbox.setAttribute("aria-label", `Mark ${task.title} complete`);
         const checkmark = document.createElement("span");
         label.append(checkbox, checkmark);
-        checkbox.addEventListener("change", () => {
-            if (checkbox.checked) completedTasks.add(task.id);
-            else completedTasks.delete(task.id);
-            item.classList.toggle("completed", checkbox.checked);
-        });
+        checkbox.addEventListener("change", () => saveCompletion(task, checkbox.checked, checkbox));
 
         const copy = document.createElement("div");
         copy.className = "task-copy";
@@ -204,31 +201,26 @@ function renderSelectedDay() {
         const source = document.createElement("p");
         source.textContent = `From handover ${task.handover}`;
         copy.append(title, source);
-        if (!dependenciesComplete) {
+        if (task.dependencies?.length && !dependenciesComplete) {
             const dependencyNote = document.createElement("small");
             dependencyNote.className = "dependency-note";
-            dependencyNote.textContent = "Complete 1.1 Gather project information first.";
+            dependencyNote.textContent = "Complete the required earlier subtask first.";
             copy.appendChild(dependencyNote);
         }
 
         const tag = document.createElement("span");
         tag.className = `task-tag ${task.type}-tag`;
-        tag.textContent = task.type === "bau" ? "BAU" : task.type === "deadline" ? "Deadline" : "Planned";
+        tag.textContent = task.type === "bau" ? "BAU" : task.type === "deadline" ? "Deadline" : completedTasks.has(task.id) ? "Completed" : "Planned";
         item.append(label, copy, tag);
         taskList.appendChild(item);
     });
 }
 
 function moveCalendar(amount) {
-    if (calendarView === "month") {
-        const originalDay = selectedDate.getDate();
-        displayedDate.setMonth(displayedDate.getMonth() + amount);
-        const lastDay = new Date(displayedDate.getFullYear(), displayedDate.getMonth() + 1, 0).getDate();
-        selectedDate = new Date(displayedDate.getFullYear(), displayedDate.getMonth(), Math.min(originalDay, lastDay));
-    } else {
-        selectedDate.setDate(selectedDate.getDate() + amount * 7);
-        displayedDate.setFullYear(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
-    }
+    const originalDay = selectedDate.getDate();
+    displayedDate.setMonth(displayedDate.getMonth() + amount);
+    const lastDay = new Date(displayedDate.getFullYear(), displayedDate.getMonth() + 1, 0).getDate();
+    selectedDate = new Date(displayedDate.getFullYear(), displayedDate.getMonth(), Math.min(originalDay, lastDay));
     renderCalendar();
 }
 
@@ -239,47 +231,6 @@ document.getElementById("today-button").addEventListener("click", () => {
     displayedDate.setFullYear(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
     renderCalendar();
 });
-const viewButton = document.getElementById("calendar-view-button");
-const viewMenu = document.getElementById("calendar-view-menu");
-const viewLabel = document.getElementById("calendar-view-label");
-const viewOptions = document.querySelectorAll(".view-option");
-
-viewButton.addEventListener("click", () => {
-    const isOpen = viewButton.getAttribute("aria-expanded") === "true";
-    viewButton.setAttribute("aria-expanded", String(!isOpen));
-    viewMenu.hidden = isOpen;
-});
-
-viewOptions.forEach((option) => {
-    option.addEventListener("click", () => {
-        calendarView = option.dataset.view;
-        viewLabel.textContent = option.textContent;
-        viewOptions.forEach((viewOption) => {
-            const isSelected = viewOption === option;
-            viewOption.classList.toggle("active", isSelected);
-            viewOption.setAttribute("aria-checked", String(isSelected));
-        });
-        viewMenu.hidden = true;
-        viewButton.setAttribute("aria-expanded", "false");
-        renderCalendar();
-    });
-});
-
-document.addEventListener("click", (event) => {
-    if (!viewMenu.contains(event.target) && !viewButton.contains(event.target)) {
-        viewMenu.hidden = true;
-        viewButton.setAttribute("aria-expanded", "false");
-    }
-});
-
-document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-        viewMenu.hidden = true;
-        viewButton.setAttribute("aria-expanded", "false");
-        viewButton.focus();
-    }
-});
-
 const profileButton = document.getElementById("profile-menu-button");
 const profilePopover = document.getElementById("profile-menu");
 profileButton.addEventListener("click", () => {
@@ -298,12 +249,6 @@ document.addEventListener("keydown", (event) => {
         profilePopover.hidden = true;
         profileButton.setAttribute("aria-expanded", "false");
     }
-});
-const logoutAction = document.getElementById("logout-action");
-const accountFeedback = document.getElementById("account-feedback");
-logoutAction.addEventListener("click", () => {
-    accountFeedback.textContent = "Log out will work once the login route is connected.";
-    accountFeedback.hidden = false;
 });
 
 renderCalendar();
