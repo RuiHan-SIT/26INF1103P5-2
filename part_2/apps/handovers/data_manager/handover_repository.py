@@ -96,9 +96,9 @@ class HandoverRepository:
                 [subtask_records[dependency] for dependency in subtask_data["dependencies"]]
             )
 
-        #=======================================
-        # UPDATE
-        #=======================================
+    #=======================================
+    # UPDATE
+    #=======================================
 
     # Ticks a subtask as done, or back to to-do
     def update_subtask_status(self, subtask, is_done):
@@ -106,6 +106,16 @@ class HandoverRepository:
         subtask.save(update_fields=["status"])
         return subtask
 
+    #=======================================
+    # DELETE
+    #=======================================
+
+    # Deletes a cancelled upload: removes the file from media/ and its database row
+    def delete_upload(self, upload):
+        upload.file.delete(save=False)
+        upload.delete()
+        
+        
     def _parse_date(self, value):
         # Turns a written date (string) into a real date
         if not value:
