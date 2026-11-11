@@ -46,16 +46,29 @@ class DocumentReader:
                 "Unable to read DOCX file. It may be corrupted."
             ) from error
 
-        paragraphs = [
-            paragraph.text
-            for paragraph in document.paragraphs
-            if paragraph.text.strip()
-        ]
+        extracted_lines = []
 
-        content = "\n".join(paragraphs)
+        # Read regular paragraphs
+        for paragraph in document.paragraphs:
+            text = paragraph.text.strip()
+            if text:
+                extracted_lines.append(text)
+
+        # Read tables (handover templates store tasks in tables)
+        for table in document.tables:
+            for row in table.rows:
+                row_cells = [cell.text.strip().replace("\n", " ") for cell in row.cells]
+                cleaned_cells = []
+                for cell in row_cells:
+                    if not cleaned_cells or cell != cleaned_cells[-1]:
+                        cleaned_cells.append(cell)
+                if any(cleaned_cells):
+                    extracted_lines.append(" | ".join(cleaned_cells))
+
+        content = "\n".join(extracted_lines)
 
         if not content.strip():
             raise ValueError(
-                "The DOCX file contains no readable paragraph text."
+                "The DOCX file contains no readable text or table data."
             )
         return content

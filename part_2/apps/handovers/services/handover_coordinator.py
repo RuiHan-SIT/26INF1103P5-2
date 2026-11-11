@@ -91,11 +91,19 @@ class HandoverCoordinator:
             }
 
     @staticmethod
-    def strip_clarification_questions(data: Dict[str, Any]) -> Dict[str, Any]:
+    def strip_clarification_questions(data: Optional[Dict[str, Any]]) -> Dict[str, Any]:
         """
         Utility method to strip clarification_questions from tasks before
         passing the dictionary to Handover logic manager or database models.
+        Works seamlessly whether clarification_questions exist or not.
         """
+        if not data or not isinstance(data, dict):
+            return {
+                "outstanding_tasks": [],
+                "bau_tasks": [],
+                "important_information": []
+            }
+
         cleaned_outstanding = []
         for task in data.get("outstanding_tasks", []):
             task_copy = dict(task)

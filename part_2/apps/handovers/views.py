@@ -11,12 +11,14 @@ from django.views.decorators.http import require_POST
 
 from .data_manager.handover_repository import HandoverRepository
 from .forms import HandoverUploadForm
+from .input_handler.handover_input_handler import HandoverInputHandler
 from .logic_manager.employee_identity_matcher import EmployeeIdentityMatcher
 from .logic_manager.handover import Handover as LogicHandover
 from .logic_manager.outstanding_task import OutstandingTask
 from .data_manager.handover_query import HandoverQuery
 from .models import Employee, Handover, Subtask, Task, Upload
 from .output.word_document_generator import CompletedHandoverDocumentGenerator
+from .services.handover_coordinator import HandoverCoordinator
 
 logger = logging.getLogger(__name__)
 
@@ -283,9 +285,6 @@ def create_handover(request):
                     )
 
                 try:
-                    from .input_handler.handover_input_handler import HandoverInputHandler
-                    from .services.handover_coordinator import HandoverCoordinator
-
                     upload.file.open("rb")
                     try:
                         document_text = HandoverInputHandler().process_upload(upload.file)
@@ -362,9 +361,6 @@ def create_handover(request):
 
             uploaded_file = form.cleaned_data["document"]
             try:
-                from .input_handler.handover_input_handler import HandoverInputHandler
-                from .services.handover_coordinator import HandoverCoordinator
-
                 document_text = HandoverInputHandler().process_upload(uploaded_file)
                 result = HandoverCoordinator().review_handover(document_text)
             except (ImportError, OSError, ValueError, RuntimeError, PermissionError) as error:
