@@ -15,7 +15,7 @@ from .logic_manager.employee_identity_matcher import EmployeeIdentityMatcher
 from .logic_manager.handover import Handover as LogicHandover
 from .logic_manager.outstanding_task import OutstandingTask
 from .data_manager.handover_query import HandoverQuery
-from .models import Employee, Handover, Subtask, Task, Upload
+from .models import Employee, Handover
 from .output.word_document_generator import CompletedHandoverDocumentGenerator
 
 logger = logging.getLogger(__name__)
@@ -257,11 +257,7 @@ def create_handover(request):
         if action in {"refine", "save", "cancel"}:
             upload_id = request.session.get(PENDING_UPLOAD_KEY)
             data = request.session.get(PENDING_DATA_KEY)
-            upload = Upload.objects.filter(
-                pk=upload_id,
-                uploaded_by=employee,
-                handover__isnull=True,
-            ).first()
+            upload = HandoverQuery().pending_upload(upload_id, employee)
 
             if not upload or not data:
                 request.session.pop(PENDING_UPLOAD_KEY, None)
@@ -389,11 +385,7 @@ def create_handover(request):
     else:
         upload_id = request.session.get(PENDING_UPLOAD_KEY)
         data = request.session.get(PENDING_DATA_KEY)
-        upload = Upload.objects.filter(
-            pk=upload_id,
-            uploaded_by=employee,
-            handover__isnull=True,
-        ).first()
+        upload = HandoverQuery().pending_upload(upload_id, employee)
         if upload and data:
             return render_handover_review(request, employee, upload, data)
 
@@ -469,10 +461,9 @@ def update_subtask_status(request, subtask_id):
     if not isinstance(mark_done, bool):
         return JsonResponse({"error": "Invalid completion value."}, status=400)
 
-    subtask = get_object_or_404(
-        Subtask.objects.select_related("task").prefetch_related("task__subtasks__depends_on"),
-        pk=subtask_id,
-    )
+    subtask = HandoverQuery().subtask_with_task(subtask_id)
+    if subtask is None:
+        return JsonResponse({"error": "Subtask not found."}, status=404)
     if not subtask.task.owners.filter(pk=employee.pk).exists():
         return JsonResponse({"error": "You are not assigned to this task."}, status=403)
 
