@@ -141,93 +141,90 @@
 
                                 <legend>Verify task owner</legend>
 
-                                <fieldset class="owner-review">
-                                    {% if preview_mode %}<input type="hidden" name="demo_owner_name"
-                                        value="{{ owner.owner_name }}">{% endif %}
-                                    <legend>Verify task owner</legend>
-                                    <p class="owner-task-context"><span>{{ owner.task_type_label }}</span><strong>{{
-                                            owner.task_title }}</strong></p>
-                                    <p class="owner-extracted">Name from document: <strong>{{ owner.owner_name
-                                            }}</strong>
-                                    </p>
-                                    <p class="owner-match-label">{{ owner.match_label }}.</p>
-                                    <div class="owner-suggestions-step" data-owner-suggestions>
-                                        <h5>Possible matches</h5>
-                                        <p>Select the correct employee or search the directory if neither matches.</p>
-                                        <div class="employee-choice-list suggested-employee-list">
-                                            {% for choice in owner.suggested_choices %}
-                                            <label class="employee-choice" data-employee-choice>
-                                                <input type="radio" name="{{ owner.field_name }}"
-                                                    value="{{ choice.employee_id }}" required>
-                                                <span>
-                                                    <strong>{{ choice.name }}</strong>
+                                <p class="owner-task-context">
+                                    <span>{{ owner.task_type_label }}</span>
+                                    <strong>{{owner.task_title }}</strong>
+                                </p>
+                                <p class="owner-extracted">
+                                    Name from document: 
+                                    <strong>{{ owner.owner_name}}</strong>
+                                </p>
+                                <p class="owner-match-label">{{ owner.match_label }}.</p>
+                                <div class="owner-suggestions-step" data-owner-suggestions>
+                                    <h5>Possible matches</h5>
+                                    <p>Select the correct employee or search the directory if neither matches.</p>
+                                    <div class="employee-choice-list suggested-employee-list">
+                                        {% for choice in owner.suggested_choices %}
+                                        <label class="employee-choice" data-employee-choice>
+                                            <input type="radio" name="{{ owner.field_name }}"
+                                                value="{{ choice.employee_id }}" required>
+                                            <span>
+                                                <strong>{{ choice.name }}</strong>
 
-                                                    <small>
-                                                        {{ choice.department }} · Possible match
-                                                        {% if choice.similarity %} ({{ choice.similarity }}%){% endif %}
-                                                    </small>
+                                                <small>
+                                                    {{ choice.department }} · Possible match
+                                                    {% if choice.similarity %} ({{ choice.similarity }}%){% endif %}
+                                                </small>
 
-                                                </span>
-                                            </label>
-                                            {% empty %}
-                                            <p>No suggested employees found. Search the directory to choose one.</p>
-                                            {% endfor %}
-                                        </div>
-                                        <label class="employee-choice employee-directory-link">
-                                            <input type="radio" name="{{ owner.field_name }}" value="__directory__"
-                                                data-directory-option required>
-                                            <span><strong>Neither — search employee directory</strong></span>
+                                            </span>
                                         </label>
+                                        {% empty %}
+                                        <p>No suggested employees found. Search the directory to choose one.</p>
+                                        {% endfor %}
                                     </div>
+                                    <label class="employee-choice employee-directory-link">
+                                        <input type="radio" name="{{ owner.field_name }}" value="__directory__"
+                                            data-directory-option required>
+                                        <span><strong>Neither — search employee directory</strong></span>
+                                    </label>
+                                </div>
 
-                                    <div class="owner-directory-step" data-owner-directory hidden>
-                                        <button class="directory-back" type="button" data-back-suggestions>Back</button>
-                                        <h5>Search employee directory</h5>
-                                        <label class="employee-search-label" for="search-{{ owner.field_name }}">Search
-                                            by
-                                            employee name</label>
-                                        <input class="employee-search" id="search-{{ owner.field_name }}" type="search"
-                                            placeholder="Enter full or partial name..."
-                                            data-employee-search="{{ owner.field_name }}">
-                                        <label class="employee-search-label"
-                                            for="department-{{ owner.field_name }}">Filter
-                                            by department</label>
-                                        <select class="employee-department-filter"
-                                            id="department-{{ owner.field_name }}"
-                                            data-department-filter="{{ owner.field_name }}">
-                                            <option value="">All departments</option>
-                                            {% for department in owner.departments %}
-                                            <option value="{{ department|lower }}">{{ department }}</option>
-                                            {% endfor %}
-                                        </select>
-                                        <div class="employee-choice-list directory-employee-list"
-                                            data-employee-list="{{ owner.field_name }}">
-                                            {% for choice in owner.directory_choices %}
-                                            <label class="employee-choice" data-employee-choice
-                                                data-search="{{ choice.name|lower }} {{ choice.department|lower }}">
-                                                <input type="radio" name="{{ owner.field_name }}"
-                                                    value="{{ choice.employee_id }}" required>
-                                                <span>
-                                                    <strong>{{ choice.name }}</strong>
-                                                    <small>{{ choice.department }}</small>
-                                                </span>
-                                            </label>
-                                            {% empty %}
-                                            <p>No employees are available in the directory.</p>
-                                            {% endfor %}
-                                        </div>
+                                <div class="owner-directory-step" data-owner-directory hidden>
+                                    <button class="directory-back" type="button" data-back-suggestions>Back</button>
+                                    <h5>Search employee directory</h5>
+                                    <label class="employee-search-label" for="search-{{ owner.field_name }}">Search
+                                        by
+                                        employee name</label>
+                                    <input class="employee-search" id="search-{{ owner.field_name }}" type="search"
+                                        placeholder="Enter full or partial name..."
+                                        data-employee-search="{{ owner.field_name }}">
+                                    <label class="employee-search-label" for="department-{{ owner.field_name }}">Filter
+                                        by department</label>
+                                    <select class="employee-department-filter" id="department-{{ owner.field_name }}"
+                                        data-department-filter="{{ owner.field_name }}">
+                                        <option value="">All departments</option>
+                                        {% for department in owner.departments %}
+                                        <option value="{{ department|lower }}">{{ department }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="employee-choice-list directory-employee-list"
+                                        data-employee-list="{{ owner.field_name }}">
+                                        {% for choice in owner.directory_choices %}
+                                        <label class="employee-choice" data-employee-choice
+                                            data-search="{{ choice.name|lower }} {{ choice.department|lower }}">
+                                            <input type="radio" name="{{ owner.field_name }}"
+                                                value="{{ choice.employee_id }}" required>
+                                            <span>
+                                                <strong>{{ choice.name }}</strong>
+                                                <small>{{ choice.department }}</small>
+                                            </span>
+                                        </label>
+                                        {% empty %}
+                                        <p>No employees are available in the directory.</p>
+                                        {% endfor %}
                                     </div>
-                                    <div class="owner-confirmed" data-owner-confirmed hidden>
-                                        <p>Employee confirmed: <strong data-confirmed-name></strong></p>
-                                        <button class="directory-back" type="button" data-change-owner>Change
-                                            selection</button>
-                                    </div>
-                                    <input type="hidden" name="{{ owner.confirmation_field }}" value=""
-                                        data-owner-confirmation>
-                                    <button class="confirm-employee-button" type="button" data-confirm-owner
-                                        disabled>Confirm</button>
-                                </fieldset>
-                                {% endfor %}
+                                </div>
+                                <div class="owner-confirmed" data-owner-confirmed hidden>
+                                    <p>Employee confirmed: <strong data-confirmed-name></strong></p>
+                                    <button class="directory-back" type="button" data-change-owner>Change
+                                        selection</button>
+                                </div>
+                                <input type="hidden" name="{{ owner.confirmation_field }}" value=""
+                                    data-owner-confirmation>
+                                <button class="confirm-employee-button" type="button" data-confirm-owner
+                                    disabled>Confirm</button>
+                            </fieldset>
+                            {% endfor %}
                         </article>
                         {% endfor %}
                     </section>
@@ -298,7 +295,7 @@
                             </div>
 
                             <label for="document" class="chat-drop-hint">
-                                <span class="drop-icon">📄</span>
+                                <span class="drop-icon">&#x1F4C4;</span>
                                 <strong>Drag & drop your document here</strong>
                                 <span>or click here to browse files</span>
                                 <small>Supported: TXT, DOCX · Max 10 MB</small>

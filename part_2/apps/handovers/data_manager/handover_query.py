@@ -1,4 +1,4 @@
-from apps.handovers.models import Employee, Task
+from apps.handovers.models import Employee, Subtask, Task, Upload
 
 # Querying and filtering for the pages and the workload check
 class HandoverQuery:
@@ -20,3 +20,20 @@ class HandoverQuery:
     # Gets every employee record and it's only used when the user selects task owners
     def all_employees(self):
         return list(Employee.objects.all())
+
+    # Gets an upload this employee hasn't saved as a handover yet (None if there isn't one)
+    def pending_upload(self, upload_id, employee):
+        return Upload.objects.filter(
+            pk=upload_id,
+            uploaded_by=employee,
+            handover__isnull=True,
+        ).first()
+
+    # Gets one subtask with its task and the task's other subtasks (None if not found)
+    def subtask_with_task(self, subtask_id):
+        return (
+            Subtask.objects.select_related("task")
+            .prefetch_related("task__subtasks__depends_on")
+            .filter(pk=subtask_id)
+            .first()
+        )

@@ -3,7 +3,8 @@ Django settings for part_2 project.
 """
 
 from pathlib import Path
-
+from dotenv import load_dotenv
+load_dotenv()
 
 # Build paths inside the project: BASE_DIR points to 'part_2/'
 BASE_DIR = Path(__file__).resolve().parent.parent

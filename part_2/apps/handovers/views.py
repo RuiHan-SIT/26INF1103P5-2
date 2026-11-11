@@ -11,13 +11,13 @@ from django.views.decorators.http import require_POST
 
 from .data_manager.handover_repository import HandoverRepository
 from .forms import HandoverUploadForm
-from .input_handler.handover_input_handler import HandoverInputHandler
 from .logic_manager.employee_identity_matcher import EmployeeIdentityMatcher
 from .logic_manager.handover import Handover as LogicHandover
 from .logic_manager.outstanding_task import OutstandingTask
 from .data_manager.handover_query import HandoverQuery
-from .models import Employee, Handover, Subtask, Task, Upload
+from .models import Employee, Handover
 from .output.word_document_generator import CompletedHandoverDocumentGenerator
+from .input_handler.handover_input_handler import HandoverInputHandler
 from .services.handover_coordinator import HandoverCoordinator
 
 logger = logging.getLogger(__name__)
@@ -259,11 +259,7 @@ def create_handover(request):
         if action in {"refine", "save", "cancel"}:
             upload_id = request.session.get(PENDING_UPLOAD_KEY)
             data = request.session.get(PENDING_DATA_KEY)
-            upload = Upload.objects.filter(
-                pk=upload_id,
-                uploaded_by=employee,
-                handover__isnull=True,
-            ).first()
+            upload = HandoverQuery().pending_upload(upload_id, employee)
 
             if not upload or not data:
                 request.session.pop(PENDING_UPLOAD_KEY, None)
@@ -285,9 +281,13 @@ def create_handover(request):
                     )
 
                 try:
+
+                    input_handler = HandoverInputHandler()
+                    input_handler.validate_clarification_answers(answers)
+
                     upload.file.open("rb")
                     try:
-                        document_text = HandoverInputHandler().process_upload(upload.file)
+                        document_text = input_handler.process_upload(upload.file)
                     finally:
                         upload.file.close()
 
@@ -361,6 +361,7 @@ def create_handover(request):
 
             uploaded_file = form.cleaned_data["document"]
             try:
+
                 document_text = HandoverInputHandler().process_upload(uploaded_file)
                 result = HandoverCoordinator().review_handover(document_text)
             except (ImportError, OSError, ValueError, RuntimeError, PermissionError) as error:
@@ -378,23 +379,14 @@ def create_handover(request):
                 })
 
             uploaded_file.seek(0)
-            upload = Upload.objects.create(
-                file=uploaded_file,
-                original_name=uploaded_file.name,
-                size_bytes=uploaded_file.size,
-                uploaded_by=employee,
-            )
+            upload = HandoverRepository().create_upload(uploaded_file, employee)
             request.session[PENDING_UPLOAD_KEY] = upload.pk
             request.session[PENDING_DATA_KEY] = result["data"]
             return redirect("handovers:home")
     else:
         upload_id = request.session.get(PENDING_UPLOAD_KEY)
         data = request.session.get(PENDING_DATA_KEY)
-        upload = Upload.objects.filter(
-            pk=upload_id,
-            uploaded_by=employee,
-            handover__isnull=True,
-        ).first()
+        upload = HandoverQuery().pending_upload(upload_id, employee)
         if upload and data:
             return render_handover_review(request, employee, upload, data)
 
@@ -470,10 +462,9 @@ def update_subtask_status(request, subtask_id):
     if not isinstance(mark_done, bool):
         return JsonResponse({"error": "Invalid completion value."}, status=400)
 
-    subtask = get_object_or_404(
-        Subtask.objects.select_related("task").prefetch_related("task__subtasks__depends_on"),
-        pk=subtask_id,
-    )
+    subtask = HandoverQuery().subtask_with_task(subtask_id)
+    if subtask is None:
+        return JsonResponse({"error": "Subtask not found."}, status=404)
     if not subtask.task.owners.filter(pk=employee.pk).exists():
         return JsonResponse({"error": "You are not assigned to this task."}, status=403)
 

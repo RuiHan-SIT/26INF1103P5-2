@@ -46,29 +46,52 @@ class DocumentReader:
                 "Unable to read DOCX file. It may be corrupted."
             ) from error
 
-        extracted_lines = []
+        content_parts = []
 
-        # Read regular paragraphs
         for paragraph in document.paragraphs:
-            text = paragraph.text.strip()
-            if text:
-                extracted_lines.append(text)
+             if paragraph.text.strip():
+                  content_parts.append(paragraph.text.strip())
 
-        # Read tables (handover templates store tasks in tables)
+        field_names = [
+             "Task Name",
+             "Description",
+             "Task Owner(s)",
+             "Task Type",
+             "Deadline",
+             "Frequency",
+             "Start Date",
+             "End Date"
+        ]
+
+        task_count = 0
+
         for table in document.tables:
-            for row in table.rows:
-                row_cells = [cell.text.strip().replace("\n", " ") for cell in row.cells]
-                cleaned_cells = []
-                for cell in row_cells:
-                    if not cleaned_cells or cell != cleaned_cells[-1]:
-                        cleaned_cells.append(cell)
-                if any(cleaned_cells):
-                    extracted_lines.append(" | ".join(cleaned_cells))
 
-        content = "\n".join(extracted_lines)
+             for row in table.rows[1:]:
+                  values = [
+                       cell.text.strip()
+                       for cell in row.cells
+                  ]
+
+                  if not any(values):
+                       continue
+
+                  task_count += 1
+                  content_parts.append(f"\nTask {task_count}:")
+
+                  for field, value in zip(field_names, values):
+                       content_parts.append(f"{field}: {value}")
+
+        if document.tables and task_count == 0:
+            raise ValueError(
+                "The DOCX template contains no filled-in tasks."
+            )
+
+        content = "\n".join(content_parts)
 
         if not content.strip():
-            raise ValueError(
-                "The DOCX file contains no readable text or table data."
-            )
+             raise ValueError(
+                  "The DOCX file contains no readable text."
+             )
+
         return content
