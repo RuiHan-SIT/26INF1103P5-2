@@ -2,7 +2,7 @@ from datetime import datetime
 
 from django.db import transaction
 
-from apps.handovers.models import Handover, Subtask, Task
+from apps.handovers.models import Handover, Subtask, Task, Upload
 
 
 # Implementation of Create, Update & Delete: turns the shared dictionary into rows prior to saving
@@ -12,6 +12,15 @@ class HandoverRepository:
     #=======================================
     # CREATE
     #=======================================
+
+    # Saves a newly uploaded file and its details (before it becomes a handover)
+    def create_upload(self, uploaded_file, employee):
+        return Upload.objects.create(
+            file=uploaded_file,
+            original_name=uploaded_file.name,
+            size_bytes=uploaded_file.size,
+            uploaded_by=employee,
+        )
 
     # Essentially saves an approved h/over with all it's tasks and subtasks, then links its upload
     def save_handover(self, employee, upload, processed_data):
