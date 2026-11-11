@@ -376,12 +376,7 @@ def create_handover(request):
                 })
 
             uploaded_file.seek(0)
-            upload = Upload.objects.create(
-                file=uploaded_file,
-                original_name=uploaded_file.name,
-                size_bytes=uploaded_file.size,
-                uploaded_by=employee,
-            )
+            upload = HandoverRepository().create_upload(uploaded_file, employee)
             request.session[PENDING_UPLOAD_KEY] = upload.pk
             request.session[PENDING_DATA_KEY] = result["data"]
             return redirect("handovers:home")
