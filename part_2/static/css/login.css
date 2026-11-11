@@ -64,6 +64,14 @@ body {
     font-size: 14px;
 }
 
+.error-message {
+    margin-top: 8px;
+    color: #c62828;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.4;
+}
+
 /* Input fields */
 .form-group {
     margin-bottom: 20px;
@@ -125,4 +133,400 @@ body {
 
 .register-link a:hover {
     text-decoration: underline;
+}
+
+
+.auth-link {
+    margin-top: 18px;
+    color: #8060b1;
+    font-size: 13px;
+    text-align: center;
+}
+
+.auth-link a {
+    display: inline-flex;
+    min-width: 180px;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 18px;
+    color: #625b6b;
+    background: #f1eef4;
+    border: 1px solid #e1dce7;
+    border-radius: 9px;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.auth-link a:hover {
+    color: #514365;
+    background: #e9e5ed;
+    border-color: #d8d1e0;
+    text-decoration: none;
+}
+
+.auth-form p {
+    margin-bottom: 16px;
+    color: #40364f;
+    font-size: 13px;
+}
+
+.auth-form p label {
+    display: block;
+    margin-bottom: 7px;
+    font-weight: bold;
+}
+
+.auth-form p input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ddd5eb;
+    border-radius: 9px;
+    font-size: 14px;
+}
+
+.auth-form p input:focus {
+    border-color: #9271c5;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(146, 113, 197, 0.12);
+}
+
+.auth-form .helptext {
+    display: block;
+    margin-top: 6px;
+    color: #777;
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+.auth-form ul.errorlist {
+    margin: 0 0 8px;
+    color: #b4233c;
+    font-size: 12px;
+    list-style: none;
+}
+
+/* Keep password labels and Django's password rules at the same compact scale. */
+.auth-form p label {
+    font-size: 13px;
+}
+
+.auth-form p span.helptext {
+    display: block;
+    margin-top: 7px;
+    color: #777187;
+    font-size: 12px !important;
+    line-height: 1.45;
+}
+
+.auth-form p span.helptext ul {
+    margin: 0;
+    padding-left: 18px;
+    font-size: 12px !important;
+}
+
+.auth-form p span.helptext li {
+    margin: 2px 0;
+    font-size: 12px !important;
+    line-height: 1.45;
+}
+
+/* Compact password guidance with bullets aligned to the input edge. */
+.auth-form p span.helptext {
+    margin-top: 6px;
+    color: #777187;
+    font-size: 13px !important;
+    line-height: 1.4;
+}
+
+.auth-form p span.helptext ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.auth-form p span.helptext li {
+    position: relative;
+    margin: 2px 0;
+    padding-left: 14px;
+    font-size: 13px !important;
+    line-height: 1.4;
+}
+
+.auth-form p span.helptext li::before {
+    position: absolute;
+    left: 0;
+    color: #8b8493;
+    content: "•";
+}
+
+/* Secondary action under the password form. */
+.auth-link a {
+    display: inline-flex;
+    min-width: 180px;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 18px;
+    color: #625b6b;
+    background: #f1eef4;
+    border: 1px solid #e1dce7;
+    border-radius: 9px;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.auth-link a:hover {
+    color: #514365;
+    background: #e9e5ed;
+    border-color: #d8d1e0;
+    text-decoration: none;
+}
+
+
+/* Match the password rules to the muted subtitle typography. */
+.auth-form p span.helptext {
+    margin-top: 6px;
+    color: #888 !important;
+    font-size: 14px !important;
+    font-weight: 400;
+    line-height: 1.4;
+}
+
+.auth-form p span.helptext ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.auth-form p span.helptext li {
+    position: relative;
+    margin: 2px 0;
+    padding-left: 18px;
+    color: #888 !important;
+    font-size: 14px !important;
+    font-weight: 400;
+    line-height: 1.4;
+}
+
+.auth-form p span.helptext li::before {
+    position: absolute;
+    left: 0;
+    color: #888;
+    content: "•";
+}
+
+/* Make the secondary action the same width and height as the submit button. */
+.auth-link a {
+    display: inline-flex;
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    box-sizing: border-box;
+    align-items: center;
+    justify-content: center;
+    padding: 0 18px;
+    color: #625b6b;
+    background: #f7f5f9;
+    border: 1px solid #ebe7ef;
+    border-radius: 9px;
+    font-size: 15px;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.auth-link {
+    margin-top: 10px;
+}
+
+/* Keep the password form compact while matching its guidance to the subtitle. */
+.password-card {
+    padding: 28px 40px;
+}
+
+.password-card .logo {
+    margin-bottom: 20px;
+}
+
+.password-card .welcome-text {
+    margin-bottom: 18px;
+}
+
+.password-card .welcome-text h2 {
+    margin-bottom: 5px;
+    font-size: 22px;
+}
+
+.password-card .auth-form p {
+    margin-bottom: 10px;
+}
+
+.password-card .auth-form p input {
+    padding: 10px 12px;
+}
+
+.password-card .auth-form .login-button {
+    padding: 11px 14px;
+}
+
+.password-card .password-field {
+    margin-bottom: 10px;
+}
+
+.password-card .password-field label {
+    display: block;
+    margin-bottom: 7px;
+    color: #40364f;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.password-card .password-field input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ddd5eb;
+    border-radius: 9px;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+}
+
+.password-card .password-field input:focus {
+    border-color: #9271c5;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(146, 113, 197, 0.12);
+}
+
+.password-card .password-help {
+    margin-top: 4px;
+    color: #888;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.3;
+}
+
+.password-card .password-help ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.password-card .password-help li {
+    position: relative;
+    margin: 1px 0;
+    padding-left: 18px;
+    color: #888;
+    font: inherit;
+}
+
+.password-card .password-help li::before {
+    position: absolute;
+    left: 0;
+    content: "•";
+}
+
+.password-card .password-field-error,
+.password-card .password-form-errors p {
+    margin-top: 5px;
+    color: #b4233c;
+    font-size: 13px;
+}
+
+.password-card .auth-form p span.helptext,
+.password-card .auth-form p span.helptext li {
+    color: #888 !important;
+    font-family: inherit;
+    font-size: 14px !important;
+    font-weight: 400;
+    line-height: 1.3;
+}
+
+.password-card .auth-form p span.helptext {
+    margin-top: 4px;
+}
+
+.password-card .auth-form p span.helptext li {
+    margin: 1px 0;
+}
+
+/* Django renders password guidance as a helptext block, which can be a div. */
+.password-card .auth-form .helptext {
+    display: block;
+    margin-top: 4px;
+    color: #888 !important;
+    font-family: inherit;
+    font-size: 14px !important;
+    font-weight: 400;
+    line-height: 1.3;
+}
+
+.password-card .auth-form .helptext ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.password-card .auth-form .helptext li {
+    position: relative;
+    margin: 1px 0;
+    padding-left: 18px;
+    color: #888 !important;
+    font-family: inherit;
+    font-size: 14px !important;
+    font-weight: 400;
+    line-height: 1.3;
+}
+
+.password-card .auth-form .helptext li::before {
+    position: absolute;
+    left: 0;
+    color: #888;
+    content: "•";
+}
+
+/* Target Django's generated password-rule element directly for reliable styling. */
+.password-card #id_new_password1_helptext,
+.password-card #id_new_password1_helptext * {
+    color: #888 !important;
+    font-family: Arial, sans-serif !important;
+    font-size: 14px !important;
+    font-weight: 400 !important;
+    line-height: 1.3 !important;
+}
+
+.password-card #id_new_password1_helptext ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.password-card #id_new_password1_helptext li {
+    position: relative;
+    margin: 1px 0;
+    padding-left: 18px;
+}
+
+.password-card #id_new_password1_helptext li::before {
+    position: absolute;
+    left: 0;
+    content: "•";
+}
+
+@media (max-height: 760px) {
+    .password-card {
+        padding-top: 20px;
+        padding-bottom: 20px;
+    }
+
+    .password-card .logo {
+        margin-bottom: 14px;
+    }
+
+    .password-card .welcome-text {
+        margin-bottom: 12px;
+    }
 }

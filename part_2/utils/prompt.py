@@ -69,10 +69,12 @@ CLASSIFICATION RULES:
 4. CONTEXT & KNOWLEDGE GAP DETECTION ("clarification_questions"):
    - For every task, critically evaluate if a colleague taking over would lack necessary context to execute it.
    - Detect vague instructions, missing credentials, unstated recipients, ambiguous tooling, or unmentioned file locations.
+   - Ask a clarification question when required task details are missing, including an outstanding-task deadline, task owner, or BAU frequency/start date.
    - Examples:
      * "Update server credentials" -> ["Which specific server or environment needs updating?", "Where are the new credentials stored or managed?"]
      * "Send weekly report" -> ["Who is on the distribution list for this report?", "Where is the report template located?"]
    - If the task description is clear, comprehensive, and actionable, set "clarification_questions" to [].
+   - When reviewer answers are included in the input, use them to update the matching task and remove questions that the answers resolve. Keep only questions that remain unanswered.
 
 5. GENERAL INTEGRITY RULES:
    - Do NOT invent fictional task owners or deadlines that were never mentioned.

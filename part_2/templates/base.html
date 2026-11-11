@@ -18,6 +18,7 @@
 
     {% if user.is_authenticated %}
         <span>Welcome, {{ user.username }}</span>
+        <a href="{% url 'handovers:password_change' %}">Change password</a>
 
         <form method="POST" action="{% url 'handovers:logout' %}">
             {% csrf_token %}

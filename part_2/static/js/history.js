@@ -24,9 +24,7 @@ document.addEventListener("keydown", (event) => {
     }
 });
 
-const logoutAction = document.getElementById("logout-action");
-const accountFeedback = document.getElementById("account-feedback");
-logoutAction.addEventListener("click", () => {
-    accountFeedback.textContent = "Log out will work once the login route is connected.";
-    accountFeedback.hidden = false;
-});
+// Apply the selected status as soon as it changes.
+const historyFilterForm = document.getElementById("history-filter-form");
+const statusFilter = document.getElementById("status-filter");
+statusFilter.addEventListener("change", () => historyFilterForm.requestSubmit());
