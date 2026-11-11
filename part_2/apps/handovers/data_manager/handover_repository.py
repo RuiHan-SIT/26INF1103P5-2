@@ -21,6 +21,9 @@ class HandoverRepository:
             handover = Handover.objects.create(
                 created_by=employee,
                 important_information=processed_data["important_information"],
+                # The logic manager already approved this handover ("complete"),
+                # so it is stored as completed. This makes the Download button show in History
+                status = "completed"
             )
 
             for index, task_data in enumerate(processed_data["outstanding_tasks"], start=1):
