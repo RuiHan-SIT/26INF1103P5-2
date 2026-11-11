@@ -17,6 +17,11 @@ class Handover(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     
+    completed_document = models.FileField(
+            upload_to="completed_handovers/%Y/%m/%d/",
+            blank=True,
+        )
+    
     # It's either "active" or "completed"
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="active")
 
