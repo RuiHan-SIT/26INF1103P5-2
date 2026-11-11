@@ -1,118 +1,94 @@
-# output_manager.py
+# The IO Manager of the web app. Views call this class to get the handover
+# status and summary in a form the page can show. It never prints: it RETURNS
+# data, and the Django view / template decides how to display it.
+
+import logging
+
 from .constants import (
     COMPLETE_STATUSES,
-    INCOMPLETE_STATUSES,
-    STATUS_COMPLETE,
-    STATUS_INCOMPLETE,
+    LABEL_COMPLETED,
+    LABEL_NEEDS_CLARIFICATION,
     VIEWING_HEADING,
-    WIDTH,
 )
 from .summary_file_store import SummaryFileStore
 from .summary_formatter import SummaryFormatter
 
+logger = logging.getLogger(__name__)
+
 
 class OutputManager:
-    """The class main.py uses. It shows the status, prints or saves the summary, and records who viewed a handover.
+    """Prepares what the website shows for a handover and saves its summary."""
 
-    It does not build the text or handle files itself. It asks SummaryFormatter and SummaryFileStore to do those jobs.
-    """
-
-    def __init__(self):
-        
+    def __init__(self, store=None):
+        # OutputManager is made of these two helpers (composition)
+        # "store" is only passed in by the tests (to use a fake instead of real files)
         self._formatter = SummaryFormatter()
-        self._store = SummaryFileStore()
+        self._store = store or SummaryFileStore()
 
-    def show_output(self, result, user_details, save_file=True):
-        """Main method called with the logic manager's result.
+    # ---- public (called by the views / Controller) -----------------------
+    def build_status(self, result):
+        """Return the Logic Manager's status in a form the template can use.
 
-        save_file=True : show the status, then save the summary if complete.
-        save_file=False: only print the summary in the terminal if complete.
-        Returns the saved file name, or None.
+        {"is_complete": bool,
+         "label": "Completed" / "Needs clarification",
+         "issues": ["Task X: missing owner", ...]}   (empty if complete)
         """
-        if save_file:
-            self.show_status(result)
+        is_complete = result.get("status") in COMPLETE_STATUSES
+        return {
+            "is_complete": is_complete,
+            "label": LABEL_COMPLETED if is_complete else LABEL_NEEDS_CLARIFICATION,
+            "issues": [] if is_complete else self._issue_list(result),
+        }
 
-        # Only a complete handover gets a summary
+    def save_summary(self, handover, result, user_details):
+        """Create the summary text and store it on the Handover record.
+
+        Returns True if saved. False if the handover is not complete or saving failed.
+        """
         if result.get("status") not in COMPLETE_STATUSES:
-            return None
-
-        summary_text = self._formatter.format(result, user_details)
-
-        if save_file:
-            return self._save_summary(summary_text, user_details)
-
-        print("\n" + summary_text)
-        return None
-
-    def show_status(self, result):
-        """Print the handover status, and what is missing if it is incomplete."""
-        status = result.get("status", "Unknown")
-
-        # Choose the text to display for this status
-        if status in COMPLETE_STATUSES:
-            label = STATUS_COMPLETE
-        elif status in INCOMPLETE_STATUSES:
-            label = STATUS_INCOMPLETE
-        else:
-            label = str(status)
-
-        print("\n" + "=" * WIDTH)
-        print("STATUS: " + label.upper())
-        print("=" * WIDTH)
-
-        if status in INCOMPLETE_STATUSES:
-            # Some versions of the result use "errors" instead of "missing_info"
-            missing_info = result.get("missing_info", result.get("errors", []))
-            self._print_missing_info(missing_info)
-            print("\nPlease resolve the items above, then run the handover again.")
-
-    def record_view(self, filename, name, employee_id):
-        """Record that someone viewed a saved handover. Returns True if it worked."""
-        if not filename:
-            print("\n[Warning] No filename linked to this handover.")
             return False
-
-        if not self._store.exists(filename):
-            print("\n[Warning] Handover summary file not found.")
-            return False
-
         try:
-            # Add the heading only if this is the first viewer
-            current_text = self._store.read(filename)
-            is_first_view = VIEWING_HEADING not in current_text
-
-            entry = self._formatter.format_viewing_entry(name, employee_id, is_first_view)
-            self._store.append(filename, entry)
+            self._store.save(handover, self._formatter.format(result, user_details))
             return True
-        except OSError as error:  # e.g. file is locked or disk problem
-            print(f"\n[Error] Could not update viewing history: {error}")
+        except OSError:
+            logger.exception("Could not save the summary of handover %s", handover.pk)
             return False
 
-    # ---- private helper methods ----
-
-    def _save_summary(self, summary_text, user_details):
-        """Save the summary file. Returns the file name, or None if it failed."""
+    def get_summary_text(self, handover):
+        """Return the saved summary text, or None if there is none."""
+        if not self._store.exists(handover):
+            return None
         try:
-            filename = self._store.save(summary_text, user_details)
-        except OSError as error:  # e.g. no permission to write
-            print(f"\n[Error] Could not save summary file: {error}")
+            return self._store.read(handover)
+        except OSError:
+            logger.exception("Could not read the summary of handover %s", handover.pk)
             return None
 
-        print(f"\nHandover file saved to: {filename}")
-        return filename
+    def record_view(self, handover, name, employee_id):
+        """Add a "viewed by" entry to the summary file. Returns True if it worked."""
+        text = self.get_summary_text(handover)
+        if text is None:
+            return False
+        try:
+            entry = self._formatter.format_viewing_entry(
+                name, employee_id, is_first_view=VIEWING_HEADING not in text
+            )
+            self._store.append(handover, entry)
+            return True
+        except OSError:
+            logger.exception("Could not update viewing history of handover %s", handover.pk)
+            return False
 
-    def _print_missing_info(self, missing_info):
-        """List the items that need clarification."""
-        if not missing_info:
-            return
-
-        print("\nClarification needed:")
-        for item in missing_info:
+    # ---- private helpers --------------------------------------------------
+    @staticmethod
+    def _issue_list(result):
+        """Turn the Logic Manager's missing_info / errors into a list of strings."""
+        issues = []
+        for item in result.get("missing_info", result.get("errors", [])):
             if isinstance(item, dict):
-                # Item looks like {"task": "Deploy", "errors": ["No owner"]}
                 label = item.get("task", item.get("type", "Handover"))
                 details = ", ".join(item.get("errors", []))
-                print(f"  - {label}: {details or item}")
+                issues.append(f"{label}: {details}" if details else str(label))
             else:
-                # Item is just a plain text message
-                print(f"  - {item}")
+                issues.append(str(item))
+        return issues

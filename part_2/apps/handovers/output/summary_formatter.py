@@ -1,110 +1,120 @@
+# summary_formatter.py
+# Turns the handover result into the text of the summary.
+# It only builds text: no print(), no files, no Django. So it is easy to test.
+
 from datetime import datetime
 
-from .constants import NOT_SPECIFIED, WIDTH
+from .constants import NOT_SPECIFIED, VIEWING_HEADING, WIDTH
 
 
 class SummaryFormatter:
-    """Builds the TEXT of the handover summary.
+    """Builds the handover summary text and the "viewed by" entries."""
 
-    It only creates text. It does not print anything and does not save files (that is the job of OutputManager and SummaryFileStore).
-    """
-
+    # ---- public (called by OutputManager) --------------------------------
     def format(self, result, user_details=None):
-        """Return the whole handover summary as one string."""
-        # .get(key, []) gives an empty list if the key is missing, so no crash
-        outstanding_tasks = result.get("outstanding_tasks", [])
-        routine_tasks = result.get("bau_tasks", [])
-        important_info = result.get("important_information", [])
+        """Return the full handover summary as one string.
 
-        total_tasks = len(outstanding_tasks) + len(routine_tasks)
+        result       : dict from the Logic Manager (tasks, important info)
+        user_details : dict with name / employee_id / department (optional)
+        """
+        outstanding = result.get("outstanding_tasks", [])
+        routine = result.get("bau_tasks", [])
 
-        lines = []
-        lines += self._header_lines(total_tasks, user_details)
-        lines += self._task_lines("OUTSTANDING TASKS", outstanding_tasks, show_deadline=True)
-        lines += self._task_lines("ROUTINE TASKS", routine_tasks, show_deadline=False)
-        lines += self._info_lines(important_info)
-
+        lines = self._header_lines(len(outstanding) + len(routine), user_details)
+        lines += self._task_lines("OUTSTANDING TASKS", outstanding, is_outstanding=True)
+        lines += self._task_lines("ROUTINE TASKS", routine, is_outstanding=False)
+        lines += self._info_lines(result.get("important_information", []))
         return "\n".join(lines)
 
     def format_viewing_entry(self, name, employee_id, is_first_view):
-        """Return the text to add to the file when someone views a handover."""
+        """Return the text added to the file each time someone opens the handover."""
         viewed_on = datetime.now().strftime("%d %b %Y %H:%M:%S")
         entry = (
             f"Viewed by    : {name}\n"
             f"Employee ID  : {employee_id}\n"
             f"Viewed on    : {viewed_on}\n"
         )
+        if not is_first_view:
+            return "\n" + entry
+        # First viewer: add the VIEWING HISTORY heading as well
+        rule = "=" * WIDTH
+        return f"\n\n{rule}\n{VIEWING_HEADING}\n{rule}\n{entry}"
 
-        if is_first_view:
-            # The first viewer also gets the VIEWING HISTORY heading
-            return ("\n\n\n" + "=" * WIDTH + "\n"
-                    + "VIEWING HISTORY\n"
-                    + "=" * WIDTH + "\n"
-                    + entry)
-
-        # Later viewers just get a blank line and their entry
-        return "\n" + entry
-
-    # ---- private helper methods (the leading _ means "only used inside this class") ----
-
-    def _clean(self, value):
-        """Turn a value into text. Use 'Not specified' if it is missing or empty."""
+    # ---- private helpers --------------------------------------------------
+    @staticmethod
+    def _clean(value):
+        """Return the value as text, or "Not specified" if it is empty."""
         if value is None or str(value).strip() == "":
             return NOT_SPECIFIED
         return str(value).strip()
 
-    def _owners_text(self, owners):
-        """Owners can be a list like ['John', 'Sam'] or a string like 'Tom'."""
-        if isinstance(owners, list):
-            # Join the names with commas, skipping empty ones
-            owners = ", ".join(str(name).strip() for name in owners if name)
-        return self._clean(owners)
+    @classmethod
+    def _owners_text(cls, owners):
+        """Owners can be a string or a list. Return them as "A, B"."""
+        if isinstance(owners, str):
+            owners = [owners]
+        if not owners:
+            return NOT_SPECIFIED
+        names = [str(o).strip() for o in owners if o and str(o).strip()]
+        return ", ".join(names) if names else NOT_SPECIFIED
 
-    def _header_lines(self, total_tasks, user_details):
-        """The top part: title, date and employee details."""
+    def _header_lines(self, task_count, user_details):
         lines = [
             "=" * WIDTH,
             "HANDOVER SUMMARY",
             "=" * WIDTH,
             f"Generated on  : {datetime.now():%Y-%m-%d %H:%M}",
         ]
-
-        # Only show employee details if we were given them
         if user_details:
-            name = user_details.get("name", "N/A")
-            employee_id = user_details.get("employee_id", "N/A")
-            lines.append(f"Employee      : {name} (ID: {employee_id})")
+            name = user_details.get("name")
+            emp_id = user_details.get("employee_id")
+            if name or emp_id:
+                lines.append(f"Employee      : {name or 'N/A'} (ID: {emp_id or 'N/A'})")
             if user_details.get("department"):
                 lines.append(f"Department    : {user_details['department']}")
-
-        lines.append(f"Tasks         : {total_tasks}")
-        lines.append("")  
+        lines += [f"Tasks         : {task_count}", ""]
         return lines
 
-    def _task_lines(self, title, tasks, show_deadline):
-        """One group of tasks (outstanding or routine)."""
+    def _task_lines(self, title, tasks, is_outstanding):
+        """Lines for one section. Outstanding tasks have a deadline and subtasks;
+        routine (BAU) tasks have a frequency and start/end dates instead."""
         if not tasks:
-            return []  # no tasks, so no section at all
-
+            return []
         lines = [title, "-" * WIDTH]
-
-    
         for number, task in enumerate(tasks, start=1):
             lines.append(f"Task {number}: {self._clean(task.get('task'))}")
             lines.append(f"    Owner       : {self._owners_text(task.get('owners'))}")
             lines.append(f"    Description : {self._clean(task.get('description'))}")
-            if show_deadline:  
+            if is_outstanding:
                 lines.append(f"    Deadline    : {self._clean(task.get('deadline'))}")
+                lines += self._subtask_lines(task.get("subtasks", []))
+            else:
+                lines.append(f"    Frequency   : {self._clean(task.get('frequency'))}")
+                lines.append(f"    Start date  : {self._clean(task.get('start_date'))}")
+                # end_date is optional: a routine task may have no end
+                if task.get("end_date"):
+                    lines.append(f"    End date    : {task['end_date']}")
             lines.append("")
         return lines
 
-    def _info_lines(self, important_info):
-        """The important information section, shown as bullet points."""
-        if not important_info:
+    def _subtask_lines(self, subtasks):
+        """AI Stage 2 subtasks: each has a task, a planned_date and dependencies."""
+        if not subtasks:
             return []
+        lines = ["    Subtasks    :"]
+        for sub in subtasks:
+            lines.append(
+                f"        - {self._clean(sub.get('task'))} "
+                f"(planned: {self._clean(sub.get('planned_date'))})"
+            )
+            if sub.get("dependencies"):
+                lines.append(f"            depends on: {', '.join(sub['dependencies'])}")
+        return lines
 
+    def _info_lines(self, items):
+        if not items:
+            return []
         lines = ["IMPORTANT INFORMATION", "-" * WIDTH]
-        for item in important_info:
-            lines.append(f"* {self._clean(item)}")
+        lines += [f"* {self._clean(item)}" for item in items]
         lines.append("")
         return lines
