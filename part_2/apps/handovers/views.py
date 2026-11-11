@@ -367,6 +367,12 @@ def create_handover(request):
 
                 document_text = HandoverInputHandler().process_upload(uploaded_file)
                 result = HandoverCoordinator().review_handover(document_text)
+                import json
+
+                print("\n========== AI EXTRACTION RESULT ==========")
+                print(json.dumps(result, indent=4, ensure_ascii=False, default=str))
+                print("========== END OF RESULT ==========\n")  
+                    
             except (ImportError, OSError, ValueError, RuntimeError, PermissionError) as error:
                 return render(request, "handovers/home.html", {
                     "form": form,
