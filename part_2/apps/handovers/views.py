@@ -12,6 +12,7 @@ from .logic_manager.employee_identity_matcher import EmployeeIdentityMatcher
 from .logic_manager.handover import Handover as LogicHandover
 from .logic_manager.outstanding_task import OutstandingTask
 from .data_manager.handover_repository import HandoverRepository
+from .data_manager.handover_query import HandoverQuery
 
 
 PENDING_UPLOAD_KEY = "pending_handover_upload_id"
@@ -408,12 +409,7 @@ def my_tasks(request):
     calendar_tasks = []
 
     if employee:
-        assigned_tasks = (
-            Task.objects.filter(owners=employee)
-            .select_related("handover")
-            .prefetch_related("subtasks__depends_on")
-            .distinct()
-        )
+        assigned_tasks = HandoverQuery().tasks_owned_by(employee)
 
         for task in assigned_tasks:
             handover_label = f"H-{task.handover_id:04d}"
