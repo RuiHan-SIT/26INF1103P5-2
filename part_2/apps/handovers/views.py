@@ -16,6 +16,8 @@ from .logic_manager.outstanding_task import OutstandingTask
 from .data_manager.handover_query import HandoverQuery
 from .models import Employee, Handover
 from .output.word_document_generator import CompletedHandoverDocumentGenerator
+from .input_handler.handover_input_handler import HandoverInputHandler
+from .services.handover_coordinator import HandoverCoordinator
 
 logger = logging.getLogger(__name__)
 
@@ -278,12 +280,13 @@ def create_handover(request):
                     )
 
                 try:
-                    from .input_handler.handover_input_handler import HandoverInputHandler
-                    from .services.handover_coordinator import HandoverCoordinator
+
+                    input_handler = HandoverInputHandler()
+                    input_handler.validate_clarification_answers(answers)
 
                     upload.file.open("rb")
                     try:
-                        document_text = HandoverInputHandler().process_upload(upload.file)
+                        document_text = input_handler.process_upload(upload.file)
                     finally:
                         upload.file.close()
 
@@ -357,8 +360,6 @@ def create_handover(request):
 
             uploaded_file = form.cleaned_data["document"]
             try:
-                from .input_handler.handover_input_handler import HandoverInputHandler
-                from .services.handover_coordinator import HandoverCoordinator
 
                 document_text = HandoverInputHandler().process_upload(uploaded_file)
                 result = HandoverCoordinator().review_handover(document_text)

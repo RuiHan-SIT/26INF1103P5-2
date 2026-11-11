@@ -25,6 +25,21 @@ class HandoverInputHandler:
 
         return content
 
+    def validate_clarification_answers(self, answers):
+        for item in answers:
+            answer = item.get("answer", "")
+
+            if not isinstance(answer, str):
+                raise ValueError(
+                    "Clarification answers must contain text."
+                )
+
+            if self.input_validator.validate_user_input(answer):
+                raise ValueError(
+                    "Sensitive information detected in clarification answer."
+                )
+            return True
+        
     def validate_manual_input(self, name, department, employee_id):
 
         errors = {}

@@ -46,16 +46,52 @@ class DocumentReader:
                 "Unable to read DOCX file. It may be corrupted."
             ) from error
 
-        paragraphs = [
-            paragraph.text
-            for paragraph in document.paragraphs
-            if paragraph.text.strip()
+        content_parts = []
+
+        for paragraph in document.paragraphs:
+             if paragraph.text.strip():
+                  content_parts.append(paragraph.text.strip())
+
+        field_names = [
+             "Task Name",
+             "Description",
+             "Task Owner(s)",
+             "Task Type",
+             "Deadline",
+             "Frequency",
+             "Start Date",
+             "End Date"
         ]
 
-        content = "\n".join(paragraphs)
+        task_count = 0
+
+        for table in document.tables:
+
+             for row in table.rows[1:]:
+                  values = [
+                       cell.text.strip()
+                       for cell in row.cells
+                  ]
+
+                  if not any(values):
+                       continue
+
+                  task_count += 1
+                  content_parts.append(f"\nTask {task_count}:")
+
+                  for field, value in zip(field_names, values):
+                       content_parts.append(f"{field}: {value}")
+
+        if document.tables and task_count == 0:
+            raise ValueError(
+                "The DOCX template contains no filled-in tasks."
+            )
+
+        content = "\n".join(content_parts)
 
         if not content.strip():
-            raise ValueError(
-                "The DOCX file contains no readable paragraph text."
-            )
+             raise ValueError(
+                  "The DOCX file contains no readable text."
+             )
+
         return content
