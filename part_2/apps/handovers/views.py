@@ -20,7 +20,7 @@ PENDING_DATA_KEY = "pending_handover_data"
 
 
 def build_review_sections(data):
-    employees = list(Employee.objects.values("employee_id", "name", "department"))
+    employees = HandoverQuery().employee_list()
     matcher = EmployeeIdentityMatcher(employees)
     sections = []
 
@@ -117,7 +117,7 @@ def collect_clarification_answers(data, post_data):
 
 
 def apply_owner_selections(data, post_data):
-    employee_records = list(Employee.objects.all())
+    employee_records = HandoverQuery().all_employees()
     employees = {employee.employee_id: employee for employee in employee_records}
     matcher = EmployeeIdentityMatcher([
         {
