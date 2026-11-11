@@ -1,4 +1,6 @@
-from apps.handovers.models import Employee, Subtask, Task, Upload
+from django.db.models import Count
+
+from apps.handovers.models import Employee, Handover, Subtask, Task, Upload
 
 # Querying and filtering for the pages and the workload check
 class HandoverQuery:
@@ -37,3 +39,22 @@ class HandoverQuery:
             .filter(pk=subtask_id)
             .first()
         )
+
+    # Searches an employee's handovers by ID , filters them by status
+    def search_handovers(self, employee, search_text="", status=""):
+        if employee is None:
+            return Handover.objects.none()
+
+        # Each handover also gets a count of its tasks. Essentially, newest first.
+        handovers = Handover.objects.filter(created_by=employee).annotate(task_count=Count("tasks"))
+
+        if search_text:
+            number = search_text.upper().replace("H", "").replace("-", "").strip()
+            if not number.isdigit():
+                return Handover.objects.none()
+            handovers = handovers.filter(pk=int(number))
+
+        if status:
+            handovers = handovers.filter(status=status)
+
+        return handovers

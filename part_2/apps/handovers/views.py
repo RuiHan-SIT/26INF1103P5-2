@@ -4,7 +4,6 @@ import logging
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db import IntegrityError
-from django.db.models import Count
 from django.http import FileResponse, HttpResponseServerError, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
@@ -513,21 +512,7 @@ def handover_history(request):
     selected_status = request.GET.get("status", "").strip()
     employee = getattr(request.user, "employee", None)
 
-    # Only this employee's handovers (newest first, set in the model's Meta),
-    # each with a count of its tasks
-    if employee:
-        handovers = Handover.objects.filter(created_by=employee).annotate(task_count=Count("tasks"))
-    else:
-        handovers = Handover.objects.none()
-
-    # Search by ID: accepts "7", "H7" or "H-0007"
-    if query:
-        number = query.upper().replace("H", "").replace("-", "").strip()
-        handovers = handovers.filter(pk=int(number)) if number.isdigit() else handovers.none()
-
-    # Filter by status ("active" / "completed")
-    if selected_status:
-        handovers = handovers.filter(status=selected_status)
+    handovers = HandoverQuery().search_handovers(employee, query, selected_status)
 
     total_count = handovers.count()
     page_obj = Paginator(handovers, HISTORY_PAGE_SIZE).get_page(
