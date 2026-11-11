@@ -1,4 +1,4 @@
-from apps.handovers.models import Task
+from apps.handovers.models import Employee, Task
 
 # Querying and filtering for the pages and the workload check
 class HandoverQuery:
@@ -12,3 +12,11 @@ class HandoverQuery:
             .prefetch_related("subtasks__depends_on")
             .distinct()
         )
+
+    # Gets every employee as simple dicts (ID, name, department) for owner name matching
+    def employee_list(self):
+        return list(Employee.objects.values("employee_id", "name", "department"))
+
+    # Gets every employee record and it's only used when the user selects task owners
+    def all_employees(self):
+        return list(Employee.objects.all())
