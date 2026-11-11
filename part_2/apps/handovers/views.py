@@ -12,6 +12,7 @@ from .logic_manager.employee_identity_matcher import EmployeeIdentityMatcher
 from .logic_manager.handover import Handover as LogicHandover
 from .logic_manager.outstanding_task import OutstandingTask
 from .data_manager.handover_repository import HandoverRepository
+from .data_manager.handover_query import HandoverQuery
 
 
 PENDING_UPLOAD_KEY = "pending_handover_upload_id"
@@ -19,7 +20,7 @@ PENDING_DATA_KEY = "pending_handover_data"
 
 
 def build_review_sections(data):
-    employees = list(Employee.objects.values("employee_id", "name", "department"))
+    employees = HandoverQuery().employee_list()
     matcher = EmployeeIdentityMatcher(employees)
     sections = []
 
@@ -116,7 +117,7 @@ def collect_clarification_answers(data, post_data):
 
 
 def apply_owner_selections(data, post_data):
-    employee_records = list(Employee.objects.all())
+    employee_records = HandoverQuery().all_employees()
     employees = {employee.employee_id: employee for employee in employee_records}
     matcher = EmployeeIdentityMatcher([
         {
@@ -408,12 +409,7 @@ def my_tasks(request):
     calendar_tasks = []
 
     if employee:
-        assigned_tasks = (
-            Task.objects.filter(owners=employee)
-            .select_related("handover")
-            .prefetch_related("subtasks__depends_on")
-            .distinct()
-        )
+        assigned_tasks = HandoverQuery().tasks_owned_by(employee)
 
         for task in assigned_tasks:
             handover_label = f"H-{task.handover_id:04d}"
