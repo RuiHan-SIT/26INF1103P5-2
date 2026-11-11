@@ -57,7 +57,7 @@ class DocumentReader:
              "Description",
              "Task Owner(s)",
              "Task Type",
-             "Deadline"
+             "Deadline",
              "Frequency",
              "Start Date",
              "End Date"
@@ -80,9 +80,8 @@ class DocumentReader:
                   content_parts.append(f"\nTask {task_count}:")
 
                   for field, value in zip(field_names, values):
-                       content_parts.append(
-                            f"(field): {value}"
-                       )
+                       content_parts.append(f"{field}: {value}")
+
         if document.tables and task_count == 0:
             raise ValueError(
                 "The DOCX template contains no filled-in tasks."
