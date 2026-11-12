@@ -96,6 +96,7 @@ def test_coordinator_handles_empty_content():
     coordinator = HandoverCoordinator(llm_service=MockLLM("{}"))
     result = coordinator.review_handover("   ")
     assert result["success"] is False
+    assert result["data"] == HandoverCoordinator.FALLBACK_DATA
     assert "empty" in result["error_message"].lower()
 
 
@@ -117,7 +118,7 @@ def test_coordinator_handles_llm_runtime_error():
     result = coordinator.review_handover("Valid notes")
 
     assert result["success"] is False
-    assert result["data"] is None
+    assert result["data"] == HandoverCoordinator.FALLBACK_DATA
     assert "Rate limit exceeded" in result["error_message"]
 
 
