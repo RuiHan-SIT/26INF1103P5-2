@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create Handover | Handover Assistant</title>
     <link rel="stylesheet" href="{% static 'css/my_tasks.css' %}?v=5">
-    <link rel="stylesheet" href="{% static 'css/create_handover.css' %}?v=12">
+    <link rel="stylesheet" href="{% static 'css/create_handover.css' %}?v=18">
 </head>
 
 <body>
@@ -103,11 +103,9 @@
                 {% endif %}
                 <div class="review-heading">
                     <div>
-                        <p class="eyebrow">{% if preview_mode %}NO-AI SAMPLE{% else %}AI EXTRACTION{% endif %}</p>
+                        <p class="eyebrow">AI EXTRACTION</p>
                         <h2>Review handover</h2>
-                        <p class="page-subtitle">{% if preview_mode %}Try owner matching with sample names. This preview
-                            does not call AI or save a handover.{% else %}Check the extracted tasks, confirm each
-                            employee, and answer any questions before saving.{% endif %}</p>
+                        <p class="page-subtitle">Check the extracted tasks, confirm each employee, and answer any questions before saving.</p>
                     </div>
                     {% if uploaded_filename %}<span class="review-file">{{ uploaded_filename }}</span>{% endif %}
                 </div>
@@ -142,10 +140,6 @@
 
                             {% for owner in task.owner_reviews %}
                             <fieldset class="owner-review">
-                                {% if preview_mode %}
-                                <input type="hidden" name="demo_owner_name" value="{{ owner.owner_name }}">
-                                {% endif %}
-
                                 <legend>Verify task owner</legend>
 
                                 <p class="owner-task-context">
@@ -248,12 +242,6 @@
                     {% endif %}
 
                     <div class="review-actions">
-                        {% if preview_mode %}
-                        <button class="confirm-employee-button" type="submit" name="action" value="demo_confirm">View
-                            sample result</button>
-                        <button class="review-cancel" type="submit" name="action" value="demo_cancel"
-                            formnovalidate>Back to upload</button>
-                        {% else %}
                         {% if has_clarifications %}
                         <button class="extract-btn secondary-review-action" type="submit" name="action" value="refine"
                             formnovalidate>✦&nbsp; Ask AI to refine</button>
@@ -261,7 +249,6 @@
                         <button class="extract-btn" type="submit" name="action" value="save">Save handover</button>
                         <button class="review-cancel" type="submit" name="action" value="cancel" formnovalidate>Cancel
                             review</button>
-                        {% endif %}
                     </div>
                 </form>
             </section>
@@ -339,36 +326,12 @@
                     </div>
                 </form>
 
-                <section class="owner-demo-inline" aria-label="Sample owner matching test">
-                    <h2>Test owner matching</h2>
-                    <p>Enter one sample name per line. This test does not call AI or save a handover.</p>
-                    {% if demo_error %}<p class="review-error" role="alert">{{ demo_error }}</p>{% endif %}
-                    <form method="post" class="owner-demo-form">
-                        {% csrf_token %}
-                        <label for="demo-names">Sample names</label>
-                        <textarea id="demo-names" name="demo_names" rows="3"
-                            placeholder="Tiseng&#10;Haziq">{{ demo_names }}</textarea>
-                        <button type="submit" class="review-cancel" name="action" value="preview_names">Try
-                            sample</button>
-                    </form>
-                    {% if demo_result %}
-                    <div class="owner-demo-result" role="status">
-                        {% for result in demo_result %}
-                        <p>
-                            <strong>{{ result.extracted_name }}</strong>
-                            → {{ result.employee_name }}
-                        </p>
-                        {% endfor %}
-                        <small>Preview only. No AI was used and no handover was saved.</small>
-                    </div>
-                    {% endif %}
-                </section>
             </section>
 
             {% endif %}
         </main>
     </div>
-    <script src="{% static 'js/create_handover.js' %}?v=6" defer></script>
+    <script src="{% static 'js/create_handover.js' %}?v=7" defer></script>
 </body>
 
 </html>

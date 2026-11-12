@@ -168,12 +168,11 @@ def apply_owner_selections(data, post_data):
     return None
 
 
-def render_handover_review(request, employee, upload, data, error_message=None, preview_mode=False):
+def render_handover_review(request, employee, upload, data, error_message=None):
     review_sections = build_review_sections(data)
     return render(request, "handovers/home.html", {
         "employee": employee,
         "review_mode": True,
-        "preview_mode": preview_mode,
         "review_sections": review_sections,
         "has_clarifications": any(
             task["clarification_questions"]
@@ -181,9 +180,7 @@ def render_handover_review(request, employee, upload, data, error_message=None, 
             for task in section["tasks"]
         ),
         "review_error": error_message,
-        "uploaded_filename": upload.original_name if upload else (
-            "Sample handover.docx" if preview_mode else ""
-        ),
+        "uploaded_filename": upload.original_name if upload else "",
         "important_information": data.get("important_information", []),
     })
 
@@ -194,68 +191,6 @@ def create_handover(request):
 
     if request.method == "POST":
         action = request.POST.get("action", "upload")
-
-        if action == "preview_names":
-            owner_names = [
-                name.strip()
-                for name in request.POST.get("demo_names", "").splitlines()
-                if name.strip()
-            ]
-            if not owner_names:
-                return render(request, "handovers/home.html", {
-                    "form": HandoverUploadForm(),
-                    "employee": employee,
-                    "demo_names": request.POST.get("demo_names", ""),
-                    "demo_error": "Enter at least one name, with one name on each line.",
-                })
-
-            preview_data = {
-                "outstanding_tasks": [{
-                    "task": "Sample task for owner matching",
-                    "description": "Preview only. No AI call or handover save.",
-                    "owners": owner_names,
-                    "clarification_questions": [],
-                }],
-                "bau_tasks": [],
-                "important_information": [],
-            }
-            return render_handover_review(
-                request, employee, None, preview_data, preview_mode=True
-            )
-
-        if action == "demo_cancel":
-            return redirect("handovers:home")
-
-        if action == "demo_confirm":
-            owner_names = request.POST.getlist("demo_owner_name")
-            preview_data = {
-                "outstanding_tasks": [{
-                    "task": "Sample task for owner matching",
-                    "description": "Preview only. No AI call or handover save.",
-                    "owners": owner_names,
-                    "clarification_questions": [],
-                }],
-                "bau_tasks": [],
-                "important_information": [],
-            }
-            owner_error = apply_owner_selections(preview_data, request.POST)
-            if owner_error:
-                return render_handover_review(
-                    request, employee, None, preview_data, owner_error,
-                    preview_mode=True,
-                )
-
-            demo_result = [
-                {"extracted_name": source_name, "employee_name": selected_name}
-                for source_name, selected_name in zip(
-                    owner_names, preview_data["outstanding_tasks"][0]["owners"]
-                )
-            ]
-            return render(request, "handovers/home.html", {
-                "form": HandoverUploadForm(),
-                "employee": employee,
-                "demo_result": demo_result,
-            })
 
         if action in {"refine", "save", "cancel"}:
             upload_id = request.session.get(PENDING_UPLOAD_KEY)

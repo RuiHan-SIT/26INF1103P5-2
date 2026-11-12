@@ -144,6 +144,7 @@ if (chatForm && chatMessages) {
     chatForm.addEventListener("submit", function () {
         const file = fileInput && fileInput.files[0];
         const typedMessage = chatMessageInput ? chatMessageInput.value.trim() : "";
+        if (filePreview) filePreview.hidden = true;
         const userBubble = document.createElement("div");
         userBubble.className = "chat-message user-message";
         userBubble.setAttribute("aria-label", "Your message");
