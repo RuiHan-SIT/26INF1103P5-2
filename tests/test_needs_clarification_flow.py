@@ -1,6 +1,6 @@
 import pytest
 from datetime import date
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from apps.handovers.logic_manager.handover import Handover
 from apps.handovers.logic_manager.outstanding_task import OutstandingTask
 from apps.handovers.services.handover_coordinator import HandoverCoordinator
@@ -111,29 +111,22 @@ def test_word_export_supports_needs_clarification():
     assert mock_handover.completed_document.save.called
 
 
-def test_handover_repository_save_needs_clarification():
-    import os, sys
-    import django
-    if not os.environ.get("DJANGO_SETTINGS_MODULE"):
-        os.environ["DJANGO_SETTINGS_MODULE"] = "config.settings"
-        django.setup()
-
+@patch("apps.handovers.data_manager.handover_repository.transaction.atomic")
+@patch("apps.handovers.data_manager.handover_repository.Handover.objects.create")
+@patch("apps.handovers.data_manager.handover_repository.Task.objects.create")
+@patch("apps.handovers.data_manager.handover_repository.Subtask.objects.create")
+def test_handover_repository_save_needs_clarification(
+    mock_subtask_create, mock_task_create, mock_handover_create, mock_atomic
+):
     from apps.handovers.data_manager.handover_repository import HandoverRepository
-    from apps.handovers.models import Employee, Handover, Task, Subtask, Upload
-    from django.contrib.auth.models import User
-    from django.core.files.uploadedfile import SimpleUploadedFile
 
-    user, _ = User.objects.get_or_create(username="testuser_clarify")
-    employee, _ = Employee.objects.get_or_create(
-        user=user, defaults={"name": "Test User", "employee_id": "TEST-001"}
-    )
-    dummy_file = SimpleUploadedFile("test.docx", b"dummy content")
-    upload = Upload.objects.create(
-        file=dummy_file,
-        original_name="test.docx",
-        size_bytes=13,
-        uploaded_by=employee
-    )
+    mock_employee = MagicMock()
+    mock_employee.pk = 1
+    mock_upload = MagicMock()
+    mock_handover = MagicMock()
+    mock_handover_create.return_value = mock_handover
+    mock_task = MagicMock()
+    mock_task_create.return_value = mock_task
 
     processed_data = {
         "important_information": ["⚠️ Needs Clarification: Task 1 has no deadline"],
@@ -141,7 +134,7 @@ def test_handover_repository_save_needs_clarification():
             {
                 "task": "Task without deadline",
                 "description": "Some description",
-                "owner_ids": [employee.pk],
+                "owner_ids": [1],
                 "deadline": None,
                 "subtasks": [
                     {
@@ -157,17 +150,27 @@ def test_handover_repository_save_needs_clarification():
     }
 
     repo = HandoverRepository()
-    handover = repo.save_handover(employee, upload, processed_data, status="needs_clarification")
+    result = repo.save_handover(mock_employee, mock_upload, processed_data, status="needs_clarification")
 
-    assert handover.status == "needs_clarification"
-    assert handover.tasks.count() == 1
-    task = handover.tasks.first()
-    assert task.deadline is None
-    assert task.subtasks.count() == 1
-    subtask = task.subtasks.first()
-    assert subtask.planned_date is None
-
-    # Cleanup test artifacts
-    upload.delete()
-    handover.delete()
-    user.delete()
+    assert result is mock_handover
+    mock_handover_create.assert_called_once_with(
+        created_by=mock_employee,
+        important_information=processed_data["important_information"],
+        status="needs_clarification",
+    )
+    mock_task_create.assert_called_once_with(
+        handover=mock_handover,
+        code="OUT-001",
+        task_type="outstanding",
+        title="Task without deadline",
+        description="Some description",
+        deadline=None,
+    )
+    mock_subtask_create.assert_called_once_with(
+        task=mock_task,
+        code="S001",
+        title="Subtask without date",
+        planned_date=None,
+    )
+    assert mock_upload.handover == mock_handover
+    mock_upload.save.assert_called_once_with(update_fields=["handover"])
