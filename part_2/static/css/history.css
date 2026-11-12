@@ -101,6 +101,55 @@
 }
 
 /* The table card. It scrolls by itself if there are many rows. */
+#history {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 18px;
+}
+
+#history .page-header,
+#history .messages-container,
+#history .history-toolbar,
+#history .history-card {
+    margin: 0;
+}
+
+#history .history-card {
+    align-self: stretch;
+    width: 100%;
+}
+
+.messages-container {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.history-message {
+    width: fit-content;
+    max-width: 100%;
+    padding: 9px 13px;
+    color: #bcebd2;
+    background: rgba(44, 132, 98, 0.14);
+    border: 1px solid rgba(93, 184, 143, 0.35);
+    border-radius: 10px;
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.history-message-warning {
+    color: #f0d49d;
+    background: rgba(170, 115, 34, 0.14);
+    border-color: rgba(220, 166, 87, 0.35);
+}
+
+.history-message-error {
+    color: #ffc4d7;
+    background: rgba(170, 65, 92, 0.14);
+    border-color: rgba(220, 100, 130, 0.35);
+}
+
 .history-card {
     display: flex;
     flex-direction: column;
@@ -209,11 +258,218 @@
     border-color: var(--border);
 }
 
+.history-actions {
+    position: relative;
+    display: inline-block;
+}
+
+.history-actions summary {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    place-items: center;
+    color: var(--muted);
+    border: 1px solid transparent;
+    border-radius: 9px;
+    cursor: pointer;
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1;
+    list-style: none;
+}
+
+.history-actions summary::-webkit-details-marker {
+    display: none;
+}
+
+.history-actions summary:hover,
+.history-actions[open] summary {
+    color: var(--text);
+    background: var(--surface-raised);
+    border-color: var(--border);
+}
+
+.history-actions-menu {
+    position: fixed;
+    z-index: 1000;
+    display: grid;
+    min-width: 125px;
+    padding: 5px;
+    background: #25242d;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, .35);
+    text-align: left;
+}
+
+.history-actions-menu a,
+.history-actions-menu button {
+    display: block;
+    width: 100%;
+    padding: 9px 10px;
+    color: var(--text);
+    background: transparent;
+    border: 0;
+    border-radius: 7px;
+    font: inherit;
+    font-size: 12px;
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.history-actions-menu a:hover,
+.history-actions-menu button:hover {
+    background: rgba(255, 255, 255, .07);
+}
+
+.history-actions-menu button {
+    color: #ff9bad;
+}
+
 .empty-row {
     padding: 44px 18px !important;
     color: var(--muted) !important;
     text-align: center;
 }
+
+.handover-detail-page {
+    gap: 18px;
+}
+
+.detail-back-link {
+    width: fit-content;
+    color: var(--muted);
+    font-size: 13px;
+    text-decoration: none;
+}
+
+.detail-back-link:hover {
+    color: var(--text);
+}
+
+.detail-card {
+    padding: clamp(18px, 2.5vw, 28px);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+}
+
+.detail-card > h2 {
+    margin: 0 0 18px;
+    color: var(--text);
+    font-size: 18px;
+}
+
+.detail-card > h2 span {
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.detail-information {
+    margin: 0;
+    padding-left: 20px;
+    color: var(--muted);
+    line-height: 1.7;
+}
+
+.detail-task {
+    padding: 20px 0;
+    border-top: 1px solid var(--border);
+}
+
+.detail-task:first-of-type {
+    padding-top: 0;
+    border-top: 0;
+}
+
+.detail-task-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.detail-task-heading .eyebrow {
+    margin: 0 0 6px;
+    color: var(--soft);
+    font-size: 10px;
+    letter-spacing: .1em;
+}
+
+.detail-task-heading h3 {
+    margin: 0;
+    color: var(--text);
+    font-size: 16px;
+}
+
+.detail-task-code {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.detail-description,
+.detail-fields dd,
+.detail-empty {
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.detail-fields {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 28px;
+    margin: 16px 0 0;
+}
+
+.detail-fields div {
+    min-width: 150px;
+}
+
+.detail-fields dt {
+    color: var(--soft);
+    font-size: 11px;
+}
+
+.detail-fields dd {
+    margin: 4px 0 0;
+}
+
+.detail-subtasks {
+    margin-top: 18px;
+}
+
+.detail-subtasks h4 {
+    margin: 0 0 8px;
+    color: var(--text);
+    font-size: 13px;
+}
+
+.detail-subtasks ul {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.detail-subtasks li {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px;
+    color: var(--muted);
+    background: var(--surface-raised);
+    border-radius: 10px;
+    font-size: 12px;
+}
+
+.detail-subtasks li span {
+    flex: 0 0 auto;
+}
+
 
 .history-footer {
     display: flex;

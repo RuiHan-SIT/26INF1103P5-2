@@ -45,6 +45,8 @@ urlpatterns = [
     path("my-tasks/", views.my_tasks, name="my_tasks"),
     path("my-tasks/subtasks/<int:subtask_id>/status/", views.update_subtask_status, name="update_subtask_status"),
     path("history/", views.handover_history, name="handover_history"),
+    path("history/<int:handover_id>/", views.handover_detail, name="handover_detail"),
+    path("history/<int:handover_id>/delete/", views.delete_handover, name="delete_handover"),
     path(
         "history/<int:handover_id>/download/",
         views.download_completed_handover,

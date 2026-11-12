@@ -8,7 +8,7 @@
     <!-- my_tasks.css provides the shared sidebar, theme colours and page layout -->
     <link rel="stylesheet" href="{% static 'css/my_tasks.css' %}?v=5">
     <!-- history.css only adds what is specific to this page (search, table, status badges) -->
-    <link rel="stylesheet" href="{% static 'css/history.css' %}?v=3">
+    <link rel="stylesheet" href="{% static 'css/history.css' %}?v=6">
 </head>
 <body>
     <div class="app-shell">
@@ -72,9 +72,9 @@
             </header>
 
             {% if messages %}
-            <div class="messages-container" style="margin-bottom: 20px;">
+            <div class="messages-container">
                 {% for message in messages %}
-                <div class="alert alert-{{ message.tags }}" style="padding: 14px 18px; border-radius: 8px; margin-bottom: 10px; font-size: 14px; font-weight: 500; {% if message.tags == 'warning' %}background: #fff3cd; color: #856404; border: 1px solid #ffeeba;{% elif message.tags == 'success' %}background: #d4edda; color: #155724; border: 1px solid #c3e6cb;{% else %}background: #e2e3e5; color: #383d41; border: 1px solid #d6d8db;{% endif %}">
+                <div class="history-message history-message-{{ message.tags }}" role="status">
                     {{ message }}
                 </div>
                 {% endfor %}
@@ -108,7 +108,7 @@
                             <th scope="col">Created On</th>
                             <th scope="col" class="col-center">Tasks</th>
                             <th scope="col">Status</th>
-                            <th scope="col" class="col-center">Download</th>
+                            <th scope="col" class="col-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -119,14 +119,17 @@
                             <td class="col-center">{{ h.task_count }}</td>
                             <td><span class="status-badge status-{{ h.status|slugify }}">{{ h.get_status_display }}</span></td>
                             <td class="col-center">
-                                {% if h.status == "completed" or h.status == "needs_clarification" %}
-                                <a class="view-link" href="{% url 'handovers:download_completed_handover' h.pk %}"
-                                   aria-label="Download handover H-{{ h.pk|stringformat:'04d' }}" title="Download Word document{% if h.status == 'needs_clarification' %} (Draft - Needs Clarification){% endif %}">
-                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7.5 11 12 15.5 16.5 11M5 19.5h14"/></svg>
-                                </a>
-                                {% else %}
-                                <span title="Available once the handover is saved">&ndash;</span>
-                                {% endif %}
+                                <details class="history-actions">
+                                    <summary aria-label="Actions for handover H-{{ h.pk|stringformat:'04d' }}" title="Handover actions">•••</summary>
+                                    <div class="history-actions-menu">
+                                        <a href="{% url 'handovers:handover_detail' h.pk %}">View</a>
+                                        <form method="post" action="{% url 'handovers:delete_handover' h.pk %}"
+                                              onsubmit="return confirm('Delete handover H-{{ h.pk|stringformat:'04d' }}? This also removes its tasks and uploaded files.');">
+                                            {% csrf_token %}
+                                            <button type="submit">Delete</button>
+                                        </form>
+                                    </div>
+                                </details>
                             </td>
                         </tr>
                         {% empty %}
@@ -161,6 +164,6 @@
             </section>
         </main>
     </div>
-    <script src="{% static 'js/history.js' %}" defer></script>
+    <script src="{% static 'js/history.js' %}?v=2" defer></script>
 </body>
 </html>

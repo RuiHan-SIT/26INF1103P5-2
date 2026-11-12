@@ -144,7 +144,9 @@ class HandoverCoordinator:
         tasks = []
 
         for line in lines:
-            if line.lower().startswith("task ") and line.endswith(":"):
+            task_header = line[:-1].strip().lower() if line.endswith(":") else ""
+            task_number = task_header[5:].strip() if task_header.startswith("task ") else ""
+            if task_number and all(part.isdigit() for part in task_number.split(".")):
                 if current_task and current_task.get("task"):
                     tasks.append(current_task)
                 current_task = {}

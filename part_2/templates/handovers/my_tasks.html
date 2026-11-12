@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Tasks | Handover Assistant</title>
-    <link rel="stylesheet" href="{% static 'css/my_tasks.css' %}?v=5">
+    <link rel="stylesheet" href="{% static 'css/my_tasks.css' %}?v=6">
 </head>
 <body>
     <div class="app-shell">
@@ -109,6 +109,18 @@
                     </div>
 
                     <div class="task-list" id="task-list" aria-live="polite"></div>
+                    {% if unscheduled_tasks %}
+                    <section class="unscheduled-tasks" aria-labelledby="unscheduled-title">
+                        <h3 id="unscheduled-title">Needs a date</h3>
+                        <p>These saved tasks need a deadline or planned date before they can appear on a calendar day.</p>
+                        {% for task in unscheduled_tasks %}
+                        <article class="unscheduled-task">
+                            <strong>{{ task.title }}</strong>
+                            <small>From handover {{ task.handover }}</small>
+                        </article>
+                        {% endfor %}
+                    </section>
+                    {% endif %}
                 </aside>
             </section>
         </main>

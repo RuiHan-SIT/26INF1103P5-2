@@ -448,6 +448,7 @@ def create_handover(request):
 def my_tasks(request):
     employee = getattr(request.user, "employee", None)
     calendar_tasks = []
+    unscheduled_tasks = []
 
     if employee:
         assigned_tasks = HandoverQuery().tasks_owned_by(employee)
@@ -466,8 +467,10 @@ def my_tasks(request):
                 })
                 continue
 
+            has_planned_subtask = False
             for subtask in task.subtasks.all():
                 if subtask.planned_date:
+                    has_planned_subtask = True
                     calendar_tasks.append({
                         "id": f"subtask-{subtask.pk}",
                         "subtaskId": subtask.pk,
@@ -487,10 +490,18 @@ def my_tasks(request):
                     "type": "deadline",
                     "date": task.deadline.isoformat(),
                 })
+            elif not has_planned_subtask:
+                # Keep saved tasks visible even when clarification is needed
+                # before they can be placed on a specific calendar date.
+                unscheduled_tasks.append({
+                    "title": task.title,
+                    "handover": handover_label,
+                })
 
     return render(request, "handovers/my_tasks.html", {
         "employee": employee,
         "calendar_tasks": calendar_tasks,
+        "unscheduled_tasks": unscheduled_tasks,
     })
 
 
@@ -592,6 +603,44 @@ def handover_history(request):
         "total_count": total_count,
         "employee": employee,
     })
+
+
+@login_required(login_url="handovers:login")
+def handover_detail(request, handover_id):
+    """Show the saved tasks and details for one handover in the user's history."""
+    employee = getattr(request.user, "employee", None)
+    handover = get_object_or_404(
+        Handover.objects.prefetch_related("tasks__owners", "tasks__subtasks__depends_on"),
+        pk=handover_id,
+        created_by=employee,
+    )
+    return render(request, "handovers/handover_detail.html", {
+        "employee": employee,
+        "handover": handover,
+        "tasks": handover.tasks.all(),
+    })
+
+
+@login_required(login_url="handovers:login")
+@require_POST
+def delete_handover(request, handover_id):
+    """Delete one handover owned by the signed-in employee."""
+    employee = getattr(request.user, "employee", None)
+    handover = get_object_or_404(Handover, pk=handover_id, created_by=employee)
+
+    stored_files = [upload.file for upload in handover.uploads.all() if upload.file]
+    if handover.completed_document:
+        stored_files.append(handover.completed_document)
+
+    handover.delete()
+    for stored_file in stored_files:
+        try:
+            stored_file.delete(save=False)
+        except OSError:
+            logger.exception("Could not remove a stored file for deleted handover %s", handover_id)
+
+    messages.success(request, f"Handover H-{handover_id:04d} was deleted.")
+    return redirect("handovers:handover_history")
 
 
 @login_required(login_url="handovers:login")

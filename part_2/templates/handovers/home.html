@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create Handover | Handover Assistant</title>
     <link rel="stylesheet" href="{% static 'css/my_tasks.css' %}?v=5">
-    <link rel="stylesheet" href="{% static 'css/create_handover.css' %}?v=11">
+    <link rel="stylesheet" href="{% static 'css/create_handover.css' %}?v=12">
 </head>
 
 <body>
@@ -94,6 +94,13 @@
 
             {% if review_mode %}
             <section class="review-card" aria-label="Review extracted handover">
+                {% if messages %}
+                <div class="handover-notices" aria-live="polite">
+                    {% for message in messages %}
+                    <p class="handover-notice {{ message.tags }}">{{ message }}</p>
+                    {% endfor %}
+                </div>
+                {% endif %}
                 <div class="review-heading">
                     <div>
                         <p class="eyebrow">{% if preview_mode %}NO-AI SAMPLE{% else %}AI EXTRACTION{% endif %}</p>
@@ -287,14 +294,14 @@
 
                         <!-- Conversation area -->
 
-                        <div class="chat-messages" id="chatMessages">
+                        <div class="chat-messages" id="chatMessages" aria-live="polite" aria-relevant="additions">
 
                             <div class="bot-message">
                                 Hello! Please upload your handover document
                                 (.TXT or .DOCX) to get started.
                             </div>
 
-                            <label for="document" class="chat-drop-hint">
+                            <label for="document" class="chat-drop-hint" id="chatDropHint">
                                 <span class="drop-icon">&#x1F4C4;</span>
                                 <strong>Drag & drop your document here</strong>
                                 <span>or click here to browse files</span>
@@ -361,7 +368,7 @@
             {% endif %}
         </main>
     </div>
-    <script src="{% static 'js/create_handover.js' %}?v=5" defer></script>
+    <script src="{% static 'js/create_handover.js' %}?v=6" defer></script>
 </body>
 
 </html>

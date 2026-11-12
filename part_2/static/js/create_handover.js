@@ -4,6 +4,10 @@ const dropOverlay = document.getElementById("dropOverlay");
 const filePreview = document.getElementById("filePreview");
 const fileName = document.getElementById("fileName");
 const removeFile = document.getElementById("removeFile")
+const chatForm = document.getElementById("chat-form");
+const chatMessages = document.getElementById("chatMessages");
+const chatMessageInput = document.getElementById("chat-message");
+const sendButton = chatForm ? chatForm.querySelector(".send-btn") : null;
 
 const allowedExtensions = [".txt", ".docx"];
 const maxSize = 10 * 1024 * 1024;
@@ -132,6 +136,57 @@ if (fileInput && filePreview && fileName && removeFile) {
         });
     }
 
+}
+
+// Add a visible sent message and progress indicator before the page waits for
+// the AI response from the server.
+if (chatForm && chatMessages) {
+    chatForm.addEventListener("submit", function () {
+        const file = fileInput && fileInput.files[0];
+        const typedMessage = chatMessageInput ? chatMessageInput.value.trim() : "";
+        const userBubble = document.createElement("div");
+        userBubble.className = "chat-message user-message";
+        userBubble.setAttribute("aria-label", "Your message");
+
+        if (file) {
+            const attachment = document.createElement("strong");
+            attachment.className = "chat-attachment-name";
+            attachment.textContent = file.name;
+            const size = document.createElement("small");
+            size.textContent = file.size < 1024
+                ? `${file.size} bytes`
+                : `${(file.size / 1024).toFixed(1)} KB`;
+            userBubble.append(attachment, size);
+        }
+
+        if (typedMessage) {
+            const message = document.createElement("span");
+            message.textContent = typedMessage;
+            userBubble.appendChild(message);
+        }
+
+        if (file || typedMessage) chatMessages.appendChild(userBubble);
+
+        const loadingBubble = document.createElement("div");
+        loadingBubble.className = "chat-message ai-loading";
+        loadingBubble.setAttribute("role", "status");
+        const loadingText = document.createElement("span");
+        loadingText.textContent = "Reviewing your handover with AI. This can take a little while.";
+        const loadingDots = document.createElement("span");
+        loadingDots.className = "loading-dots";
+        loadingDots.setAttribute("aria-hidden", "true");
+        loadingDots.textContent = "•••";
+        loadingBubble.append(loadingText, loadingDots);
+        chatMessages.appendChild(loadingBubble);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        const chatContainer = chatForm.querySelector(".chat-container");
+        if (chatContainer) chatContainer.setAttribute("aria-busy", "true");
+        if (sendButton) {
+            sendButton.disabled = true;
+            sendButton.textContent = "Reviewing…";
+        }
+    });
 }
 
 document.querySelectorAll("[data-employee-search]").forEach((search) => {

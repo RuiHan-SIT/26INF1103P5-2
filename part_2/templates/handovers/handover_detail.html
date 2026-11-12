@@ -1,0 +1,95 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Handover H-{{ handover.pk|stringformat:"04d" }} | Handover Assistant</title>
+    <link rel="stylesheet" href="{% static 'css/my_tasks.css' %}?v=5">
+    <link rel="stylesheet" href="{% static 'css/history.css' %}?v=4">
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar">
+            <a class="brand" href="{% url 'handovers:home' %}" aria-label="Handover Assistant home">
+                <span class="brand-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M7 4.5h10a2 2 0 0 1 2 2v13H5v-13a2 2 0 0 1 2-2Z"/><path d="M9 4.5v-1h6v1M8.5 9h7M8.5 13h7M8.5 17h4"/></svg>
+                </span>
+                <span class="brand-name">Handover Assistant</span>
+            </a>
+            <nav class="side-nav" aria-label="Main navigation">
+                <a class="nav-link" href="{% url 'handovers:home' %}"><span>Create Handover</span></a>
+                <a class="nav-link" href="{% url 'handovers:my_tasks' %}"><span>My Tasks</span></a>
+                <a class="nav-link active" href="{% url 'handovers:handover_history' %}" aria-current="page"><span>History</span></a>
+            </nav>
+            <div class="sidebar-spacer"></div>
+            <div class="profile-card">
+                <span class="avatar" aria-hidden="true">{{ employee.name|first|upper }}</span>
+                <span class="profile-text"><strong>{{ employee.name }}</strong><small>{{ employee.employee_id }}</small></span>
+            </div>
+        </aside>
+
+        <main class="main-content handover-detail-page">
+            <a class="detail-back-link" href="{% url 'handovers:handover_history' %}">← Back to history</a>
+            <header class="page-header">
+                <div>
+                    <p class="eyebrow">HANDOVER DETAILS</p>
+                    <h1>H-{{ handover.pk|stringformat:"04d" }}</h1>
+                    <p class="page-subtitle">Created {{ handover.created_at|date:"d M Y, g:i A" }}</p>
+                </div>
+                <span class="status-badge status-{{ handover.status|slugify }}">{{ handover.get_status_display }}</span>
+                {% if handover.status == "completed" or handover.status == "needs_clarification" %}
+                <a class="create-button" href="{% url 'handovers:download_completed_handover' handover.pk %}">Download Word document</a>
+                {% endif %}
+            </header>
+
+            {% if handover.important_information %}
+            <section class="detail-card">
+                <h2>Important information</h2>
+                <ul class="detail-information">
+                    {% for item in handover.important_information %}<li>{{ item }}</li>{% endfor %}
+                </ul>
+            </section>
+            {% endif %}
+
+            <section class="detail-card" aria-label="Tasks in this handover">
+                <h2>Tasks <span>({{ tasks|length }})</span></h2>
+                {% for task in tasks %}
+                <article class="detail-task">
+                    <div class="detail-task-heading">
+                        <div>
+                            <p class="eyebrow">{% if task.task_type == "bau" %}RECURRING BAU TASK{% else %}ONE-OFF TASK{% endif %}</p>
+                            <h3>{{ task.title }}</h3>
+                        </div>
+                        <span class="detail-task-code">{{ task.code }}</span>
+                    </div>
+                    {% if task.description %}<p class="detail-description">{{ task.description }}</p>{% endif %}
+                    <dl class="detail-fields">
+                        <div><dt>Owner(s)</dt><dd>{% for owner in task.owners.all %}{{ owner.name }}{% if not forloop.last %}, {% endif %}{% empty %}Not assigned{% endfor %}</dd></div>
+                        {% if task.task_type == "bau" %}
+                        <div><dt>Frequency</dt><dd>{{ task.get_frequency_display|default:"Not specified" }}</dd></div>
+                        <div><dt>Start date</dt><dd>{{ task.start_date|date:"d/m/Y"|default:"Not specified" }}</dd></div>
+                        <div><dt>End date</dt><dd>{{ task.end_date|date:"d/m/Y"|default:"No end date" }}</dd></div>
+                        {% else %}
+                        <div><dt>Deadline</dt><dd>{{ task.deadline|date:"d/m/Y"|default:"Needs clarification" }}</dd></div>
+                        {% endif %}
+                    </dl>
+                    {% if task.subtasks.all %}
+                    <div class="detail-subtasks">
+                        <h4>Subtasks</h4>
+                        <ul>
+                            {% for subtask in task.subtasks.all %}
+                            <li><strong>{{ subtask.code }} · {{ subtask.title }}</strong><span>{{ subtask.planned_date|date:"d/m/Y"|default:"No planned date" }}</span></li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                </article>
+                {% empty %}
+                <p class="detail-empty">No tasks were extracted for this handover.</p>
+                {% endfor %}
+            </section>
+        </main>
+    </div>
+</body>
+</html>
