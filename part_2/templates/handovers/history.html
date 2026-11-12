@@ -105,8 +105,7 @@
                         {% for h in handovers %}
                         <tr>
                             <td class="id-cell">H-{{ h.pk|stringformat:"04d" }}</td>
-                            <td>{{ h.created_at|date:"d M Y, g:i A" }}</td>
-                            <td class="col-center">{{ h.task_count }}</td>
+                            <td><time class="local-time" datetime="{{ h.created_at|date:'c' }}">{{ h.created_at|date:"d M Y, g:i A" }} UTC</time></td>                                                  <td class="col-center">{{ h.task_count }}</td>
                             <td><span class="status-badge status-{{ h.status|slugify }}">{{ h.get_status_display }}</span></td>
                             <td class="col-center">
                                 {% if h.status == "completed" %}
