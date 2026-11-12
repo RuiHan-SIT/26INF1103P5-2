@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Handover H-{{ handover.pk|stringformat:"04d" }} | Handover Assistant</title>
     <link rel="stylesheet" href="{% static 'css/my_tasks.css' %}?v=5">
-    <link rel="stylesheet" href="{% static 'css/history.css' %}?v=4">
+    <link rel="stylesheet" href="{% static 'css/history.css' %}?v=13">
 </head>
 <body>
     <div class="app-shell">
@@ -26,6 +26,17 @@
             <div class="profile-card">
                 <span class="avatar" aria-hidden="true">{{ employee.name|first|upper }}</span>
                 <span class="profile-text"><strong>{{ employee.name }}</strong><small>{{ employee.employee_id }}</small></span>
+                <button class="profile-menu" id="profile-menu-button" type="button" aria-label="Open account menu" aria-expanded="false" aria-controls="profile-menu">•••</button>
+                <div class="profile-popover" id="profile-menu" hidden>
+                    <strong>{{ employee.name }}</strong>
+                    <span>Employee ID: {{ employee.employee_id }}</span>
+                    <small>Signed in</small>
+                    <a class="profile-password-action" href="{% url 'handovers:password_change' %}">Change password</a>
+                    <form method="post" action="{% url 'handovers:logout' %}">
+                        {% csrf_token %}
+                        <button class="profile-action" type="submit">Log out</button>
+                    </form>
+                </div>
             </div>
         </aside>
 
@@ -43,6 +54,24 @@
                 {% endif %}
             </header>
 
+            {% if handover.status == "needs_clarification" and not edit_mode %}
+            <section class="detail-clarification-notice" role="status">
+                <strong>This handover needs clarification.</strong> Review the flagged task details, then use the three-dot menu in History to edit them.
+            </section>
+            {% endif %}
+
+            {% if messages %}
+            <div class="detail-messages" aria-live="polite">
+                {% for message in messages %}<p class="detail-message {{ message.tags }}">{{ message }}</p>{% endfor %}
+            </div>
+            {% endif %}
+
+            {% if edit_errors %}
+            <div class="detail-message error" role="alert">
+                {% for error in edit_errors %}<p>{{ error }}</p>{% endfor %}
+            </div>
+            {% endif %}
+
             {% if handover.important_information %}
             <section class="detail-card">
                 <h2>Important information</h2>
@@ -52,26 +81,84 @@
             </section>
             {% endif %}
 
+            {% if ai_suggestions and edit_mode %}
+            <section class="detail-card ai-suggestion-card" aria-label="AI suggested handover edits">
+                <h2>Review AI suggestions</h2>
+                <p class="detail-description">These suggestions are only a preview. They have not changed the saved handover yet.</p>
+                {% for task in ai_suggestions.outstanding_tasks %}
+                <article class="detail-task ai-suggested-task">
+                    <p class="eyebrow">ONE-OFF TASK · {{ task.task_id }}</p>
+                    <h3>{{ task.task }}</h3>
+                    {% if task.description %}<p class="detail-description">{{ task.description }}</p>{% endif %}
+                    {% if task.deadline %}<p class="detail-description">Deadline: {{ task.deadline }}</p>{% endif %}
+                    {% if task.subtasks %}
+                    <h4>AI planned subtasks</h4>
+                    <ul class="ai-suggested-subtasks">
+                        {% for subtask in task.subtasks %}
+                        <li>{{ subtask.task }}{% if subtask.planned_date %} · {{ subtask.planned_date }}{% endif %}</li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                </article>
+                {% endfor %}
+                {% for task in ai_suggestions.bau_tasks %}
+                <article class="detail-task ai-suggested-task">
+                    <p class="eyebrow">RECURRING BAU TASK · {{ task.task_id }}</p>
+                    <h3>{{ task.task }}</h3>
+                    {% if task.description %}<p class="detail-description">{{ task.description }}</p>{% endif %}
+                    <p class="detail-description">{{ task.frequency|default:"Frequency not specified" }} · Start {{ task.start_date|default:"date not specified" }}{% if task.end_date %} · End {{ task.end_date }}{% endif %}</p>
+                </article>
+                {% endfor %}
+                <form method="post" class="ai-suggestion-actions">
+                    {% csrf_token %}
+                    <input type="hidden" name="edit_mode" value="1">
+                    <button class="detail-save-button" type="submit" name="action" value="apply_ai_suggestions">Apply suggestions to this handover</button>
+                    <button class="detail-discard-button" type="submit" name="action" value="discard_ai_suggestions">Discard suggestions</button>
+                </form>
+            </section>
+            {% endif %}
+
+            {% if edit_mode %}
+            <p class="detail-edit-hint">Update the task fields, then save to run the Logic Manager checks. You can also ask AI to suggest edits for review.</p>
+            <form method="post" class="detail-edit-form" data-cancel-url="{% url 'handovers:cancel_handover_processing' %}" data-home-url="{% url 'handovers:handover_detail' handover.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="edit_mode" value="1">
+                <input type="hidden" name="request_token" value="{{ request_token }}">
+            {% endif %}
             <section class="detail-card" aria-label="Tasks in this handover">
                 <h2>Tasks <span>({{ tasks|length }})</span></h2>
                 {% for task in tasks %}
                 <article class="detail-task">
-                    <div class="detail-task-heading">
+                    <div class="detail-task-heading{% if edit_mode %} detail-task-edit-heading{% endif %}">
                         <div>
                             <p class="eyebrow">{% if task.task_type == "bau" %}RECURRING BAU TASK{% else %}ONE-OFF TASK{% endif %}</p>
-                            <h3>{{ task.title }}</h3>
+                            {% if edit_mode %}
+                            <label class="detail-edit-field detail-task-name-field{% if task.attention.title %} has-attention{% endif %}"><span>Task name</span><input type="text" name="task_{{ task.pk }}_title" value="{{ task.title }}" maxlength="255" required>{% for issue in task.attention.title %}<small class="detail-inline-warning">{{ issue }}</small>{% endfor %}</label>
+                            {% else %}{% if task.title %}<h3>{{ task.title }}</h3>{% elif handover.status == 'needs_clarification' %}<h3><span class="detail-field-warning">Task name needs clarification</span></h3>{% else %}<h3>Untitled task</h3>{% endif %}{% endif %}
                         </div>
                         <span class="detail-task-code">{{ task.code }}</span>
                     </div>
-                    {% if task.description %}<p class="detail-description">{{ task.description }}</p>{% endif %}
+                    {% if edit_mode %}
+                    <label class="detail-edit-field detail-description-field{% if task.attention.description %} has-attention{% endif %}"><span>Description</span><textarea name="task_{{ task.pk }}_description" rows="3" required>{{ task.description }}</textarea>{% for issue in task.attention.description %}<small class="detail-inline-warning">{{ issue }}</small>{% endfor %}</label>
+                    {% elif task.description %}<p class="detail-description">{{ task.description }}</p>{% elif handover.status == 'needs_clarification' %}<p class="detail-description"><span class="detail-field-warning">Description needs clarification</span></p>{% endif %}
                     <dl class="detail-fields">
-                        <div><dt>Owner(s)</dt><dd>{% for owner in task.owners.all %}{{ owner.name }}{% if not forloop.last %}, {% endif %}{% empty %}Not assigned{% endfor %}</dd></div>
+                        <div><dt>Owner(s)</dt><dd>{% for owner in task.owners.all %}{{ owner.name }}{% if not forloop.last %}, {% endif %}{% empty %}{% if handover.status == 'needs_clarification' %}<span class="detail-field-warning">No owner assigned</span>{% else %}Not assigned{% endif %}{% endfor %}</dd></div>
                         {% if task.task_type == "bau" %}
-                        <div><dt>Frequency</dt><dd>{{ task.get_frequency_display|default:"Not specified" }}</dd></div>
-                        <div><dt>Start date</dt><dd>{{ task.start_date|date:"d/m/Y"|default:"Not specified" }}</dd></div>
-                        <div><dt>End date</dt><dd>{{ task.end_date|date:"d/m/Y"|default:"No end date" }}</dd></div>
+                        {% if edit_mode %}
+                        <div><dt>Frequency</dt><dd><select name="task_{{ task.pk }}_frequency" class="detail-edit-control{% if task.attention.frequency %} needs-attention{% endif %}" required><option value="">Choose frequency</option><option value="weekly" {% if task.frequency == "weekly" %}selected{% endif %}>Weekly</option><option value="monthly" {% if task.frequency == "monthly" %}selected{% endif %}>Monthly</option><option value="yearly" {% if task.frequency == "yearly" %}selected{% endif %}>Yearly</option></select>{% for issue in task.attention.frequency %}<small class="detail-inline-warning">{{ issue }}</small>{% endfor %}</dd></div>
+                        <div><dt>Start date</dt><dd><input type="date" name="task_{{ task.pk }}_start_date" value="{{ task.start_date|date:'Y-m-d' }}" class="detail-edit-control{% if task.attention.start_date %} needs-attention{% endif %}" required>{% for issue in task.attention.start_date %}<small class="detail-inline-warning">{{ issue }}</small>{% endfor %}</dd></div>
+                        <div><dt>End date</dt><dd><input type="date" name="task_{{ task.pk }}_end_date" value="{{ task.end_date|date:'Y-m-d' }}" class="detail-edit-control{% if task.attention.end_date %} needs-attention{% endif %}">{% for issue in task.attention.end_date %}<small class="detail-inline-warning">{{ issue }}</small>{% endfor %}</dd></div>
                         {% else %}
-                        <div><dt>Deadline</dt><dd>{{ task.deadline|date:"d/m/Y"|default:"Needs clarification" }}</dd></div>
+                        <div><dt>Frequency</dt><dd>{% if task.frequency %}{{ task.get_frequency_display }}{% elif handover.status == 'needs_clarification' %}<span class="detail-field-warning">Frequency needs clarification</span>{% else %}Not specified{% endif %}</dd></div>
+                        <div><dt>Start date</dt><dd>{% if task.start_date %}{{ task.start_date|date:"d/m/Y" }}{% elif handover.status == 'needs_clarification' %}<span class="detail-field-warning">Start date needs clarification</span>{% else %}Not specified{% endif %}</dd></div>
+                        <div><dt>End date</dt><dd>{{ task.end_date|date:"d/m/Y"|default:"No end date" }}</dd></div>
+                        {% endif %}
+                        {% else %}
+                        {% if edit_mode %}
+                        <div><dt>Deadline</dt><dd><input type="date" name="task_{{ task.pk }}_deadline" value="{{ task.deadline|date:'Y-m-d' }}" class="detail-edit-control{% if task.attention.deadline %} needs-attention{% endif %}" required>{% for issue in task.attention.deadline %}<small class="detail-inline-warning">{{ issue }}</small>{% endfor %}</dd></div>
+                        {% else %}
+                        <div><dt>Deadline</dt><dd>{% if task.deadline %}{{ task.deadline|date:"d/m/Y" }}{% else %}<span class="detail-field-warning">Deadline needs clarification</span>{% endif %}</dd></div>
+                        {% endif %}
                         {% endif %}
                     </dl>
                     {% if task.subtasks.all %}
@@ -79,7 +166,14 @@
                         <h4>Subtasks</h4>
                         <ul>
                             {% for subtask in task.subtasks.all %}
-                            <li><strong>{{ subtask.code }} · {{ subtask.title }}</strong><span>{{ subtask.planned_date|date:"d/m/Y"|default:"No planned date" }}</span></li>
+                            <li>
+                                {% if edit_mode %}
+                                <label class="detail-edit-field detail-subtask-name-field{% if subtask.attention.title %} has-attention{% endif %}"><span>{{ subtask.code }} name</span><input type="text" name="subtask_{{ subtask.pk }}_title" value="{{ subtask.title }}" maxlength="255" required>{% for issue in subtask.attention.title %}<small class="detail-inline-warning">{{ issue }}</small>{% endfor %}</label>
+                                <label class="detail-edit-field detail-subtask-date-field{% if subtask.attention.planned_date %} has-attention{% endif %}"><span>Planned date</span><input type="date" name="subtask_{{ subtask.pk }}_planned_date" value="{{ subtask.planned_date|date:'Y-m-d' }}" class="{% if subtask.attention.planned_date %}needs-attention{% endif %}" required>{% for issue in subtask.attention.planned_date %}<small class="detail-inline-warning">{{ issue }}</small>{% endfor %}</label>
+                                {% else %}
+                                <strong>{{ subtask.code }} · {% if subtask.title %}{{ subtask.title }}{% elif handover.status == 'needs_clarification' %}<span class="detail-field-warning">Subtask name needs clarification</span>{% else %}Untitled subtask{% endif %}</strong><span>{% if subtask.planned_date %}{{ subtask.planned_date|date:"d/m/Y" }}{% elif handover.status == 'needs_clarification' %}<span class="detail-field-warning">Planned date needs clarification</span>{% else %}No planned date{% endif %}</span>
+                                {% endif %}
+                            </li>
                             {% endfor %}
                         </ul>
                     </div>
@@ -89,7 +183,16 @@
                 <p class="detail-empty">No tasks were extracted for this handover.</p>
                 {% endfor %}
             </section>
+            {% if edit_mode %}
+                <div class="detail-ai-status" role="status" hidden></div>
+                <div class="detail-edit-actions">
+                    <button class="detail-discard-button" type="submit" name="action" value="ai_refine" formnovalidate>Ask AI to refine</button>
+                    <button class="detail-save-button" type="submit" name="action" value="save">Save and recheck</button>
+                </div>
+            </form>
+            {% endif %}
         </main>
     </div>
+    <script src="{% static 'js/create_handover.js' %}?v=10" defer></script>
 </body>
 </html>

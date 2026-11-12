@@ -123,6 +123,9 @@
                                     <summary aria-label="Actions for handover H-{{ h.pk|stringformat:'04d' }}" title="Handover actions">•••</summary>
                                     <div class="history-actions-menu">
                                         <a href="{% url 'handovers:handover_detail' h.pk %}">View</a>
+                                        {% if h.status == "needs_clarification" %}
+                                        <a href="{% url 'handovers:handover_detail' h.pk %}?edit=1">Edit</a>
+                                        {% endif %}
                                         <form method="post" action="{% url 'handovers:delete_handover' h.pk %}"
                                               onsubmit="return confirm('Delete handover H-{{ h.pk|stringformat:'04d' }}? This also removes its tasks and uploaded files.');">
                                             {% csrf_token %}
