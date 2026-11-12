@@ -1,4 +1,5 @@
 import copy
+from datetime import datetime
 from .outstanding_task import OutstandingTask
 from .bau_task import BAUTask
 
@@ -119,6 +120,16 @@ class Handover:
 
         return errors
 
+    def get_task_records(self):
+        """Returns normalized task records regardless of validation pass/fail."""
+        outstanding_records = [task.to_dict() for task in self.__outstanding_tasks]
+        bau_records = [task.to_dict() for task in self.__bau_tasks]
+        return {
+            "outstanding_tasks": outstanding_records,
+            "bau_tasks": bau_records,
+            "important_information": copy.deepcopy(self.__important_information),
+        }
+
     def process(self):
         errors = self.validate()
 
@@ -131,7 +142,7 @@ class Handover:
 
         sorted_tasks = sorted(
             self.__outstanding_tasks,
-            key=OutstandingTask.get_deadline
+            key=lambda t: t.get_deadline() or datetime.max
         )
 
         outstanding_records = []

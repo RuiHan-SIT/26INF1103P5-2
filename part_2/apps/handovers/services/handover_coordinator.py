@@ -121,3 +121,79 @@ class HandoverCoordinator:
             "bau_tasks": cleaned_bau,
             "important_information": list(data.get("important_information", []))
         }
+
+    @classmethod
+    def build_table_fallback_data(cls, document_text: str) -> Dict[str, Any]:
+        """
+        Parses structured task fields from DocumentReader text output
+        when Gemini AI service is unavailable.
+        """
+        data = {
+            "outstanding_tasks": [],
+            "bau_tasks": [],
+            "important_information": [
+                "⚠️ Gemini AI was unavailable during document upload. Tasks were extracted directly from document tables. Please review and confirm all details manually."
+            ]
+        }
+
+        if not document_text:
+            return data
+
+        lines = [line.strip() for line in document_text.splitlines() if line.strip()]
+        current_task = {}
+        tasks = []
+
+        for line in lines:
+            if line.lower().startswith("task ") and line.endswith(":"):
+                if current_task and current_task.get("task"):
+                    tasks.append(current_task)
+                current_task = {}
+                continue
+            if ":" in line:
+                key, _, val = line.partition(":")
+                key = key.strip().lower()
+                val = val.strip()
+                if key == "task name":
+                    current_task["task"] = val
+                elif key == "description":
+                    current_task["description"] = val
+                elif key.startswith("task owner"):
+                    current_task["owners"] = [o.strip() for o in val.split(",") if o.strip()]
+                elif key == "task type":
+                    current_task["task_type"] = val.lower()
+                elif key == "deadline":
+                    current_task["deadline"] = val
+                elif key == "frequency":
+                    current_task["frequency"] = val
+                elif key == "start date":
+                    current_task["start_date"] = val
+                elif key == "end date":
+                    current_task["end_date"] = val
+
+        if current_task and current_task.get("task"):
+            tasks.append(current_task)
+
+        for t in tasks:
+            task_type = t.get("task_type", "").lower()
+            owners = t.get("owners", [])
+            if "bau" in task_type or "recur" in task_type:
+                data["bau_tasks"].append({
+                    "task": t.get("task", "Untitled Task"),
+                    "description": t.get("description", ""),
+                    "owners": owners,
+                    "frequency": t.get("frequency") or "",
+                    "start_date": t.get("start_date") or None,
+                    "end_date": t.get("end_date") or None,
+                    "clarification_questions": [],
+                })
+            else:
+                data["outstanding_tasks"].append({
+                    "task": t.get("task", "Untitled Task"),
+                    "description": t.get("description", ""),
+                    "owners": owners,
+                    "deadline": t.get("deadline") or None,
+                    "subtasks": [],
+                    "clarification_questions": [],
+                })
+
+        return data

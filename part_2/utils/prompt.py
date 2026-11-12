@@ -74,7 +74,11 @@ CLASSIFICATION RULES:
      * "Update server credentials" -> ["Which specific server or environment needs updating?", "Where are the new credentials stored or managed?"]
      * "Send weekly report" -> ["Who is on the distribution list for this report?", "Where is the report template located?"]
    - If the task description is clear, comprehensive, and actionable, set "clarification_questions" to [].
-   - When reviewer answers are included in the input, use them to update the matching task and remove questions that the answers resolve. Keep only questions that remain unanswered.
+   - REFINEMENT & RESOLUTION RULES (WHEN REVIEWER ANSWERS ARE PROVIDED):
+     * Directly update the task's structured fields using the reviewer's answers (e.g., set "deadline": "DD/MM/YYYY" if a date is provided; set "frequency": "weekly"|"monthly"|"yearly" if frequency is given; set "owners": [...] if names are clarified).
+     * Remove every clarification question that the reviewer's answer addresses.
+     * STRICT: Do NOT invent new or replacement clarification questions during refinement passes.
+     * Once a task has a title, owner, and valid deadline/frequency, set "clarification_questions": [].
 
 5. GENERAL INTEGRITY RULES:
    - Do NOT invent fictional task owners or deadlines that were never mentioned.

@@ -119,7 +119,12 @@ class OutstandingTask(Task):
         return False
 
     def get_deadline(self):
-        return datetime.strptime(self.__deadline, "%d/%m/%Y")
+        if not self.__deadline:
+            return None
+        try:
+            return datetime.strptime(self.__deadline, "%d/%m/%Y")
+        except (ValueError, TypeError):
+            return None
 
     def to_dict(self):
         data = super().to_dict()
