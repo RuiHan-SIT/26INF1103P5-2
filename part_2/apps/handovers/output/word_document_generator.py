@@ -2,6 +2,7 @@ from io import BytesIO
 
 from docx import Document
 from django.core.files.base import ContentFile
+from django.utils import timezone
 
 
 class CompletedHandoverDocumentGenerator:
@@ -28,7 +29,7 @@ class CompletedHandoverDocumentGenerator:
             f"({handover.created_by.employee_id})"
         )
         document.add_paragraph(
-            f"Created on: {handover.created_at:%d %b %Y, %H:%M}"
+            f"Created on: {timezone.localtime(handover.created_at):%d %b %Y, %H:%M} SGT"
         )
 
         if handover.important_information:
