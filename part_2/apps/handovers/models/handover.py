@@ -7,6 +7,7 @@ class Handover(models.Model):
     STATUS_CHOICES = [
         ("active", "Active"),
         ("completed", "Completed"),
+        ("needs_clarification", "Needs Clarification"),
     ]
 
     # This is for the employee who wrote this handover, and an employee with h/overs cannot be deleted
@@ -22,8 +23,8 @@ class Handover(models.Model):
             blank=True,
         )
     
-    # It's either "active" or "completed"
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="active")
+    # It's either "active", "completed", or "needs_clarification"
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default="active")
 
     # Stores extra notes from the handover that aren't tasks, then saved in a list
     important_information = models.JSONField(default=list, blank=True)

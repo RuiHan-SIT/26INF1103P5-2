@@ -176,7 +176,8 @@
     background: var(--mint-dark);
 }
 
-.status-needs-clarification {
+.status-needs-clarification,
+.status-needs_clarification {
     color: #ffc4d7;
     background: var(--pink-dark);
 }
