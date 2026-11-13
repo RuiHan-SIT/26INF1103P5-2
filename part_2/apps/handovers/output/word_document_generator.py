@@ -3,6 +3,8 @@ from io import BytesIO
 from docx import Document
 from django.core.files.base import ContentFile
 
+from zoneinfo import ZoneInfo
+
 
 class CompletedHandoverDocumentGenerator:
     """Creates a downloadable Word document from a completed handover."""
@@ -27,8 +29,9 @@ class CompletedHandoverDocumentGenerator:
             f"Created by: {handover.created_by.name} "
             f"({handover.created_by.employee_id})"
         )
+        created = handover.created_at.astimezone(ZoneInfo("Asia/Singapore"))
         document.add_paragraph(
-            f"Created on: {handover.created_at:%d %b %Y, %H:%M}"
+            f"Created on: {created:%d %b %Y, %H:%M}"
         )
 
         if handover.important_information:
