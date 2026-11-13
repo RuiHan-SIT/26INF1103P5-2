@@ -1,3 +1,5 @@
+from dotenv import load_dotenv                                                                                                                                                                                                                                                                       
+load_dotenv()   
 import os
 import logging
 from typing import Optional
@@ -17,7 +19,7 @@ class Gemini(LLMService):
         self,
         api_key: Optional[str] = None,
         model_name: Optional[str] = None,
-        timeout_ms: int = 120_000,
+        timeout_ms: int = 240_000,
         client: Optional[genai.Client] = None,
     ):
         self.__api_key = api_key or os.getenv("GEMINI_API_KEY")

@@ -71,6 +71,16 @@
                 <a class="create-button" href="{% url 'handovers:home' %}">+ Create Handover</a>
             </header>
 
+            {% if messages %}
+            <div class="messages-container" style="margin-bottom: 20px;">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}" style="padding: 14px 18px; border-radius: 8px; margin-bottom: 10px; font-size: 14px; font-weight: 500; {% if message.tags == 'warning' %}background: #fff3cd; color: #856404; border: 1px solid #ffeeba;{% elif message.tags == 'success' %}background: #d4edda; color: #155724; border: 1px solid #c3e6cb;{% else %}background: #e2e3e5; color: #383d41; border: 1px solid #d6d8db;{% endif %}">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
             <!-- Search and filter: a normal GET form, so the view reads ?q= and ?status= -->
             <form id="history-filter-form" class="history-toolbar" method="get" action="{% url 'handovers:handover_history' %}" role="search">
                 <label class="search-box">
@@ -108,13 +118,13 @@
                             <td><time class="local-time" datetime="{{ h.created_at|date:'c' }}">{{ h.created_at|date:"d M Y, g:i A" }} UTC</time></td>                                                  <td class="col-center">{{ h.task_count }}</td>
                             <td><span class="status-badge status-{{ h.status|slugify }}">{{ h.get_status_display }}</span></td>
                             <td class="col-center">
-                                {% if h.status == "completed" %}
+                                {% if h.status == "completed" or h.status == "needs_clarification" %}
                                 <a class="view-link" href="{% url 'handovers:download_completed_handover' h.pk %}"
-                                   aria-label="Download handover H-{{ h.pk|stringformat:'04d' }}" title="Download Word document">
+                                   aria-label="Download handover H-{{ h.pk|stringformat:'04d' }}" title="Download Word document{% if h.status == 'needs_clarification' %} (Draft - Needs Clarification){% endif %}">
                                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7.5 11 12 15.5 16.5 11M5 19.5h14"/></svg>
                                 </a>
                                 {% else %}
-                                <span title="Available once the handover is completed">&ndash;</span>
+                                <span title="Available once the handover is saved">&ndash;</span>
                                 {% endif %}
                             </td>
                         </tr>

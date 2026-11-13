@@ -1,10 +1,9 @@
 import json
 import logging
 
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.db import IntegrityError
-from django.db.models import Count
 from django.http import FileResponse, HttpResponseServerError, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
@@ -14,9 +13,12 @@ from .forms import HandoverUploadForm
 from .logic_manager.employee_identity_matcher import EmployeeIdentityMatcher
 from .logic_manager.handover import Handover as LogicHandover
 from .logic_manager.outstanding_task import OutstandingTask
+from .data_manager.data_manager_error import DataManagerError
 from .data_manager.handover_query import HandoverQuery
-from .models import Employee, Handover, Subtask, Task, Upload
+from .models import Employee, Handover
 from .output.word_document_generator import CompletedHandoverDocumentGenerator
+from .input_handler.handover_input_handler import HandoverInputHandler
+from .services.handover_coordinator import HandoverCoordinator
 
 logger = logging.getLogger(__name__)
 
@@ -257,11 +259,7 @@ def create_handover(request):
         if action in {"refine", "save", "cancel"}:
             upload_id = request.session.get(PENDING_UPLOAD_KEY)
             data = request.session.get(PENDING_DATA_KEY)
-            upload = Upload.objects.filter(
-                pk=upload_id,
-                uploaded_by=employee,
-                handover__isnull=True,
-            ).first()
+            upload = HandoverQuery().pending_upload(upload_id, employee)
 
             if not upload or not data:
                 request.session.pop(PENDING_UPLOAD_KEY, None)
@@ -283,12 +281,13 @@ def create_handover(request):
                     )
 
                 try:
-                    from .input_handler.handover_input_handler import HandoverInputHandler
-                    from .services.handover_coordinator import HandoverCoordinator
+
+                    input_handler = HandoverInputHandler()
+                    input_handler.validate_clarification_answers(answers)
 
                     upload.file.open("rb")
                     try:
-                        document_text = HandoverInputHandler().process_upload(upload.file)
+                        document_text = input_handler.process_upload(upload.file)
                     finally:
                         upload.file.close()
 
@@ -323,27 +322,62 @@ def create_handover(request):
                 return render_handover_review(request, employee, upload, data, owner_error)
 
             logic_data = HandoverCoordinator.strip_clarification_questions(data)
-            processed = LogicHandover(logic_data).process()
-            if processed["status"] != "complete":
-                return render_handover_review(
+            logic = LogicHandover(logic_data)
+            processed = logic.process()
+
+            has_questions = any(
+                task.get("clarification_questions")
+                for task in data.get("outstanding_tasks", []) + data.get("bau_tasks", [])
+            )
+
+            if processed["status"] == "complete" and not has_questions:
+                try:
+                    handover = HandoverRepository().save_handover(
+                        employee, upload, processed, status="completed"
+                    )
+                except DataManagerError as error:
+                    return render_handover_review(request, employee, upload, data, str(error))
+
+                request.session.pop(PENDING_UPLOAD_KEY, None)
+                request.session.pop(PENDING_DATA_KEY, None)
+                messages.success(
                     request,
-                    employee,
-                    upload,
-                    data,
-                    "Some tasks are missing required details or have invalid dates. Answer their clarification questions, ask AI to refine them, then try saving again.",
+                    f"Handover H-{handover.pk:04d} was successfully marked as Complete and saved."
                 )
+                return redirect("handovers:handover_history")
+            else:
+                save_data = logic.get_task_records()
+                missing_reasons = []
+                if processed["status"] != "complete":
+                    for err in processed.get("errors", []):
+                        if isinstance(err, dict):
+                            task_name = err.get("task", f"Task {err.get('index', '')}")
+                            reasons = ", ".join(err.get("errors", []))
+                            missing_reasons.append(f"{task_name} ({reasons})")
+                        else:
+                            missing_reasons.append(str(err))
+                if has_questions:
+                    missing_reasons.append("Unanswered clarification questions remain")
 
-            try:
-                HandoverRepository().save_handover(employee, upload, processed)
-            except (IntegrityError, ValueError) as error:
-                return render_handover_review(
-                    request, employee, upload, data,
-                    f"The handover could not be saved: {error}",
+                if missing_reasons:
+                    save_data.setdefault("important_information", []).append(
+                        f"⚠️ Needs Clarification: Handover saved with pending items: {'; '.join(missing_reasons)}"
+                    )
+
+                try:
+                    handover = HandoverRepository().save_handover(
+                        employee, upload, save_data, status="needs_clarification"
+                    )
+                except DataManagerError as error:
+                    return render_handover_review(request, employee, upload, data, str(error))
+
+                request.session.pop(PENDING_UPLOAD_KEY, None)
+                request.session.pop(PENDING_DATA_KEY, None)
+                messages.warning(
+                    request,
+                    f"Handover H-{handover.pk:04d} was saved under 'Needs clarification' due to pending items ({'; '.join(missing_reasons)}). You can review it or download the draft document."
                 )
-
-            request.session.pop(PENDING_UPLOAD_KEY, None)
-            request.session.pop(PENDING_DATA_KEY, None)
-            return redirect("handovers:my_tasks")
+                return redirect("handovers:handover_history")
 
         form = HandoverUploadForm(request.POST, request.FILES)
         if not form.is_valid():
@@ -362,43 +396,37 @@ def create_handover(request):
 
             uploaded_file = form.cleaned_data["document"]
             try:
-                from .input_handler.handover_input_handler import HandoverInputHandler
-                from .services.handover_coordinator import HandoverCoordinator
-
                 document_text = HandoverInputHandler().process_upload(uploaded_file)
                 result = HandoverCoordinator().review_handover(document_text)
             except (ImportError, OSError, ValueError, RuntimeError, PermissionError) as error:
-                return render(request, "handovers/home.html", {
-                    "form": form,
-                    "employee": employee,
-                    "error_message": f"The document could not be reviewed: {error}",
-                })
+                result = {"success": False, "error_message": str(error)}
 
-            if not result["success"]:
-                return render(request, "handovers/home.html", {
-                    "form": form,
-                    "employee": employee,
-                    "error_message": f"The document could not be reviewed: {result['error_message']}",
-                })
+            if not result.get("success"):
+                try:
+                    fallback_data = HandoverCoordinator.build_table_fallback_data(document_text)
+                    result = {
+                        "success": True,
+                        "data": fallback_data,
+                        "warning": f"Gemini AI is currently unavailable ({result.get('error_message', 'service offline')}). Tasks were extracted directly from the template tables. Please review and confirm all details manually.",
+                    }
+                except Exception as fallback_err:
+                    return render(request, "handovers/home.html", {
+                        "form": form,
+                        "employee": employee,
+                        "error_message": f"The document could not be reviewed: {result.get('error_message', fallback_err)}",
+                    })
 
             uploaded_file.seek(0)
-            upload = Upload.objects.create(
-                file=uploaded_file,
-                original_name=uploaded_file.name,
-                size_bytes=uploaded_file.size,
-                uploaded_by=employee,
-            )
+            upload = HandoverRepository().create_upload(uploaded_file, employee)
             request.session[PENDING_UPLOAD_KEY] = upload.pk
             request.session[PENDING_DATA_KEY] = result["data"]
+            if result.get("warning"):
+                messages.warning(request, result["warning"])
             return redirect("handovers:home")
     else:
         upload_id = request.session.get(PENDING_UPLOAD_KEY)
         data = request.session.get(PENDING_DATA_KEY)
-        upload = Upload.objects.filter(
-            pk=upload_id,
-            uploaded_by=employee,
-            handover__isnull=True,
-        ).first()
+        upload = HandoverQuery().pending_upload(upload_id, employee)
         if upload and data:
             return render_handover_review(request, employee, upload, data)
 
@@ -432,16 +460,17 @@ def my_tasks(request):
                 continue
 
             for subtask in task.subtasks.all():
-                calendar_tasks.append({
-                    "id": f"subtask-{subtask.pk}",
-                    "subtaskId": subtask.pk,
-                    "title": f"{subtask.code} {subtask.title}",
-                    "handover": handover_label,
-                    "type": "planned",
-                    "date": subtask.planned_date.isoformat(),
-                    "completed": subtask.status == "done",
-                    "dependencies": [f"subtask-{dependency.pk}" for dependency in subtask.depends_on.all()],
-                })
+                if subtask.planned_date:
+                    calendar_tasks.append({
+                        "id": f"subtask-{subtask.pk}",
+                        "subtaskId": subtask.pk,
+                        "title": f"{subtask.code} {subtask.title}",
+                        "handover": handover_label,
+                        "type": "planned",
+                        "date": subtask.planned_date.isoformat(),
+                        "completed": subtask.status == "done",
+                        "dependencies": [f"subtask-{dependency.pk}" for dependency in subtask.depends_on.all()],
+                    })
 
             if task.deadline:
                 calendar_tasks.append({
@@ -474,10 +503,9 @@ def update_subtask_status(request, subtask_id):
     if not isinstance(mark_done, bool):
         return JsonResponse({"error": "Invalid completion value."}, status=400)
 
-    subtask = get_object_or_404(
-        Subtask.objects.select_related("task").prefetch_related("task__subtasks__depends_on"),
-        pk=subtask_id,
-    )
+    subtask = HandoverQuery().subtask_with_task(subtask_id)
+    if subtask is None:
+        return JsonResponse({"error": "Subtask not found."}, status=404)
     if not subtask.task.owners.filter(pk=employee.pk).exists():
         return JsonResponse({"error": "You are not assigned to this task."}, status=403)
 
@@ -513,7 +541,10 @@ def update_subtask_status(request, subtask_id):
             "error": "A later dependent subtask is already complete. Undo that first."
         }, status=409)
 
-    HandoverRepository().update_subtask_status(subtask, mark_done)
+    try:
+        HandoverRepository().update_subtask_status(subtask, mark_done)
+    except DataManagerError as error:
+        return JsonResponse({"error": str(error)}, status=503)
     return JsonResponse({"completed": mark_done})
 
 
@@ -527,23 +558,9 @@ def handover_history(request):
     selected_status = request.GET.get("status", "").strip()
     employee = getattr(request.user, "employee", None)
 
-    # Only this employee's handovers (newest first, set in the model's Meta),
-    # each with a count of its tasks
-    if employee:
-        handovers = Handover.objects.filter(created_by=employee).annotate(task_count=Count("tasks"))
-    else:
-        handovers = Handover.objects.none()
+    handovers = HandoverQuery().search_handovers(employee, query, selected_status)
 
-    # Search by ID: accepts "7", "H7" or "H-0007"
-    if query:
-        number = query.upper().replace("H", "").replace("-", "").strip()
-        handovers = handovers.filter(pk=int(number)) if number.isdigit() else handovers.none()
-
-    # Filter by status ("active" / "completed")
-    if selected_status:
-        handovers = handovers.filter(status=selected_status)
-
-    total_count = handovers.count()
+    total_count = len(handovers)
     page_obj = Paginator(handovers, HISTORY_PAGE_SIZE).get_page(
         request.GET.get("page", 1)
     )
@@ -563,12 +580,12 @@ def handover_history(request):
 def download_completed_handover(request, handover_id):
     employee = get_object_or_404(Employee, user=request.user)
 
-    # Only allow the logged-in employee to download their own completed handover
+    # Only allow the logged-in employee to download their own handover
     handover = get_object_or_404(
         Handover,
         pk=handover_id,
         created_by=employee,
-        status="completed",
+        status__in=["completed", "needs_clarification"],
     )
 
     # Generate and store the document on its first download request

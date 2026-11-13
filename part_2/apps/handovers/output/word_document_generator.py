@@ -10,11 +10,21 @@ class CompletedHandoverDocumentGenerator:
     """Creates a downloadable Word document from a completed handover."""
 
     def save(self, handover):
-        if handover.status != "completed":
-            raise ValueError("Only completed handovers can be exported.")
+        if handover.status not in ["completed", "needs_clarification"]:
+            raise ValueError("Only completed or needs_clarification handovers can be exported.")
 
         document = Document()
         document.add_heading(f"Handover H-{handover.pk:04d}", 0)
+
+        if handover.status == "needs_clarification":
+            warning_para = document.add_paragraph()
+            warning_run = warning_para.add_run(
+                "⚠️ STATUS: DRAFT — NEEDS CLARIFICATION\n"
+                "Notice: This handover was saved with missing required details or pending clarification questions. "
+                "Please review and resolve all flagged items before final sign-off."
+            )
+            warning_run.bold = True
+
         document.add_paragraph(
             f"Created by: {handover.created_by.name} "
             f"({handover.created_by.employee_id})"
@@ -48,11 +58,11 @@ class CompletedHandoverDocumentGenerator:
 
             if task.task_type == "outstanding":
                 document.add_paragraph(
-                    f"Deadline: {task.deadline or 'Not specified'}"
+                    f"Deadline: {task.deadline or 'Pending clarification'}"
                 )
             else:
                 document.add_paragraph(
-                    f"Frequency: {task.get_frequency_display() or 'Not specified'}"
+                    f"Frequency: {task.get_frequency_display() or 'Pending clarification'}"
                 )
                 if task.start_date:
                     document.add_paragraph(f"Start date: {task.start_date}")
@@ -61,7 +71,7 @@ class CompletedHandoverDocumentGenerator:
 
             for subtask in task.subtasks.all():
                 document.add_paragraph(
-                    f"{subtask.title} (planned: {subtask.planned_date})",
+                    f"{subtask.title} (planned: {subtask.planned_date or 'Pending clarification'})",
                     style="List Bullet",
                 )
 

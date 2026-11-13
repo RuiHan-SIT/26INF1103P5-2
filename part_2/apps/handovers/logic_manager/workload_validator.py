@@ -17,9 +17,15 @@ class WorkloadValidator:
 
                 # Count subtasks by their planned dates instead of counting their parent too.
                 for subtask in subtasks:
-                    planned_date = datetime.strptime(
-                        subtask["planned_date"], "%d/%m/%Y"
-                    ).date()
+                    subtask_date_text = subtask.get("planned_date")
+                    if not subtask_date_text:
+                        continue
+                    try:
+                        planned_date = datetime.strptime(
+                            subtask_date_text, "%d/%m/%Y"
+                        ).date()
+                    except (ValueError, TypeError):
+                        continue
                     if range_start <= planned_date <= range_end:
                         self.add_work_item(
                             workload, task.get("owner_ids", []),
@@ -73,14 +79,26 @@ class WorkloadValidator:
             workload[employee_id][scheduled_date]["tasks"].append(task_name)
 
     def get_bau_occurrence_dates(self, task, range_start, range_end):
-        start_date = datetime.strptime(task["start_date"], "%d/%m/%Y").date()
+        start_date_text = task.get("start_date")
+        if not start_date_text:
+            return []
+        try:
+            start_date = datetime.strptime(start_date_text, "%d/%m/%Y").date()
+        except (ValueError, TypeError):
+            return []
+
         end_date_text = task.get("end_date")
         end_date = None
-
         if end_date_text:
-            end_date = datetime.strptime(end_date_text, "%d/%m/%Y").date()
+            try:
+                end_date = datetime.strptime(end_date_text, "%d/%m/%Y").date()
+            except (ValueError, TypeError):
+                end_date = None
 
-        frequency = task["frequency"].strip().lower()
+        frequency = (task.get("frequency") or "").strip().lower()
+        if not frequency:
+            return []
+
         occurrence_dates = []
         current_date = range_start
 
