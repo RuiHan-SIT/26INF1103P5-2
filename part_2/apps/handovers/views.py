@@ -21,7 +21,7 @@ from .logic_manager.handover import Handover as LogicHandover
 from .logic_manager.outstanding_task import OutstandingTask
 from .data_manager.data_manager_error import DataManagerError
 from .data_manager.handover_query import HandoverQuery
-from .models import Employee, Handover, Subtask
+from .models import Employee, Handover, Subtask, TaskCompletion
 from .output.word_document_generator import CompletedHandoverDocumentGenerator
 from .input_handler.handover_input_handler import HandoverInputHandler
 from .services.handover_coordinator import HandoverCoordinator
@@ -667,23 +667,32 @@ def my_tasks(request):
             if task.task_type == "bau":
                 calendar_tasks.append({
                     "id": f"task-{task.pk}",
+                    "taskId": task.pk,
                     "title": task.title,
                     "handover": handover_label,
                     "type": "bau",
                     "startDate": task.start_date.isoformat() if task.start_date else None,
                     "endDate": task.end_date.isoformat() if task.end_date else None,
                     "frequency": task.frequency,
+                    "completedDates": [
+                        item.completion_date.isoformat()
+                        for item in task.completions.all()
+                    ],
                 })
                 continue
 
+            subtasks = list(task.subtasks.all())
             has_planned_subtask = False
-            for subtask in task.subtasks.all():
+            for subtask in subtasks:
                 if subtask.planned_date:
                     has_planned_subtask = True
                     calendar_tasks.append({
                         "id": f"subtask-{subtask.pk}",
                         "subtaskId": subtask.pk,
+                        "taskId": task.pk,
                         "title": f"{subtask.code} {subtask.title}",
+                        "parentTaskId": task.code,
+                        "parentTask": task.title,
                         "handover": handover_label,
                         "type": "planned",
                         "date": subtask.planned_date.isoformat(),
@@ -694,10 +703,15 @@ def my_tasks(request):
             if task.deadline:
                 calendar_tasks.append({
                     "id": f"deadline-{task.pk}",
+                    "taskId": task.pk,
                     "title": task.title,
                     "handover": handover_label,
                     "type": "deadline",
                     "date": task.deadline.isoformat(),
+                    "completed": task.is_completed,
+                    "hasSubtasks": bool(subtasks),
+                    "subtasksComplete": all(subtask.status == "done" for subtask in subtasks),
+                    "subtaskIds": [f"subtask-{subtask.pk}" for subtask in subtasks],
                 })
             elif not has_planned_subtask:
                 # Keep saved tasks visible even when clarification is needed
@@ -712,6 +726,81 @@ def my_tasks(request):
         "calendar_tasks": calendar_tasks,
         "unscheduled_tasks": unscheduled_tasks,
     })
+
+
+@login_required(login_url="handovers:login")
+@require_POST
+def update_task_status(request, task_id):
+    employee = getattr(request.user, "employee", None)
+    if not employee:
+        return JsonResponse({"error": "Employee profile unavailable."}, status=403)
+
+    try:
+        payload = json.loads(request.body)
+        mark_done = payload.get("completed")
+    except (json.JSONDecodeError, AttributeError):
+        return JsonResponse({"error": "Invalid request."}, status=400)
+
+    if not isinstance(mark_done, bool):
+        return JsonResponse({"error": "Invalid completion value."}, status=400)
+
+    try:
+        task = HandoverQuery().task_with_progress(task_id, employee)
+    except DataManagerError as error:
+        return JsonResponse({"error": str(error)}, status=503)
+    if task is None:
+        return JsonResponse({"error": "Task not found."}, status=404)
+
+    if task.task_type == "bau":
+        try:
+            occurrence_date = date.fromisoformat(payload.get("date", ""))
+        except (TypeError, ValueError):
+            return JsonResponse({"error": "Invalid occurrence date."}, status=400)
+
+        if not is_bau_occurrence(task, occurrence_date):
+            return JsonResponse({"error": "That date is not a scheduled occurrence of this BAU task."}, status=400)
+
+        if mark_done:
+            TaskCompletion.objects.get_or_create(
+                task=task,
+                completion_date=occurrence_date,
+            )
+        else:
+            TaskCompletion.objects.filter(
+                task=task,
+                completion_date=occurrence_date,
+            ).delete()
+        return JsonResponse({"completed": mark_done})
+
+    if task.task_type != "outstanding":
+        return JsonResponse({"error": "Unsupported task type."}, status=400)
+
+    if mark_done and task.subtasks.exists() and task.subtasks.exclude(status="done").exists():
+        return JsonResponse({
+            "error": "Complete all subtasks before marking this task complete."
+        }, status=409)
+
+    task.is_completed = mark_done
+    task.save(update_fields=["is_completed"])
+    return JsonResponse({"completed": mark_done})
+
+
+def is_bau_occurrence(task, occurrence_date):
+    if not task.start_date or occurrence_date < task.start_date:
+        return False
+    if task.end_date and occurrence_date > task.end_date:
+        return False
+
+    if task.frequency == "weekly":
+        return (occurrence_date - task.start_date).days % 7 == 0
+    if task.frequency == "monthly":
+        return occurrence_date.day == task.start_date.day
+    if task.frequency == "yearly":
+        return (
+            occurrence_date.month == task.start_date.month
+            and occurrence_date.day == task.start_date.day
+        )
+    return occurrence_date == task.start_date
 
 
 @login_required(login_url="handovers:login")
@@ -743,7 +832,7 @@ def update_subtask_status(request, subtask_id):
             logic_subtasks.append({
                 "subtask_id": item.code,
                 "task": item.title,
-                "planned_date": item.planned_date.strftime("%d/%m/%Y"),
+                "planned_date": item.planned_date.strftime("%d/%m/%Y") if item.planned_date else "",
                 "dependencies": list(item.depends_on.values_list("code", flat=True)),
             })
 
@@ -770,6 +859,9 @@ def update_subtask_status(request, subtask_id):
 
     try:
         HandoverRepository().update_subtask_status(subtask, mark_done)
+        if not mark_done and subtask.task.is_completed:
+            subtask.task.is_completed = False
+            subtask.task.save(update_fields=["is_completed"])
     except DataManagerError as error:
         return JsonResponse({"error": str(error)}, status=503)
     return JsonResponse({"completed": mark_done})

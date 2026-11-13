@@ -38,6 +38,9 @@ class Task(models.Model):
     # Outstanding tasks only
     deadline = models.DateField(null=True, blank=True)
 
+    # Completion for outstanding tasks that appear on the calendar
+    is_completed = models.BooleanField(default=False)
+
     # BAU tasks only
     frequency = models.CharField(max_length=20, choices=FREQUENCY_CHOICES, blank=True)
     start_date = models.DateField(null=True, blank=True)

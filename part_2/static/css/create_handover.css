@@ -851,3 +851,29 @@
     color: var(--muted);
     font-size: 12px;
 }
+
+
+/* Keep the original upload-card sizing, with a shorter chat area on compact laptop screens. */
+@media (min-width: 1051px) and (max-height: 820px) {
+    .upload-card #chat-form .chat-container {
+        height: clamp(440px, 72vh, 620px);
+    }
+}
+
+@media (max-width: 760px) {
+    .upload-card #chat-form .chat-container {
+        height: clamp(420px, 68vh, 600px);
+    }
+
+    .upload-card #chat-form .chat-input-container {
+        flex-wrap: wrap;
+    }
+
+    .upload-card #chat-form #chat-message {
+        flex: 1 1 calc(100% - 108px);
+    }
+
+    .upload-card #chat-form .send-btn {
+        flex: 1 1 100%;
+    }
+}
