@@ -1,46 +1,59 @@
+import logging
 from datetime import datetime
 
-from django.db import transaction
+from django.db import DatabaseError, transaction
 
 from apps.handovers.models import Handover, Subtask, Task, Upload
+
+from .data_manager_error import DataManagerError
+
+logger = logging.getLogger(__name__)
 
 
 # Implementation of Create, Update & Delete: turns the shared dictionary into rows prior to saving
 
 class HandoverRepository:
     # Saves handovers into the database
-    #=======================================
-    # CREATE
-    #=======================================
+    
+    # 1. CREATE
 
     # Saves a newly uploaded file and its details (before it becomes a handover)
     def create_upload(self, uploaded_file, employee):
-        return Upload.objects.create(
-            file=uploaded_file,
-            original_name=uploaded_file.name,
-            size_bytes=uploaded_file.size,
-            uploaded_by=employee,
-        )
+        try:
+            return Upload.objects.create(
+                file=uploaded_file,
+                original_name=uploaded_file.name,
+                size_bytes=uploaded_file.size,
+                uploaded_by=employee,
+            )
+        except DatabaseError as error:
+            logger.exception("Could not save upload %s", uploaded_file.name)
+            raise DataManagerError("save the uploaded file") from error
 
     # Essentially saves an approved h/over with all it's tasks and subtasks, then links its upload
     def save_handover(self, employee, upload, processed_data, status="completed"):
         # After the logic manager has validated, the said h/over will be saved
         # Everything inside the "with" block is saved together, or nothing is saved if an error happens
-        with transaction.atomic():
-            handover = Handover.objects.create(
-                created_by=employee,
-                important_information=processed_data.get("important_information", []),
-                status=status,
-            )
+        try:
+            with transaction.atomic():
+                handover = Handover.objects.create(
+                    created_by=employee,
+                    important_information=processed_data.get("important_information", []),
+                    status=status,
+                )
 
-            for index, task_data in enumerate(processed_data.get("outstanding_tasks", []), start=1):
-                self._save_outstanding_task(handover, index, task_data)
+                for index, task_data in enumerate(processed_data.get("outstanding_tasks", []), start=1):
+                    self._save_outstanding_task(handover, index, task_data)
 
-            for index, task_data in enumerate(processed_data.get("bau_tasks", []), start=1):
-                self._save_bau_task(handover, index, task_data)
+                for index, task_data in enumerate(processed_data.get("bau_tasks", []), start=1):
+                    self._save_bau_task(handover, index, task_data)
 
-            upload.handover = handover
-            upload.save(update_fields=["handover"])
+                upload.handover = handover
+                upload.save(update_fields=["handover"])
+        except DatabaseError as error:
+            # Nothing was saved (the "with" block rolled everything back)
+            logger.exception("Could not save handover for employee %s", employee.pk)
+            raise DataManagerError("save the handover") from error
 
         return handover
 
@@ -111,24 +124,30 @@ class HandoverRepository:
                 if valid_deps:
                     subtask_records[original_id].depends_on.set(valid_deps)
 
-    #=======================================
-    # UPDATE
-    #=======================================
+    # 2. UPDATE
+    
 
     # Ticks a subtask as done, or back to to-do
     def update_subtask_status(self, subtask, is_done):
         subtask.status = "done" if is_done else "todo"
-        subtask.save(update_fields=["status"])
+        try:
+            subtask.save(update_fields=["status"])
+        except DatabaseError as error:
+            logger.exception("Could not update subtask %s", subtask.pk)
+            raise DataManagerError("update the subtask") from error
         return subtask
 
-    #=======================================
-    # DELETE
-    #=======================================
+    # 3. DELETE
+    
 
     # Deletes a cancelled upload: removes the file from media/ and its database row
     def delete_upload(self, upload):
         upload.file.delete(save=False)
-        upload.delete()
+        try:
+            upload.delete()
+        except DatabaseError as error:
+            logger.exception("Could not delete upload %s", upload.pk)
+            raise DataManagerError("delete the upload") from error
         
         
     def _parse_date(self, value):
