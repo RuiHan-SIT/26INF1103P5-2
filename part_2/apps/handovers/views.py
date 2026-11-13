@@ -4,8 +4,6 @@ import logging
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.db import IntegrityError
-from django.db.models import Count
 from django.http import FileResponse, HttpResponseServerError, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
@@ -15,6 +13,7 @@ from .forms import HandoverUploadForm
 from .logic_manager.employee_identity_matcher import EmployeeIdentityMatcher
 from .logic_manager.handover import Handover as LogicHandover
 from .logic_manager.outstanding_task import OutstandingTask
+from .data_manager.data_manager_error import DataManagerError
 from .data_manager.handover_query import HandoverQuery
 from .models import Employee, Handover
 from .output.word_document_generator import CompletedHandoverDocumentGenerator
@@ -336,11 +335,8 @@ def create_handover(request):
                     handover = HandoverRepository().save_handover(
                         employee, upload, processed, status="completed"
                     )
-                except (IntegrityError, ValueError) as error:
-                    return render_handover_review(
-                        request, employee, upload, data,
-                        f"The handover could not be saved: {error}",
-                    )
+                except DataManagerError as error:
+                    return render_handover_review(request, employee, upload, data, str(error))
 
                 request.session.pop(PENDING_UPLOAD_KEY, None)
                 request.session.pop(PENDING_DATA_KEY, None)
@@ -372,11 +368,8 @@ def create_handover(request):
                     handover = HandoverRepository().save_handover(
                         employee, upload, save_data, status="needs_clarification"
                     )
-                except (IntegrityError, ValueError) as error:
-                    return render_handover_review(
-                        request, employee, upload, data,
-                        f"The handover could not be saved: {error}",
-                    )
+                except DataManagerError as error:
+                    return render_handover_review(request, employee, upload, data, str(error))
 
                 request.session.pop(PENDING_UPLOAD_KEY, None)
                 request.session.pop(PENDING_DATA_KEY, None)
@@ -548,7 +541,10 @@ def update_subtask_status(request, subtask_id):
             "error": "A later dependent subtask is already complete. Undo that first."
         }, status=409)
 
-    HandoverRepository().update_subtask_status(subtask, mark_done)
+    try:
+        HandoverRepository().update_subtask_status(subtask, mark_done)
+    except DataManagerError as error:
+        return JsonResponse({"error": str(error)}, status=503)
     return JsonResponse({"completed": mark_done})
 
 
@@ -562,23 +558,9 @@ def handover_history(request):
     selected_status = request.GET.get("status", "").strip()
     employee = getattr(request.user, "employee", None)
 
-    # Only this employee's handovers (newest first, set in the model's Meta),
-    # each with a count of its tasks
-    if employee:
-        handovers = Handover.objects.filter(created_by=employee).annotate(task_count=Count("tasks"))
-    else:
-        handovers = Handover.objects.none()
+    handovers = HandoverQuery().search_handovers(employee, query, selected_status)
 
-    # Search by ID: accepts "7", "H7" or "H-0007"
-    if query:
-        number = query.upper().replace("H", "").replace("-", "").strip()
-        handovers = handovers.filter(pk=int(number)) if number.isdigit() else handovers.none()
-
-    # Filter by status ("active" / "completed")
-    if selected_status:
-        handovers = handovers.filter(status=selected_status)
-
-    total_count = handovers.count()
+    total_count = len(handovers)
     page_obj = Paginator(handovers, HISTORY_PAGE_SIZE).get_page(
         request.GET.get("page", 1)
     )
