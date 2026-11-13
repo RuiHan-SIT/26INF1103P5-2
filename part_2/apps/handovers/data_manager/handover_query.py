@@ -94,7 +94,7 @@ class HandoverQuery:
             logger.exception("Could not search handovers for employee %s", employee.pk)
             raise DataManagerError("load your handovers") from error
 
-    # Gets one of this employee's handovers that can be downloaded (None if not found)
+    # Gets one of this employee's handovers that can be downloaded. Conversely, None is returned if not found
     def downloadable_handover(self, handover_id, employee):
         try:
             return Handover.objects.filter(
