@@ -237,9 +237,8 @@ def normalize_ai_subtask_codes(data, tasks):
                 ]
 
 
-def persist_clarification_edits(request, handover, tasks, data, finalize=True):
-    """Update saved rows, validate them, and remember the exact fields needing attention."""
-    validation = LogicHandover(data).process()
+def _build_validation_attention(tasks, validation):
+    """Translate Logic Manager errors into highlights for the saved task fields."""
     field_labels = {
         "task": ("title", "Task name is required."),
         "description": ("description", "Description is required."),
@@ -312,6 +311,17 @@ def persist_clarification_edits(request, handover, tasks, data, finalize=True):
             validation_messages.append(f"{task.title or 'Task'}: {message}")
 
     validation_messages = list(dict.fromkeys(validation_messages))
+    return attention, validation_messages
+
+
+def persist_clarification_edits(request, handover, tasks, data, finalize=True):
+    """Update saved rows, validate them, and remember the exact fields needing attention."""
+    validation = LogicHandover(data).process()
+    attention, validation_messages = _build_validation_attention(tasks, validation)
+    task_groups = {
+        "outstanding": [task for task in tasks if task.task_type == "outstanding"],
+        "bau": [task for task in tasks if task.task_type == "bau"],
+    }
     tasks_by_type = {
         "outstanding_tasks": task_groups["outstanding"],
         "bau_tasks": task_groups["bau"],
@@ -333,19 +343,17 @@ def persist_clarification_edits(request, handover, tasks, data, finalize=True):
                 if task.task_type == "outstanding":
                     _replace_task_subtasks(task, record.get("subtasks", []))
 
-        attention_key = f"handover_validation_attention_{handover.pk}"
+        # Any saved edit makes the previously generated Word document outdated.
+        if handover.completed_document:
+            handover.completed_document.delete(save=False)
         handover.important_information = [
             item for item in (handover.important_information or [])
             if not str(item).startswith("⚠️ Needs Clarification:")
         ]
         if validation["status"] == "complete" and finalize:
-            request.session.pop(attention_key, None)
             handover.status = "completed"
-            if handover.completed_document:
-                handover.completed_document.delete(save=False)
             messages.success(request, "The handover details are valid and the handover is now complete.")
         else:
-            request.session[attention_key] = attention
             handover.status = "needs_clarification"
             handover.important_information.append(
                 "⚠️ Needs Clarification: Some task details still need review."
@@ -360,6 +368,41 @@ def persist_clarification_edits(request, handover, tasks, data, finalize=True):
         handover.save(update_fields=["status", "important_information", "completed_document"])
 
     return validation_messages
+
+
+def _saved_handover_data(handover, tasks):
+    """Convert saved rows to the input format expected by Logic Manager."""
+    data = {
+        "outstanding_tasks": [],
+        "bau_tasks": [],
+        "important_information": handover.important_information or [],
+    }
+    for task in tasks:
+        owners = list(task.owners.all())
+        record = {
+            "task_id": task.code,
+            "task": task.title,
+            "description": task.description,
+            "owners": [owner.name for owner in owners],
+            "owner_ids": [owner.employee_id for owner in owners],
+        }
+        if task.task_type == "bau":
+            record["frequency"] = task.frequency
+            record["start_date"] = task.start_date.strftime("%d/%m/%Y") if task.start_date else ""
+            record["end_date"] = task.end_date.strftime("%d/%m/%Y") if task.end_date else ""
+            data["bau_tasks"].append(record)
+        else:
+            record["deadline"] = task.deadline.strftime("%d/%m/%Y") if task.deadline else ""
+            record["subtasks"] = []
+            for subtask in task.subtasks.all():
+                record["subtasks"].append({
+                    "subtask_id": subtask.code,
+                    "task": subtask.title,
+                    "planned_date": subtask.planned_date.strftime("%d/%m/%Y") if subtask.planned_date else "",
+                    "dependencies": [dependency.code for dependency in subtask.depends_on.all()],
+                })
+            data["outstanding_tasks"].append(record)
+    return data
 
 
 def attach_validation_attention(tasks, attention):
@@ -599,7 +642,15 @@ def create_handover(request):
 
             uploaded_file = form.cleaned_data["document"]
             try:
-                document_text = HandoverInputHandler().process_upload(uploaded_file)
+                try:
+                    document_text = HandoverInputHandler().process_upload(uploaded_file)
+                except ValueError as error:
+                    return render(request, "handovers/home.html", {
+                        "form": form,
+                        "employee": employee,
+                        "error_message": str(error),
+                        "request_token": str(uuid4()),
+                    })
                 if handover_cancelled(employee, request_token):
                     return redirect("handovers:home")
                 result = HandoverCoordinator().review_handover(document_text)
@@ -897,7 +948,7 @@ def handover_history(request):
 
 @login_required(login_url="handovers:login")
 def handover_detail(request, handover_id):
-    """Show saved tasks and allow the creator to resolve a clarification handover."""
+    """Show saved tasks and allow the creator to edit their handover."""
     employee = getattr(request.user, "employee", None)
     handover = get_object_or_404(
         Handover.objects.prefetch_related(
@@ -910,15 +961,15 @@ def handover_detail(request, handover_id):
 
     detail_url = reverse("handovers:handover_detail", args=[handover.pk])
     edit_url = f"{detail_url}?edit=1"
-    edit_mode = handover.status == "needs_clarification" and (
+    edit_mode = handover.status in ("completed", "needs_clarification") and (
         request.GET.get("edit") == "1"
         or (request.method == "POST" and request.POST.get("edit_mode") == "1")
     )
     edit_errors = []
     tasks = list(handover.tasks.all())
     if request.method == "POST":
-        if handover.status != "needs_clarification":
-            messages.error(request, "Only handovers needing clarification can be edited here.")
+        if handover.status not in ("completed", "needs_clarification"):
+            messages.error(request, "This handover cannot be edited.")
             return redirect(detail_url)
         if not edit_mode:
             messages.error(request, "Open Edit handover before making changes.")
@@ -1062,9 +1113,13 @@ def handover_detail(request, handover_id):
                 return redirect(edit_url)
             return redirect(detail_url)
 
-    attach_validation_attention(
-        tasks, request.session.get(f"handover_validation_attention_{handover.pk}", {})
-    )
+    attention = {}
+    if handover.status == "needs_clarification":
+        # Recheck saved details on every visit, including a fresh login or browser.
+        saved_data = _saved_handover_data(handover, tasks)
+        validation = LogicHandover(saved_data).process()
+        attention, validation_messages = _build_validation_attention(tasks, validation)
+    attach_validation_attention(tasks, attention)
     return render(request, "handovers/handover_detail.html", {
         "employee": employee,
         "handover": handover,
@@ -1109,7 +1164,7 @@ def download_completed_handover(request, handover_id):
         Handover,
         pk=handover_id,
         created_by=employee,
-        status__in=["completed", "needs_clarification"],
+        status="completed",
     )
 
     # Generate and store the document on its first download request

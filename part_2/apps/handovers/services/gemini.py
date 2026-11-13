@@ -64,6 +64,9 @@ class Gemini(LLMService):
         """
         Sends the prompt to Gemini and returns the raw response text.
         """
+        if os.getenv("DISABLE_AI", "false").strip().lower() == "true":
+            raise RuntimeError("AI is disabled for local fallback testing.")
+
         if not prompt or not prompt.strip():
             raise ValueError("Prompt cannot be empty.")
 

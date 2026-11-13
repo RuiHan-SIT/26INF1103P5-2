@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create Handover | Handover Assistant</title>
     <link rel="stylesheet" href="{% static 'css/my_tasks.css' %}?v=9">
-    <link rel="stylesheet" href="{% static 'css/create_handover.css' %}?v=21">
+    <link rel="stylesheet" href="{% static 'css/create_handover.css' %}?v=40">
 </head>
 
 <body>
@@ -82,7 +82,7 @@
             </div>
         </aside>
 
-        <main class="main-content create-handover-page">
+        <main class="main-content create-handover-page{% if not review_mode %} upload-page{% endif %}">
             <header class="page-header">
                 <div>
                     <p class="eyebrow">YOUR WORKSPACE</p>
@@ -255,13 +255,6 @@
             </section>
             {% else %}
             <section class="upload-card" aria-label="Upload handover document">
-                {% if error_message %}<p class="review-error" role="alert">{{ error_message }}</p>{% endif %}
-                {% if form.errors %}
-                <p class="review-error" role="alert">
-                    {{ form.document.errors|join:", " }}
-                </p>
-                {% endif %}
-
                 <form method="post" enctype="multipart/form-data" id="chat-form"
                     data-cancel-url="{% url 'handovers:cancel_handover_processing' %}"
                     data-home-url="{% url 'handovers:home' %}">
@@ -277,54 +270,46 @@
                             <p>TXT or DOCX · Maximum 10 MB</p>
                         </div>
 
-                        <!-- Chatbot heading -->
-                        <div class="chat-header">
-                            <h2>AI Handover Assistant</h2>
-                            <p>Upload a document or describe your handover.</p>
+                        <div class="upload-template-row">
+                            {% if error_message or form.errors %}
+                            <p class="upload-validation-warning" role="alert"><span aria-hidden="true">⚠</span> {% if error_message %}{{ error_message }}{% else %}{{ form.document.errors|join:", " }}{% endif %}</p>
+                            {% endif %}
+                            <a class="template-download" href="{% static 'documents/Handover_Template.docx' %}" download>
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg>
+                                Download template
+                            </a>
                         </div>
-
-                        <!-- Conversation area -->
-
-                        <div class="chat-messages" id="chatMessages" aria-live="polite" aria-relevant="additions">
-
-                            <div class="bot-message">
-                                Hello! Please upload your handover document
-                                (.TXT or .DOCX) to get started.
-                            </div>
-
-                            <label for="document" class="chat-drop-hint" id="chatDropHint">
-                                <span class="drop-icon">&#x1F4C4;</span>
-                                <strong>Drag & drop your document here</strong>
-                                <span>or click here to browse files</span>
-                                <small>Supported: TXT, DOCX · Max 10 MB</small>
-                            </label>
-
-                        </div>
+                        <input type="file" id="document" name="document" class="file-input" accept=".txt,.docx" required>
+                        <div class="upload-drop-zone">
+                        <label for="document" class="chat-drop-hint" id="chatDropHint">
+                            <span class="drop-icon" aria-hidden="true">⇧</span>
+                            <strong>Drag and drop your document here</strong>
+                            <span>or click to browse files</span>
+                            <small>Supported formats: TXT, DOCX · Maximum size: 10 MB</small>
+                        </label>
 
 
                         <!-- File preview -->
+                        <div class="upload-file-slot" hidden>
                         <div class="file-preview" id="filePreview" hidden>
-                            <span id="fileName"></span>
-                            <button type="button" id="removeFile" aria-label="Remove selected file">
-                                &times;
-                            </button>
+                            <span class="selected-file-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8Z"/><path d="M14 3v5h5M8 12h8M8 16h6"/></svg>
+                                <span class="file-success-check">✓</span>
+                            </span>
+                            <strong id="fileName"></strong>
+                            <small id="fileSize"></small>
+                            <span class="file-ready"><span aria-hidden="true"></span>File ready</span>
+                            <div class="file-selection-actions">
+                                <button class="change-file" id="changeFile" type="button"><span aria-hidden="true">↻</span>Choose another file</button>
+                                <button type="button" id="removeFile"><span aria-hidden="true">×</span>Remove file</button>
+                            </div>
                         </div>
 
-                        <!-- Message input -->
-                        <div class="chat-input-container">
-
-                            <label for="document" class="attach-btn" title="Attach document">
-                                &#x1F4CE;
-                            </label>
-
-                            <input type="file" id="document" name="document" class="file-input" accept=".txt,.docx">
-
-                            <input type="text" id="chat-message" name="message" placeholder="Type your message here..."
-                                aria-label="Chat message">
-
-                            <button type="submit" class="send-btn">
-                                Send
-                            </button>
+                        </div>
+                        </div>
+                        <div class="chat-messages" id="chatMessages" aria-live="polite" aria-relevant="additions" hidden></div>
+                        <div class="upload-actions">
+                            <button type="submit" class="extract-btn send-btn" disabled>✦ Extract Tasks with AI</button>
 
                         </div>
                     </div>
@@ -335,7 +320,7 @@
             {% endif %}
         </main>
     </div>
-    <script src="{% static 'js/create_handover.js' %}?v=10" defer></script>
+    <script src="{% static 'js/create_handover.js' %}?v=16" defer></script>
 </body>
 
 </html>

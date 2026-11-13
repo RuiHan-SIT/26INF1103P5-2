@@ -49,7 +49,7 @@
                     <p class="page-subtitle">Created {{ handover.created_at|date:"d M Y, g:i A" }}</p>
                 </div>
                 <span class="status-badge status-{{ handover.status|slugify }}">{{ handover.get_status_display }}</span>
-                {% if handover.status == "completed" or handover.status == "needs_clarification" %}
+                {% if handover.status == "completed" %}
                 <a class="create-button" href="{% url 'handovers:download_completed_handover' handover.pk %}">Download Word document</a>
                 {% endif %}
             </header>

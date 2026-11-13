@@ -1,12 +1,15 @@
+// Keep page variables local when a background response replaces the document.
+(function () {
 const fileInput = document.getElementById("document");
 const uploadArea = document.querySelector(".chat-container");
 const dropOverlay = document.getElementById("dropOverlay");
 const filePreview = document.getElementById("filePreview");
 const fileName = document.getElementById("fileName");
+const fileSizeLabel = document.getElementById("fileSize");
+const changeFile = document.getElementById("changeFile");
 const removeFile = document.getElementById("removeFile")
 const chatForm = document.getElementById("chat-form");
 const chatMessages = document.getElementById("chatMessages");
-const chatMessageInput = document.getElementById("chat-message");
 const sendButton = chatForm ? chatForm.querySelector(".send-btn") : null;
 
 const allowedExtensions = [".txt", ".docx"];
@@ -44,17 +47,31 @@ function displayFile(file) {
         ? `${file.size} bytes`
         : `${(file.size / 1024).toFixed(1)} KB`;
 
-    fileName.textContent = `${file.name} (${fileSize})`;
+    fileName.textContent = file.name;
+    fileSizeLabel.textContent = fileSize;
     filePreview.hidden = false;
+    uploadArea.classList.add("has-file");
+    fileInput.tabIndex = -1;
+    document.getElementById("chatDropHint").hidden = true;
+    document.querySelector(".upload-file-slot").hidden = false;
+    if (sendButton) sendButton.disabled = false;
 }
 
 function clearFile() {
     fileInput.value = "";
     fileName.textContent = "";
+    fileSizeLabel.textContent = "";
     filePreview.hidden = true;
+    uploadArea.classList.remove("has-file");
+    fileInput.tabIndex = 0;
+    document.getElementById("chatDropHint").hidden = false;
+    document.querySelector(".upload-file-slot").hidden = true;
+    if (sendButton) sendButton.disabled = true;
 }
 
 if (fileInput && filePreview && fileName && removeFile) {
+
+    changeFile.addEventListener("click", () => fileInput.click());
 
     fileInput.addEventListener("change", function () {
         displayFile(fileInput.files[0]);
@@ -80,6 +97,7 @@ if (fileInput && filePreview && fileName && removeFile) {
 
         uploadArea.addEventListener("dragenter", function (event) {
             event.preventDefault();
+            if (activeAiRequest || fileInput.files.length) return;
             dragDepth++;
 
             uploadArea.classList.add("drag-over");
@@ -107,6 +125,7 @@ if (fileInput && filePreview && fileName && removeFile) {
             event.preventDefault();
             event.stopPropagation();
             hideDropOverlay();
+            if (activeAiRequest || fileInput.files.length) return;
 
             const files = event.dataTransfer.files;
 
@@ -211,11 +230,25 @@ async function sendInBackground(form, formData, statusBubble, submitButton) {
         document.close();
     } catch (error) {
         if (error.name === "AbortError") return;
-        statusBubble.firstChild.textContent = "The request could not reach the server. Please try again.";
-        const cancelButton = statusBubble.querySelector(".ai-cancel-button");
+        const cancelButton = form.querySelector(".ai-cancel-button");
         if (cancelButton) cancelButton.remove();
         reviewActions.forEach((button) => { button.disabled = false; });
-        if (submitButton === sendButton) submitButton.textContent = "Send";
+        if (submitButton === sendButton) {
+            const errorMessage = document.createElement("div");
+            errorMessage.className = "chat-message ai-message upload-error-message";
+            errorMessage.setAttribute("role", "alert");
+            errorMessage.textContent = "The request could not reach the server. Please try again.";
+            chatMessages.appendChild(errorMessage);
+            chatMessages.hidden = false;
+            submitButton.textContent = "✦ Extract Tasks with AI";
+            submitButton.removeAttribute("aria-busy");
+            fileInput.disabled = false;
+            changeFile.disabled = false;
+            removeFile.disabled = false;
+            uploadArea.setAttribute("aria-busy", "false");
+        } else {
+            statusBubble.firstChild.textContent = "The request could not reach the server. Please try again.";
+        }
     } finally {
         if (activeAiRequest && activeAiRequest.controller === controller) activeAiRequest = null;
     }
@@ -235,53 +268,23 @@ if (chatForm && chatMessages) {
     chatForm.addEventListener("submit", function (event) {
         event.preventDefault();
         const file = fileInput && fileInput.files[0];
-        const typedMessage = chatMessageInput ? chatMessageInput.value.trim() : "";
-        if (filePreview) filePreview.hidden = true;
-        const userBubble = document.createElement("div");
-        userBubble.className = "chat-message user-message";
-        userBubble.setAttribute("aria-label", "Your message");
-
-        if (file) {
-            const attachment = document.createElement("strong");
-            attachment.className = "chat-attachment-name";
-            attachment.textContent = file.name;
-            const size = document.createElement("small");
-            size.textContent = file.size < 1024
-                ? `${file.size} bytes`
-                : `${(file.size / 1024).toFixed(1)} KB`;
-            userBubble.append(attachment, size);
-        }
-
-        if (typedMessage) {
-            const message = document.createElement("span");
-            message.textContent = typedMessage;
-            userBubble.appendChild(message);
-        }
-
-        if (file || typedMessage) chatMessages.appendChild(userBubble);
-
-        const loadingBubble = document.createElement("div");
-        loadingBubble.className = "chat-message ai-loading";
-        loadingBubble.setAttribute("role", "status");
-        loadingBubble.id = "aiLoadingBubble";
-        const loadingText = document.createElement("span");
-        loadingText.textContent = "Reviewing your handover with AI. This can take a little while.";
-        const loadingDots = document.createElement("span");
-        loadingDots.className = "loading-dots";
-        loadingDots.setAttribute("aria-hidden", "true");
-        loadingDots.textContent = "•••";
-        loadingBubble.append(loadingText, loadingDots);
-        chatMessages.appendChild(loadingBubble);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+        if (activeAiRequest || !file) return;
+        chatMessages.replaceChildren();
+        chatMessages.hidden = true;
 
         const chatContainer = chatForm.querySelector(".chat-container");
         if (chatContainer) chatContainer.setAttribute("aria-busy", "true");
         if (sendButton) {
-            sendButton.textContent = "Reviewing…";
+            sendButton.disabled = true;
+            sendButton.setAttribute("aria-busy", "true");
+            sendButton.innerHTML = 'Extracting <span class="extract-loading-dots" aria-hidden="true"><span>•</span><span>•</span><span>•</span></span>';
         }
 
         const formData = new FormData(chatForm);
-        sendInBackground(chatForm, formData, loadingBubble, sendButton);
+        fileInput.disabled = true;
+        changeFile.disabled = true;
+        removeFile.disabled = true;
+        sendInBackground(chatForm, formData, chatForm.querySelector(".upload-actions"), sendButton);
     });
 }
 
@@ -423,3 +426,5 @@ window.addEventListener("drop", function (event) {
         event.preventDefault();
     }
 });
+
+})();

@@ -258,6 +258,11 @@
     border-color: var(--border);
 }
 
+.view-link,
+.history-actions {
+    vertical-align: middle;
+}
+
 .history-actions {
     position: relative;
     display: inline-block;

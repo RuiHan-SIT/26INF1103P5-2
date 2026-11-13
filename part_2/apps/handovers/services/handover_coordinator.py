@@ -176,16 +176,27 @@ class HandoverCoordinator:
             tasks.append(current_task)
 
         for t in tasks:
-            task_type = t.get("task_type", "").lower()
+            task_type = t.get("task_type", "").strip().lower()
             owners = t.get("owners", [])
+            start_date = t.get("start_date") or None
+            end_date = t.get("end_date") or None
+            frequency = (t.get("frequency") or "").strip().lower()
+
             if "bau" in task_type or "recur" in task_type:
+                is_bau = True
+            elif "one-off" in task_type or "one off" in task_type or "outstanding" in task_type:
+                is_bau = False
+            else:
+                is_bau = bool(frequency or start_date or end_date)
+
+            if is_bau:
                 data["bau_tasks"].append({
                     "task": t.get("task", "Untitled Task"),
                     "description": t.get("description", ""),
                     "owners": owners,
-                    "frequency": t.get("frequency") or "",
-                    "start_date": t.get("start_date") or None,
-                    "end_date": t.get("end_date") or None,
+                    "frequency": frequency,
+                    "start_date": start_date,
+                    "end_date": end_date,
                     "clarification_questions": [],
                 })
             else:
