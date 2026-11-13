@@ -4,8 +4,8 @@ import logging
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.http import FileResponse, HttpResponseServerError, JsonResponse
-from django.shortcuts import get_object_or_404, redirect, render
+from django.http import FileResponse, Http404, HttpResponseServerError, JsonResponse
+from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 
 from .data_manager.handover_repository import HandoverRepository
@@ -15,7 +15,7 @@ from .logic_manager.handover import Handover as LogicHandover
 from .logic_manager.outstanding_task import OutstandingTask
 from .data_manager.data_manager_error import DataManagerError
 from .data_manager.handover_query import HandoverQuery
-from .models import Employee, Handover
+from .models import Handover
 from .output.word_document_generator import CompletedHandoverDocumentGenerator
 from .input_handler.handover_input_handler import HandoverInputHandler
 from .services.handover_coordinator import HandoverCoordinator
@@ -578,15 +578,12 @@ def handover_history(request):
 
 @login_required(login_url="handovers:login")
 def download_completed_handover(request, handover_id):
-    employee = get_object_or_404(Employee, user=request.user)
+    employee = getattr(request.user, "employee", None)
 
     # Only allow the logged-in employee to download their own handover
-    handover = get_object_or_404(
-        Handover,
-        pk=handover_id,
-        created_by=employee,
-        status__in=["completed", "needs_clarification"],
-    )
+    handover = HandoverQuery().downloadable_handover(handover_id, employee)
+    if handover is None:
+        raise Http404("Handover not found.")
 
     # Generate and store the document on its first download request
     if not handover.completed_document:
