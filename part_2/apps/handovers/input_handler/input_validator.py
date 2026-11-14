@@ -1,11 +1,11 @@
-import scrubadub
-import re
+import scrubadub #library that checks for common sensitive information
+import re #to use regex
 
 class InputValidator:
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.scrubber = scrubadub.Scrubber()
-        self.scrubber.remove_detector('phone')
+        self.scrubber.remove_detector('phone') #remove the word phone so it does not flag out words such as phone numbers
 
     def has_alphanumeric_char(self, text: str) -> bool:
         return bool(text.strip()) and any(
@@ -23,21 +23,21 @@ class InputValidator:
 
     def validate_user_input(self, text: str):
 
-        detected_types = {
+        detected_types: set[str] = {
             filth.type for filth in self.scrubber.iter_filth(text)
         }
 
-        sensitive_keywords = [
+        sensitive_keywords: list[str] = [
             "password",
             "passport"
         ]
 
-        sensitive_patterns = {
+        sensitive_patterns: dict[str,str] = {
             "NRIC/FIN": r"\b[STFGM]\d{7}[A-Z]\b",
             "Passport": r"\b[E]\d{7}[A-Z]\b"
         }
 
-        text_lower = text.lower()
+        text_lower: str = text.lower()
 
         for keyword in sensitive_keywords:
             if keyword in text_lower:
