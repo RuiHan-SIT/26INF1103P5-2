@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Tasks | Handover Assistant</title>
-    <link rel="stylesheet" href="{% static 'css/my_tasks.css' %}?v=5">
+    <link rel="stylesheet" href="{% static 'css/my_tasks.css' %}?v=12">
 </head>
 <body>
     <div class="app-shell">
@@ -93,7 +93,6 @@
                     </div>
 
                     <div class="calendar-footnote">
-                        <span class="status-dot"></span>
                         Your assigned handover tasks and saved progress are shown here.
                     </div>
                 </div>
@@ -109,11 +108,23 @@
                     </div>
 
                     <div class="task-list" id="task-list" aria-live="polite"></div>
+                    {% if unscheduled_tasks %}
+                    <section class="unscheduled-tasks" aria-labelledby="unscheduled-title">
+                        <h3 id="unscheduled-title">Needs a date</h3>
+                        <p>These saved tasks need a deadline or planned date before they can appear on a calendar day.</p>
+                        {% for task in unscheduled_tasks %}
+                        <article class="unscheduled-task">
+                            <strong>{{ task.title }}</strong>
+                            <small>From handover {{ task.handover }}</small>
+                        </article>
+                        {% endfor %}
+                    </section>
+                    {% endif %}
                 </aside>
             </section>
         </main>
     </div>
     {{ calendar_tasks|json_script:"calendar-tasks-data" }}
-    <script src="{% static 'js/my_tasks.js' %}?v=4" defer></script>
+    <script src="{% static 'js/my_tasks.js' %}?v=6" defer></script>
 </body>
 </html>

@@ -9,6 +9,15 @@ class HandoverInputHandler:
         self.input_validator = InputValidator()
         self.file_validator = FileValidator()
         self.document_reader = DocumentReader()
+    def __init__(
+        self,
+        input_validator=None,
+        file_validator=None,
+        document_reader=None,
+    ):
+        self.input_validator = input_validator or InputValidator()
+        self.file_validator = file_validator or FileValidator()
+        self.document_reader = document_reader or DocumentReader()
 
     def process_upload(self, uploaded_file: UploadedFile) -> str:
 

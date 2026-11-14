@@ -1,3 +1,5 @@
+from dotenv import load_dotenv                                                                                                                                                                                                                                                                       
+load_dotenv()   
 import os
 import logging
 from typing import Optional
@@ -11,13 +13,13 @@ logger = logging.getLogger(__name__)
 # its only job is connecting to Gemini API
 # inherits LLMService abstract method..
 class Gemini(LLMService):
-    DEFAULT_MODEL = "gemini-3.8-flash"
+    DEFAULT_MODEL = "gemini-4-hydrogen"
 
     def __init__(
         self,
         api_key: Optional[str] = None,
         model_name: Optional[str] = None,
-        timeout_ms: int = 120_000,
+        timeout_ms: int = 240_000,
         client: Optional[genai.Client] = None,
     ):
         self.__api_key = api_key or os.getenv("GEMINI_API_KEY")
@@ -62,6 +64,9 @@ class Gemini(LLMService):
         """
         Sends the prompt to Gemini and returns the raw response text.
         """
+        if os.getenv("DISABLE_AI", "false").strip().lower() == "true":
+            raise RuntimeError("AI is disabled for local fallback testing.")
+
         if not prompt or not prompt.strip():
             raise ValueError("Prompt cannot be empty.")
 

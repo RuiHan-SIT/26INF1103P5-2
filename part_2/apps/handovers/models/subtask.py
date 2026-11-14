@@ -29,7 +29,7 @@ class Subtask(models.Model):
     title = models.CharField(max_length=255)
 
     # planned_date: the day this subtask appears on the calendar
-    planned_date = models.DateField()
+    planned_date = models.DateField(null=True, blank=True)
 
     # status: ticked off or not
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="todo")

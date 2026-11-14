@@ -39,7 +39,7 @@ JSON STRUCTURE:
       "task": "Routine or recurring responsibility title",
       "description": "Procedures, steps, tools, or schedule details",
       "owners": ["Name of responsible person or team"],
-      "frequency": "weekly" | "monthly" | "yearly",
+      "frequency": "weekly, monthly, yearly, or empty string if not stated",
       "start_date": "DD/MM/YYYY or empty string if not stated",
       "end_date": "DD/MM/YYYY or empty string if ongoing",
       "clarification_questions": [
@@ -60,7 +60,7 @@ CLASSIFICATION RULES:
 
 2. BAU (BUSINESS AS USUAL) TASKS:
    - Ongoing or recurring operational responsibilities that must continue.
-   - Extract frequency strictly as "weekly", "monthly", or "yearly" (convert other frequencies to closest match, or flag in clarification questions if ambiguous).
+   - Extract frequency only when explicitly provided by the document or reviewer as "weekly", "monthly", or "yearly". If missing or ambiguous, use "" and ask the user to choose. Never guess a frequency or convert another frequency to a closest match.
    - Capture start_date and optional end_date in DD/MM/YYYY format.
 
 3. IMPORTANT INFORMATION:
@@ -74,10 +74,15 @@ CLASSIFICATION RULES:
      * "Update server credentials" -> ["Which specific server or environment needs updating?", "Where are the new credentials stored or managed?"]
      * "Send weekly report" -> ["Who is on the distribution list for this report?", "Where is the report template located?"]
    - If the task description is clear, comprehensive, and actionable, set "clarification_questions" to [].
-   - When reviewer answers are included in the input, use them to update the matching task and remove questions that the answers resolve. Keep only questions that remain unanswered.
+   - REFINEMENT & RESOLUTION RULES (WHEN REVIEWER ANSWERS ARE PROVIDED):
+     * Directly update the task's structured fields using the reviewer's answers (e.g., set "deadline": "DD/MM/YYYY" if a date is provided; set "frequency": "weekly"|"monthly"|"yearly" if frequency is given; set "owners": [...] if names are clarified).
+     * Remove every clarification question that the reviewer's answer addresses.
+     * STRICT: Do NOT invent new or replacement clarification questions during refinement passes.
+     * Once a task has a title, owner, and valid deadline/frequency, set "clarification_questions": [].
 
 5. GENERAL INTEGRITY RULES:
-   - Do NOT invent fictional task owners or deadlines that were never mentioned.
+   - Do NOT invent fictional task owners, deadlines, or recurrence frequencies that were never mentioned.
+   - AI may propose subtasks and their plan; recurrence frequency must always come from the user.
    - Preserve names exactly as stated in the notes.
    - If no owner is specified, set "owners": [].
 """

@@ -1,9 +1,16 @@
+// Keep page variables local when a background response replaces the document.
+(function () {
 const fileInput = document.getElementById("document");
 const uploadArea = document.querySelector(".chat-container");
 const dropOverlay = document.getElementById("dropOverlay");
 const filePreview = document.getElementById("filePreview");
 const fileName = document.getElementById("fileName");
+const fileSizeLabel = document.getElementById("fileSize");
+const changeFile = document.getElementById("changeFile");
 const removeFile = document.getElementById("removeFile")
+const chatForm = document.getElementById("chat-form");
+const chatMessages = document.getElementById("chatMessages");
+const sendButton = chatForm ? chatForm.querySelector(".send-btn") : null;
 
 const allowedExtensions = [".txt", ".docx"];
 const maxSize = 10 * 1024 * 1024;
@@ -40,17 +47,31 @@ function displayFile(file) {
         ? `${file.size} bytes`
         : `${(file.size / 1024).toFixed(1)} KB`;
 
-    fileName.textContent = `${file.name} (${fileSize})`;
+    fileName.textContent = file.name;
+    fileSizeLabel.textContent = fileSize;
     filePreview.hidden = false;
+    uploadArea.classList.add("has-file");
+    fileInput.tabIndex = -1;
+    document.getElementById("chatDropHint").hidden = true;
+    document.querySelector(".upload-file-slot").hidden = false;
+    if (sendButton) sendButton.disabled = false;
 }
 
 function clearFile() {
     fileInput.value = "";
     fileName.textContent = "";
+    fileSizeLabel.textContent = "";
     filePreview.hidden = true;
+    uploadArea.classList.remove("has-file");
+    fileInput.tabIndex = 0;
+    document.getElementById("chatDropHint").hidden = false;
+    document.querySelector(".upload-file-slot").hidden = true;
+    if (sendButton) sendButton.disabled = true;
 }
 
 if (fileInput && filePreview && fileName && removeFile) {
+
+    changeFile.addEventListener("click", () => fileInput.click());
 
     fileInput.addEventListener("change", function () {
         displayFile(fileInput.files[0]);
@@ -76,6 +97,7 @@ if (fileInput && filePreview && fileName && removeFile) {
 
         uploadArea.addEventListener("dragenter", function (event) {
             event.preventDefault();
+            if (activeAiRequest || fileInput.files.length) return;
             dragDepth++;
 
             uploadArea.classList.add("drag-over");
@@ -103,6 +125,7 @@ if (fileInput && filePreview && fileName && removeFile) {
             event.preventDefault();
             event.stopPropagation();
             hideDropOverlay();
+            if (activeAiRequest || fileInput.files.length) return;
 
             const files = event.dataTransfer.files;
 
@@ -133,6 +156,166 @@ if (fileInput && filePreview && fileName && removeFile) {
     }
 
 }
+
+let activeAiRequest = null;
+
+function cancellationFormData(form) {
+    const data = new FormData();
+    data.append("csrfmiddlewaretoken", form.querySelector("[name=csrfmiddlewaretoken]").value);
+    data.append("request_token", form.querySelector("[name=request_token]").value);
+    return data;
+}
+
+function attachCancelButton(statusBubble, form, controller) {
+    const cancelButton = document.createElement("button");
+    cancelButton.type = "button";
+    cancelButton.className = "ai-cancel-button";
+    cancelButton.textContent = "Cancel handover";
+    cancelButton.addEventListener("click", async () => {
+        if (!window.confirm("Cancel this handover? It will not be saved. The AI request already sent may still finish.")) {
+            return;
+        }
+        cancelButton.disabled = true;
+        cancelButton.textContent = "Cancelling…";
+        try {
+            const response = await fetch(form.dataset.cancelUrl, {
+                method: "POST",
+                body: cancellationFormData(form),
+                credentials: "same-origin",
+            });
+            const result = await response.json();
+            if (!result.cancelled) throw new Error("The handover could not be cancelled.");
+            controller.abort();
+            activeAiRequest = null;
+            window.location.assign(form.dataset.homeUrl || result.redirect_url);
+        } catch (error) {
+            // A beacon is a best-effort fallback if the cancellation response is lost.
+            navigator.sendBeacon(form.dataset.cancelUrl, cancellationFormData(form));
+            controller.abort();
+            activeAiRequest = null;
+            window.location.assign(form.dataset.homeUrl || "/");
+        }
+    });
+    statusBubble.appendChild(cancelButton);
+}
+
+async function sendInBackground(form, formData, statusBubble, submitButton) {
+    const controller = new AbortController();
+    activeAiRequest = {form, controller};
+    const reviewActions = form.classList.contains("review-form") || form.classList.contains("detail-edit-form")
+        ? Array.from(form.querySelectorAll("button[type=submit]"))
+        : [submitButton].filter(Boolean);
+    reviewActions.forEach((button) => { button.disabled = true; });
+    attachCancelButton(statusBubble, form, controller);
+
+    try {
+        const response = await fetch(form.getAttribute("action") || window.location.href, {
+            method: "POST",
+            body: formData,
+            credentials: "same-origin",
+            headers: {"X-Requested-With": "XMLHttpRequest"},
+            signal: controller.signal,
+        });
+
+        if (activeAiRequest !== null) activeAiRequest = null;
+        if (response.redirected) {
+            window.location.assign(response.url);
+            return;
+        }
+
+        // Display validation or AI errors only after the background request ends.
+        const page = await response.text();
+        document.open();
+        document.write(page);
+        document.close();
+    } catch (error) {
+        if (error.name === "AbortError") return;
+        const cancelButton = form.querySelector(".ai-cancel-button");
+        if (cancelButton) cancelButton.remove();
+        reviewActions.forEach((button) => { button.disabled = false; });
+        if (submitButton === sendButton) {
+            const errorMessage = document.createElement("div");
+            errorMessage.className = "chat-message ai-message upload-error-message";
+            errorMessage.setAttribute("role", "alert");
+            errorMessage.textContent = "The request could not reach the server. Please try again.";
+            chatMessages.appendChild(errorMessage);
+            chatMessages.hidden = false;
+            submitButton.textContent = "✦ Extract Tasks with AI";
+            submitButton.removeAttribute("aria-busy");
+            fileInput.disabled = false;
+            changeFile.disabled = false;
+            removeFile.disabled = false;
+            uploadArea.setAttribute("aria-busy", "false");
+        } else {
+            statusBubble.firstChild.textContent = "The request could not reach the server. Please try again.";
+        }
+    } finally {
+        if (activeAiRequest && activeAiRequest.controller === controller) activeAiRequest = null;
+    }
+}
+
+// Refreshing or leaving the page sends a best-effort cancellation notice.
+window.addEventListener("pagehide", () => {
+    if (!activeAiRequest) return;
+    navigator.sendBeacon(
+        activeAiRequest.form.dataset.cancelUrl,
+        cancellationFormData(activeAiRequest.form)
+    );
+});
+
+// Keep the page visible and show progress in the conversation while AI works.
+if (chatForm && chatMessages) {
+    chatForm.addEventListener("submit", function (event) {
+        event.preventDefault();
+        const file = fileInput && fileInput.files[0];
+        if (activeAiRequest || !file) return;
+        chatMessages.replaceChildren();
+        chatMessages.hidden = true;
+
+        const chatContainer = chatForm.querySelector(".chat-container");
+        if (chatContainer) chatContainer.setAttribute("aria-busy", "true");
+        if (sendButton) {
+            sendButton.disabled = true;
+            sendButton.setAttribute("aria-busy", "true");
+            sendButton.innerHTML = 'Extracting <span class="extract-loading-dots" aria-hidden="true"><span>•</span><span>•</span><span>•</span></span>';
+        }
+
+        const formData = new FormData(chatForm);
+        fileInput.disabled = true;
+        changeFile.disabled = true;
+        removeFile.disabled = true;
+        sendInBackground(chatForm, formData, chatForm.querySelector(".upload-actions"), sendButton);
+    });
+}
+
+document.querySelectorAll(".review-form").forEach((form) => {
+    form.addEventListener("submit", (event) => {
+        if (!event.submitter || event.submitter.value !== "refine") return;
+        event.preventDefault();
+        const formData = new FormData(form);
+        formData.set("action", "refine");
+        const status = document.createElement("div");
+        status.className = "review-ai-progress";
+        status.setAttribute("role", "status");
+        status.append("AI is reviewing your answers. This may take a little while. ");
+        form.querySelector(".review-actions").prepend(status);
+        sendInBackground(form, formData, status, event.submitter);
+    });
+});
+
+document.querySelectorAll(".detail-edit-form").forEach((form) => {
+    form.addEventListener("submit", (event) => {
+        if (!event.submitter || event.submitter.value !== "ai_refine") return;
+        event.preventDefault();
+        const formData = new FormData(form);
+        formData.set("action", "ai_refine");
+        const status = form.querySelector(".detail-ai-status");
+        status.hidden = false;
+        status.className = "detail-ai-status review-ai-progress";
+        status.textContent = "AI is reviewing your edited handover. Its suggestions will not be applied until you confirm.";
+        sendInBackground(form, formData, status, event.submitter);
+    });
+});
 
 document.querySelectorAll("[data-employee-search]").forEach((search) => {
     const fieldName = search.dataset.employeeSearch;
@@ -210,25 +393,27 @@ document.querySelectorAll(".owner-review").forEach((ownerReview) => {
 const profileButton = document.getElementById("profile-menu-button");
 const profilePopover = document.getElementById("profile-menu");
 
-profileButton.addEventListener("click", () => {
-    const isOpen = profileButton.getAttribute("aria-expanded") === "true";
-    profileButton.setAttribute("aria-expanded", String(!isOpen));
-    profilePopover.hidden = isOpen;
-});
+if (profileButton && profilePopover) {
+    profileButton.addEventListener("click", () => {
+        const isOpen = profileButton.getAttribute("aria-expanded") === "true";
+        profileButton.setAttribute("aria-expanded", String(!isOpen));
+        profilePopover.hidden = isOpen;
+    });
 
-document.addEventListener("click", (event) => {
-    if (!profilePopover.contains(event.target) && !profileButton.contains(event.target)) {
-        profilePopover.hidden = true;
-        profileButton.setAttribute("aria-expanded", "false");
-    }
-});
+    document.addEventListener("click", (event) => {
+        if (!profilePopover.contains(event.target) && !profileButton.contains(event.target)) {
+            profilePopover.hidden = true;
+            profileButton.setAttribute("aria-expanded", "false");
+        }
+    });
 
-document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-        profilePopover.hidden = true;
-        profileButton.setAttribute("aria-expanded", "false");
-    }
-});
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+            profilePopover.hidden = true;
+            profileButton.setAttribute("aria-expanded", "false");
+        }
+    });
+}
 
 window.addEventListener("dragover", function (event) {
     if (event.dataTransfer.types.includes("Files")) {
@@ -241,3 +426,5 @@ window.addEventListener("drop", function (event) {
         event.preventDefault();
     }
 });
+
+})();

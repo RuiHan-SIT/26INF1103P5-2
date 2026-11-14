@@ -65,7 +65,15 @@ function getTasksForDate(date) {
     const key = dateKey(date);
     return calendarTasks.filter((task) => task.type === "bau"
         ? isBauScheduled(task, key)
-        : task.date === key);
+        : task.date === key).map((task) => {
+            if (task.type !== "bau") return task;
+            return {
+                ...task,
+                id: `${task.id}-${key}`,
+                occurrenceDate: key,
+                completed: (task.completedDates || []).includes(key),
+            };
+        });
 }
 
 function makeCalendarDay(date, visibleMonth) {
@@ -132,19 +140,43 @@ function renderCalendar() {
 async function saveCompletion(task, completed, checkbox) {
     checkbox.disabled = true;
     try {
-        const response = await fetch(`/my-tasks/subtasks/${task.subtaskId}/status/`, {
+        const isSubtask = task.type === "planned";
+        const url = isSubtask
+            ? `/my-tasks/subtasks/${task.subtaskId}/status/`
+            : `/my-tasks/tasks/${task.taskId}/status/`;
+        const payload = { completed };
+        if (task.type === "bau") payload.date = task.occurrenceDate;
+
+        const response = await fetch(url, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
                 "X-CSRFToken": getCookie("csrftoken"),
             },
-            body: JSON.stringify({ completed }),
+            body: JSON.stringify(payload),
         });
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || "Could not save task progress.");
+
         task.completed = result.completed;
-        if (completed) completedTasks.add(task.id);
-        else completedTasks.delete(task.id);
+        if (task.type === "planned") {
+            if (completed) completedTasks.add(task.id);
+            else completedTasks.delete(task.id);
+            if (!completed) {
+                calendarTasks.filter((item) => item.type === "deadline" && item.taskId === task.taskId)
+                    .forEach((parentTask) => { parentTask.completed = false; });
+            }
+            calendarTasks.filter((item) => item.type === "deadline" && item.taskId === task.taskId)
+                .forEach((parentTask) => {
+                    parentTask.subtasksComplete = parentTask.subtaskIds.every((id) => completedTasks.has(id));
+                });
+        } else if (task.type === "bau") {
+            const savedTask = calendarTasks.find((item) => item.taskId === task.taskId);
+            const dates = savedTask.completedDates || [];
+            savedTask.completedDates = completed
+                ? [...new Set([...dates, task.occurrenceDate])]
+                : dates.filter((item) => item !== task.occurrenceDate);
+        }
         renderSelectedDay();
     } catch (error) {
         checkbox.checked = !completed;
@@ -178,17 +210,23 @@ function renderSelectedDay() {
     tasks.forEach((task) => {
         const item = document.createElement("article");
         item.className = "task-item";
-        if (completedTasks.has(task.id)) item.classList.add("completed");
+        if (task.completed || completedTasks.has(task.id)) item.classList.add("completed");
 
         const label = document.createElement("label");
         label.className = "task-check";
         const checkbox = document.createElement("input");
         checkbox.type = "checkbox";
-        checkbox.checked = completedTasks.has(task.id);
+        checkbox.checked = task.type === "planned" ? completedTasks.has(task.id) : Boolean(task.completed);
         const dependenciesComplete = !task.dependencies || task.dependencies.every((dependency) => completedTasks.has(dependency));
         const canMarkDone = task.type === "planned" && !checkbox.checked;
-        checkbox.disabled = task.type !== "planned" || (canMarkDone && !dependenciesComplete);
-        checkbox.title = task.type !== "planned" ? "Only planned subtasks can be marked complete here." : dependenciesComplete ? "" : "Complete the required earlier subtask first.";
+        const deadlineNeedsSubtasks = task.type === "deadline" && task.hasSubtasks && !task.subtasksComplete;
+        checkbox.disabled = (canMarkDone && !dependenciesComplete)
+            || (deadlineNeedsSubtasks && !checkbox.checked);
+        checkbox.title = canMarkDone && !dependenciesComplete
+            ? "Complete the required earlier subtask first."
+            : deadlineNeedsSubtasks && !checkbox.checked
+                ? "Complete all subtasks before marking this task complete."
+                : "";
         checkbox.setAttribute("aria-label", `Mark ${task.title} complete`);
         const checkmark = document.createElement("span");
         label.append(checkbox, checkmark);
@@ -198,9 +236,16 @@ function renderSelectedDay() {
         copy.className = "task-copy";
         const title = document.createElement("h3");
         title.textContent = task.title;
+        copy.appendChild(title);
+        if (task.parentTask) {
+            const parent = document.createElement("p");
+            parent.className = "task-parent";
+            parent.textContent = `For ${task.parentTaskId}: ${task.parentTask}`;
+            copy.appendChild(parent);
+        }
         const source = document.createElement("p");
         source.textContent = `From handover ${task.handover}`;
-        copy.append(title, source);
+        copy.appendChild(source);
         if (task.dependencies?.length && !dependenciesComplete) {
             const dependencyNote = document.createElement("small");
             dependencyNote.className = "dependency-note";
@@ -210,7 +255,7 @@ function renderSelectedDay() {
 
         const tag = document.createElement("span");
         tag.className = `task-tag ${task.type}-tag`;
-        tag.textContent = task.type === "bau" ? "BAU" : task.type === "deadline" ? "Deadline" : completedTasks.has(task.id) ? "Completed" : "Planned";
+        tag.textContent = task.type === "bau" ? "BAU" : task.type === "deadline" ? "Deadline" : task.type === "planned" ? "Subtask" : "Completed";
         item.append(label, copy, tag);
         taskList.appendChild(item);
     });

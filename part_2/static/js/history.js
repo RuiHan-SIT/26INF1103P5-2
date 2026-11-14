@@ -1,3 +1,14 @@
+// Show every timestamp in the viewer's own time zone.
+// The browser knows the viewer's local time zone.
+document.querySelectorAll("time.local-time").forEach((el) => {
+    const date = new Date(el.getAttribute("datetime"));
+    if (isNaN(date)) return;   // if it can't be read, keep the UTC text
+    el.textContent = date.toLocaleString("en-GB", {
+        day: "2-digit", month: "short", year: "numeric",
+        hour: "numeric", minute: "2-digit", hour12: true,
+    });
+});
+
 // Small behaviours for the Handover History page
 const profileButton = document.getElementById("profile-menu-button");
 const profilePopover = document.getElementById("profile-menu");
@@ -28,3 +39,50 @@ document.addEventListener("keydown", (event) => {
 const historyFilterForm = document.getElementById("history-filter-form");
 const statusFilter = document.getElementById("status-filter");
 statusFilter.addEventListener("change", () => historyFilterForm.requestSubmit());
+
+// Keep the row action popover tidy when the user clicks elsewhere or presses Escape.
+const handoverActionMenus = document.querySelectorAll(".history-actions");
+function positionHandoverMenu(menu) {
+    const trigger = menu.querySelector("summary");
+    const popup = menu.querySelector(".history-actions-menu");
+    if (!trigger || !popup || !menu.open) return;
+
+    const triggerBounds = trigger.getBoundingClientRect();
+    const popupWidth = popup.offsetWidth;
+    const popupHeight = popup.offsetHeight;
+    const gap = 6;
+    const margin = 8;
+    const spaceBelow = window.innerHeight - triggerBounds.bottom - margin;
+    const openAbove = spaceBelow < popupHeight + gap && triggerBounds.top > popupHeight + gap;
+    const top = openAbove
+        ? triggerBounds.top - popupHeight - gap
+        : triggerBounds.bottom + gap;
+    const left = Math.max(
+        margin,
+        Math.min(triggerBounds.right - popupWidth, window.innerWidth - popupWidth - margin)
+    );
+
+    popup.style.top = `${top}px`;
+    popup.style.left = `${left}px`;
+}
+
+handoverActionMenus.forEach((menu) => {
+    menu.addEventListener("toggle", () => positionHandoverMenu(menu));
+});
+
+document.addEventListener("click", (event) => {
+    handoverActionMenus.forEach((menu) => {
+        if (!menu.contains(event.target)) menu.open = false;
+    });
+});
+document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+        handoverActionMenus.forEach((menu) => { menu.open = false; });
+    }
+});
+document.addEventListener("scroll", () => {
+    handoverActionMenus.forEach(positionHandoverMenu);
+}, true);
+window.addEventListener("resize", () => {
+    handoverActionMenus.forEach(positionHandoverMenu);
+});

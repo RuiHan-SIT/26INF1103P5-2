@@ -530,3 +530,87 @@ body {
         margin-bottom: 12px;
     }
 }
+
+.password-input-wrap {
+    position: relative;
+}
+
+.form-group .password-input-wrap input {
+    padding-right: 48px;
+}
+
+.password-toggle {
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    display: grid;
+    width: 30px;
+    height: 30px;
+    place-items: center;
+    padding: 0;
+    color: #827a91;
+    background: transparent;
+    border: 0;
+    border-radius: 7px;
+    cursor: pointer;
+    transform: translateY(-50%);
+}
+
+.password-toggle:hover {
+    color: #684895;
+    background: #f3f0fa;
+}
+
+.password-toggle:focus-visible {
+    outline: 2px solid #9271c5;
+    outline-offset: 2px;
+}
+
+.password-toggle svg {
+    width: 19px;
+    height: 19px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.password-toggle svg[hidden] {
+    display: none;
+}
+
+/* Crossfade between the open and crossed-out eye states. */
+.password-toggle {
+    z-index: 1;
+    overflow: visible;
+}
+
+.password-toggle svg {
+    grid-area: 1 / 1;
+    transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.password-toggle [data-eye-open] {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+}
+
+.password-toggle [data-eye-closed] {
+    opacity: 0;
+    transform: scale(0.78) rotate(-12deg);
+}
+
+.password-toggle[data-visible="true"] [data-eye-open] {
+    opacity: 0;
+    transform: scale(0.78) rotate(12deg);
+}
+
+.password-toggle[data-visible="true"] [data-eye-closed] {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .password-toggle svg {`r`n        transition: none;`r`n    }
+}
