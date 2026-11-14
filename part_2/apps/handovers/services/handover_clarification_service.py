@@ -1,14 +1,11 @@
 import json
-import logging
-from typing import Any, Dict, List, Mapping, Optional
+from typing import Any, Dict, List, Mapping, Optional, Tuple
 
-from apps.handovers.logic_manager.handover import Handover as LogicHandover
+from apps.handovers.data_manager.handover_repository import HandoverRepository
 from apps.handovers.output.word_document_generator import CompletedHandoverDocumentGenerator
 from apps.handovers.services.cancellation_tracker import CancellationTracker
-from apps.handovers.services.handover_coordinator import HandoverCoordinator
 from apps.handovers.services.handover_mapper import HandoverDraftMapper, TASK_TYPE_SPECS
-
-logger = logging.getLogger(__name__)
+from apps.handovers.services.handover_service import HandoverService
 
 
 class HandoverClarificationService:
@@ -16,13 +13,16 @@ class HandoverClarificationService:
 
     def __init__(
         self,
-        coordinator: Optional[HandoverCoordinator] = None,
+        handover_service: Optional[HandoverService] = None,
+        coordinator: Optional[Any] = None,
         mapper: Optional[HandoverDraftMapper] = None,
+        repository: Optional[HandoverRepository] = None,
         cancellation_tracker: Optional[CancellationTracker] = None,
         document_generator: Optional[CompletedHandoverDocumentGenerator] = None,
     ):
-        self._coordinator = coordinator or HandoverCoordinator()
+        self._handover_service = handover_service or HandoverService(coordinator=coordinator)
         self._mapper = mapper or HandoverDraftMapper()
+        self._repository = repository or HandoverRepository()
         self._cancellation = cancellation_tracker or CancellationTracker()
         self._document_generator = document_generator or CompletedHandoverDocumentGenerator()
 
@@ -31,7 +31,7 @@ class HandoverClarificationService:
         attention: Dict[str, Any] = {}
         if handover.status == "needs_clarification":
             saved_data = self._mapper.orm_to_logic_data(handover, tasks)
-            validation = LogicHandover(saved_data).process()
+            validation = self._handover_service.validate_draft(saved_data)["validation"]
             attention, _ = self._mapper.build_validation_attention(tasks, validation)
         self._mapper.attach_validation_attention(tasks, attention)
 
@@ -67,7 +67,7 @@ class HandoverClarificationService:
                 suggested_task["owners"] = [owner.name for owner in owners]
                 suggested_task["owner_ids"] = [owner.employee_id for owner in owners]
 
-        self._mapper.persist_clarification_edits(
+        self._validate_and_persist_edits(
             handover, tasks, suggested_data, finalize=False
         )
         return {
@@ -103,17 +103,17 @@ class HandoverClarificationService:
             "handover JSON structure. Draft data:\n"
             f"{json.dumps(edit_data, ensure_ascii=False)}"
         )
-        result = self._coordinator.review_handover(prompt, source_data=edit_data)
+        review = self._handover_service.review_document(prompt, source_data=edit_data)
         if self._cancellation.is_cancelled(employee, request_token):
             return {"status": "cancelled"}
 
-        if not result.get("success"):
+        if not review.get("ai_success"):
             return {
                 "status": "error",
-                "message": f"AI could not refine this handover: {result.get('error_message', 'Unknown error')}",
+                "message": f"AI could not refine this handover: {review.get('error_message', 'Unknown error')}",
             }
 
-        suggestions = result["data"]
+        suggestions = review["draft"]
         grouped = self._mapper.group_tasks_by_type(tasks)
         same_task_counts = all(
             len(suggestions.get(spec["data_key"], [])) == len(grouped[spec["task_type"]])
@@ -147,7 +147,7 @@ class HandoverClarificationService:
         tasks: List[Any],
         post_data: Mapping[str, Any],
     ) -> Dict[str, Any]:
-        """Parse form edits, persist to ORM, and revalidate handover completeness."""
+        """Parse form edits, persist via HandoverRepository, and revalidate handover completeness."""
         edit_data, edit_errors = self._mapper.form_to_logic_data(handover, tasks, post_data)
         if edit_errors:
             return {
@@ -156,7 +156,7 @@ class HandoverClarificationService:
                 "validation_messages": [],
             }
 
-        is_complete, validation_messages = self._mapper.persist_clarification_edits(
+        is_complete, validation_messages = self._validate_and_persist_edits(
             handover, tasks, edit_data, finalize=True
         )
         return {
@@ -165,21 +165,26 @@ class HandoverClarificationService:
             "validation_messages": validation_messages,
         }
 
+    def _validate_and_persist_edits(
+        self,
+        handover: Any,
+        tasks: List[Any],
+        data: Dict[str, Any],
+        finalize: bool = True,
+    ) -> Tuple[bool, List[str]]:
+        grouped = self._mapper.group_tasks_by_type(tasks)
+        for task, record in zip(grouped["bau"], data.get("bau_tasks", [])):
+            record["original_start_date"] = self._mapper.original_bau_start_date(handover, task)
+        validation = self._handover_service.validate_draft(data)["validation"]
+        _, validation_messages = self._mapper.build_validation_attention(tasks, validation)
+        grouped = self._mapper.group_tasks_by_type(tasks)
+        is_complete = validation["status"] == "complete" and finalize
+        self._repository.update_handover_tasks(handover, grouped, data, is_complete)
+        return is_complete, validation_messages
+
     def delete_handover(self, handover: Any) -> None:
         """Delete a handover and clean up any stored upload or generated document files."""
-        handover_id = handover.pk
-        stored_files = [upload.file for upload in handover.uploads.all() if upload.file]
-        if handover.completed_document:
-            stored_files.append(handover.completed_document)
-
-        handover.delete()
-        for stored_file in stored_files:
-            try:
-                stored_file.delete(save=False)
-            except OSError:
-                logger.exception(
-                    "Could not remove a stored file for deleted handover %s", handover_id
-                )
+        self._repository.delete_handover(handover)
 
     def ensure_completed_document(self, handover: Any) -> None:
         """Generate and store the Word document on first download if missing."""

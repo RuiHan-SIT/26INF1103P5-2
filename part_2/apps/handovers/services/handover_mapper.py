@@ -1,12 +1,9 @@
 from datetime import date, datetime
 from typing import Any, Dict, List, Mapping, Optional, Tuple
-
-from django.db import transaction
 from django.utils import timezone
 
+from apps.handovers.data_manager.handover_repository import HandoverRepository
 from apps.handovers.logic_manager.employee_identity_matcher import EmployeeIdentityMatcher
-from apps.handovers.logic_manager.handover import Handover as LogicHandover
-from apps.handovers.models import Subtask
 
 TASK_TYPE_SPECS: Tuple[Dict[str, str], ...] = (
     {
@@ -59,31 +56,10 @@ MATCH_LEVEL_LABELS: Dict[str, str] = {
 
 
 class HandoverDraftMapper:
-    """Translates handover data between AI/session dicts, LogicHandover, forms, and ORM models."""
+    """Pure in-memory translator between AI/session dicts, LogicHandover, forms, and ORM objects."""
 
-    @staticmethod
-    def parse_handover_date(value: Any) -> Optional[date]:
-        """Parse DD/MM/YYYY date strings into a date object, or return None."""
-        try:
-            return datetime.strptime(value, "%d/%m/%Y").date()
-        except (ValueError, TypeError):
-            return None
-
-    @staticmethod
-    def allocate_subtask_code(
-        candidate_code: str,
-        used_codes: set,
-        next_code: int,
-    ) -> Tuple[str, int]:
-        """Ensure subtask code is <=10 chars and unique within used_codes."""
-        code = str(candidate_code or f"S{next_code:03d}")
-        if len(code) > 10 or code in used_codes:
-            code = f"S{next_code:03d}"
-            while code in used_codes:
-                next_code += 1
-                code = f"S{next_code:03d}"
-            next_code += 1
-        return code, next_code
+    parse_handover_date = staticmethod(HandoverRepository._parse_date)
+    allocate_subtask_code = staticmethod(HandoverRepository.allocate_subtask_code)
 
     @staticmethod
     def group_tasks_by_type(tasks: List[Any]) -> Dict[str, List[Any]]:
@@ -484,86 +460,3 @@ class HandoverDraftMapper:
                 edit_data["outstanding_tasks"].append(record)
 
         return edit_data, edit_errors
-
-    def persist_clarification_edits(
-        self,
-        handover: Any,
-        tasks: List[Any],
-        data: Dict[str, Any],
-        finalize: bool = True,
-    ) -> Tuple[bool, List[str]]:
-        """Persist edited tasks to ORM, re-validate with LogicHandover, and update handover status."""
-        grouped = self.group_tasks_by_type(tasks)
-        for task, record in zip(grouped["bau"], data.get("bau_tasks", [])):
-            record["original_start_date"] = self.original_bau_start_date(handover, task)
-        validation = LogicHandover(data).process()
-        _, validation_messages = self.build_validation_attention(tasks, validation)
-        grouped = self.group_tasks_by_type(tasks)
-        is_complete = validation["status"] == "complete" and finalize
-
-        with transaction.atomic():
-            for spec in TASK_TYPE_SPECS:
-                for task, record in zip(
-                    grouped[spec["task_type"]], data.get(spec["data_key"], [])
-                ):
-                    self._update_task_from_record(task, record)
-
-            if handover.completed_document:
-                handover.completed_document.delete(save=False)
-
-            handover.important_information = [
-                item
-                for item in (handover.important_information or [])
-                if not str(item).startswith("⚠️ Needs Clarification:")
-            ]
-            if is_complete:
-                handover.status = "completed"
-            else:
-                handover.status = "needs_clarification"
-                handover.important_information.append(
-                    "⚠️ Needs Clarification: Some task details still need review."
-                )
-
-            handover.save(update_fields=["status", "important_information", "completed_document"])
-
-        return is_complete, validation_messages
-
-    def _update_task_from_record(self, task: Any, record: Dict[str, Any]) -> None:
-        task.title = record.get("task", "")
-        task.description = record.get("description", "")
-
-        if task.task_type == "outstanding":
-            task.deadline = self.parse_handover_date(record.get("deadline"))
-        else:
-            task.frequency = record.get("frequency", "")
-            task.start_date = self.parse_handover_date(record.get("start_date"))
-            task.end_date = self.parse_handover_date(record.get("end_date"))
-        task.save()
-
-        if task.task_type == "outstanding":
-            self._replace_task_subtasks(task, record.get("subtasks", []))
-
-    def _replace_task_subtasks(self, task: Any, subtask_data: List[Dict[str, Any]]) -> None:
-        existing = {subtask.code: subtask for subtask in task.subtasks.all()}
-        updated: Dict[str, Any] = {}
-
-        for index, item in enumerate(subtask_data, start=1):
-            code = item.get("subtask_id") or f"S{index:03d}"
-            subtask = existing.get(code) or Subtask(task=task, code=code)
-            subtask.title = item.get("task", "")
-            subtask.planned_date = self.parse_handover_date(item.get("planned_date"))
-            subtask.save()
-            updated[code] = subtask
-
-        for subtask in existing.values():
-            if subtask.code not in updated:
-                subtask.delete()
-
-        for item in subtask_data:
-            subtask = updated[item.get("subtask_id")]
-            dependencies = [
-                updated[dep]
-                for dep in item.get("dependencies", [])
-                if dep in updated
-            ]
-            subtask.depends_on.set(dependencies)

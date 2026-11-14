@@ -4,10 +4,9 @@ from apps.handovers.data_manager.data_manager_error import DataManagerError
 from apps.handovers.data_manager.handover_query import HandoverQuery
 from apps.handovers.data_manager.handover_repository import HandoverRepository
 from apps.handovers.input_handler.handover_input_handler import HandoverInputHandler
-from apps.handovers.logic_manager.handover import Handover as LogicHandover
 from apps.handovers.services.cancellation_tracker import CancellationTracker
-from apps.handovers.services.handover_coordinator import HandoverCoordinator
 from apps.handovers.services.handover_mapper import HandoverDraftMapper
+from apps.handovers.services.handover_service import HandoverService
 
 
 class HandoverDraftService:
@@ -16,14 +15,15 @@ class HandoverDraftService:
     def __init__(
         self,
         input_handler: Optional[HandoverInputHandler] = None,
-        coordinator: Optional[HandoverCoordinator] = None,
+        handover_service: Optional[HandoverService] = None,
+        coordinator: Optional[Any] = None,
         repository: Optional[HandoverRepository] = None,
         query: Optional[HandoverQuery] = None,
         mapper: Optional[HandoverDraftMapper] = None,
         cancellation_tracker: Optional[CancellationTracker] = None,
     ):
         self._input_handler = input_handler or HandoverInputHandler()
-        self._coordinator = coordinator or HandoverCoordinator()
+        self._handover_service = handover_service or HandoverService(coordinator=coordinator)
         self._repository = repository or HandoverRepository()
         self._query = query or HandoverQuery()
         self._mapper = mapper or HandoverDraftMapper()
@@ -75,19 +75,19 @@ class HandoverDraftService:
             return {"status": "cancelled"}
 
         try:
-            result = self._coordinator.review_handover(document_text)
+            review = self._handover_service.review_document(document_text)
         except (ImportError, OSError, ValueError, RuntimeError, PermissionError) as error:
-            result = {"success": False, "error_message": str(error)}
+            review = {"ai_success": False, "error_message": str(error), "draft": {}}
 
         if self._cancellation.is_cancelled(employee, request_token):
             return {"status": "cancelled"}
 
         warning = None
-        if not result.get("success"):
-            ai_error = result.get("error_message", "service offline")
+        draft_data = review.get("draft", {})
+        if not review.get("ai_success"):
+            ai_error = review.get("error_message", "service offline")
             try:
-                fallback_data = HandoverCoordinator.build_table_fallback_data(document_text)
-                result = {"success": True, "data": fallback_data}
+                draft_data = self._handover_service.build_table_fallback_data(document_text)
                 warning = (
                     f"Gemini AI is currently unavailable ({ai_error}). "
                     "Tasks were extracted directly from the template tables. Please review and confirm all details manually."
@@ -95,7 +95,7 @@ class HandoverDraftService:
             except Exception as fallback_err:
                 return {
                     "status": "error",
-                    "error_message": f"The document could not be reviewed: {result.get('error_message', fallback_err)}",
+                    "error_message": f"The document could not be reviewed: {review.get('error_message', fallback_err)}",
                 }
 
         uploaded_file.seek(0)
@@ -107,7 +107,7 @@ class HandoverDraftService:
         return {
             "status": "ready",
             "upload": upload,
-            "data": result["data"],
+            "data": draft_data,
             "warning": warning,
             "error_message": None,
         }
@@ -149,14 +149,14 @@ class HandoverDraftService:
             if self._cancellation.is_cancelled(employee, request_token):
                 return {"status": "cancelled"}
 
-            source_data = HandoverCoordinator.build_table_fallback_data(document_text)
+            source_data = self._handover_service.build_table_fallback_data(document_text)
             for task in source_data["bau_tasks"]:
                 for answer in answers:
                     if answer["task"] == task["task"] and "frequency" in answer["question"].lower():
                         frequency = answer["answer"].strip().lower()
                         if frequency in ["weekly", "monthly", "yearly"]:
                             task["frequency"] = frequency
-            result = self._coordinator.review_handover(refined_prompt, source_data=source_data)
+            review = self._handover_service.review_document(refined_prompt, source_data=source_data)
         except (ImportError, OSError, ValueError, RuntimeError, PermissionError) as error:
             if self._cancellation.is_cancelled(employee, request_token):
                 return {"status": "cancelled"}
@@ -168,13 +168,13 @@ class HandoverDraftService:
         if self._cancellation.is_cancelled(employee, request_token):
             return {"status": "cancelled"}
 
-        if not result.get("success"):
+        if not review.get("ai_success"):
             return {
                 "status": "error",
-                "error_message": f"Could not refine the handover: {result.get('error_message')}",
+                "error_message": f"Could not refine the handover: {review.get('error_message')}",
             }
 
-        return {"status": "refined", "data": result["data"], "error_message": None}
+        return {"status": "refined", "data": review["draft"], "error_message": None}
 
     def save_draft(
         self,
@@ -183,16 +183,15 @@ class HandoverDraftService:
         data: Dict[str, Any],
         post_data: Mapping[str, Any],
     ) -> Dict[str, Any]:
-        """Apply owner selections, validate via LogicHandover, and persist Handover."""
+        """Apply owner selections, validate via HandoverService, and persist Handover."""
         owner_error = self._mapper.apply_owner_selections(
             data, post_data, self._query.all_employees()
         )
         if owner_error:
             return {"status": "invalid", "error_message": owner_error, "missing_reasons": []}
 
-        logic_data = HandoverCoordinator.strip_clarification_questions(data)
-        logic = LogicHandover(logic_data)
-        processed = logic.process()
+        check = self._handover_service.validate_draft(data)
+        processed = check["validation"]
 
         has_questions = any(
             task.get("clarification_questions")
@@ -208,7 +207,7 @@ class HandoverDraftService:
                 return {"status": "error", "error_message": str(error), "missing_reasons": []}
             return {"status": "completed", "handover": handover, "missing_reasons": []}
 
-        save_data = logic.get_task_records()
+        save_data = check["task_records"]
         missing_reasons = self._format_missing_reasons(processed, has_questions)
         if missing_reasons:
             save_data.setdefault("important_information", []).append(
