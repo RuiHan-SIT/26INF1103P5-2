@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 # its only job is connecting to Gemini API
 # inherits LLMService abstract method..
 class Gemini(LLMService):
-    DEFAULT_MODEL = "gemini-3.8-flash"
+    DEFAULT_MODEL = "gemini-4-hydrogen"
 
     def __init__(
         self,
@@ -64,6 +64,9 @@ class Gemini(LLMService):
         """
         Sends the prompt to Gemini and returns the raw response text.
         """
+        if os.getenv("DISABLE_AI", "false").strip().lower() == "true":
+            raise RuntimeError("AI is disabled for local fallback testing.")
+
         if not prompt or not prompt.strip():
             raise ValueError("Prompt cannot be empty.")
 

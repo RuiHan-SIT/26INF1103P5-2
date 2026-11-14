@@ -1,9 +1,8 @@
 from io import BytesIO
-
-from docx import Document
-from django.core.files.base import ContentFile
-
 from zoneinfo import ZoneInfo
+
+from django.core.files.base import ContentFile
+from docx import Document
 
 
 class CompletedHandoverDocumentGenerator:
@@ -31,7 +30,7 @@ class CompletedHandoverDocumentGenerator:
         )
         created = handover.created_at.astimezone(ZoneInfo("Asia/Singapore"))
         document.add_paragraph(
-            f"Created on: {created:%d %b %Y, %H:%M}"
+            f"Created on: {created:%d %b %Y, %H:%M} SGT"
         )
 
         if handover.important_information:

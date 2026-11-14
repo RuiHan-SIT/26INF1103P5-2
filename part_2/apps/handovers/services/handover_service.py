@@ -29,24 +29,44 @@ class HandoverService:
         """Returns the configured HandoverCoordinator instance."""
         return self.__coordinator
 
-    def review_document(self, handover_text: str) -> Dict[str, Any]:
+    def review_document(self, handover_text: str, source_data=None) -> Dict[str, Any]:
         """
         Pass 1: Extracts tasks via HandoverCoordinator and validates them
         with Handover logic manager.
         """
-        ai_result = self.__coordinator.review_handover(handover_text)
-        draft_data = copy.deepcopy(ai_result["data"])
+        if source_data is None:
+            ai_result = self.__coordinator.review_handover(handover_text)
+        else:
+            ai_result = self.__coordinator.review_handover(handover_text, source_data=source_data)
+        raw_draft = ai_result.get("data", HandoverCoordinator.FALLBACK_DATA)
+        draft_data = copy.deepcopy(raw_draft)
 
         # Strip AI-only clarification_questions before passing to Handover logic manager
-        cleaned_data = self.__coordinator.strip_clarification_questions(draft_data)
+        cleaned_data = HandoverCoordinator.strip_clarification_questions(draft_data)
         validation_result = Handover(cleaned_data).process()
 
         return {
-            "ai_success": ai_result["success"],
-            "error_message": ai_result["error_message"],
+            "ai_success": bool(ai_result.get("success")),
+            "error_message": ai_result.get("error_message"),
             "draft": draft_data,             # Keep in session (has clarification_questions)
             "validation": validation_result  # {"status": "complete"|"incomplete", ...}
         }
+
+    def validate_draft(self, draft_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Strips AI-only clarification_questions and runs Handover logic validation,
+        returning both the processed validation status and normalized task records.
+        """
+        cleaned_data = HandoverCoordinator.strip_clarification_questions(draft_data)
+        handover = Handover(cleaned_data)
+        return {
+            "validation": handover.process(),
+            "task_records": handover.get_task_records(),
+        }
+
+    def build_table_fallback_data(self, document_text: str) -> Dict[str, Any]:
+        """Extracts fallback handover tasks directly from template tables when AI is offline."""
+        return HandoverCoordinator.build_table_fallback_data(document_text)
 
     def update_draft_task(
         self,
@@ -59,7 +79,7 @@ class HandoverService:
         Pass 2: Applies user edits/clarifications to a task in the draft
         and re-runs Handover logic validation (without calling AI again).
         """
-        cleaned_data = self.__coordinator.strip_clarification_questions(draft_data)
+        cleaned_data = HandoverCoordinator.strip_clarification_questions(draft_data)
         handover = Handover(cleaned_data)
 
         # Validate and apply the edit using logic_manager's update_task()

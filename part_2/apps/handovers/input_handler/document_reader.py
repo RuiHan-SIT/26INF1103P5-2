@@ -36,6 +36,17 @@ class DocumentReader:
 
         return content
 
+    def _read_cell_value(self, cell):
+        value = cell.text.strip()
+        if not value:
+            dropdown_text = cell._tc.xpath(".//w:sdtContent//w:t")
+            value = "".join(part.text or "" for part in dropdown_text).strip()
+
+        # Word displays these defaults until the user chooses a dropdown value.
+        if value.lower() in ("select type", "select frequency"):
+            return ""
+        return value
+
     def read_docx(self, uploaded_file):
 
         try:
@@ -69,12 +80,19 @@ class DocumentReader:
 
              for row in table.rows[1:]:
                   values = [
-                       cell.text.strip()
+                       self._read_cell_value(cell)
                        for cell in row.cells
                   ]
 
                   if not any(values):
                        continue
+
+                  if len(values) >= 4 and not values[3]:
+                       task_name = values[0] or f"Row {task_count + 1}"
+                       raise ValueError(
+                            f'Task "{task_name}" has no task type. Choose Recurring or One-off '
+                            'in the document, then upload it again.'
+                       )
 
                   task_count += 1
                   content_parts.append(f"\nTask {task_count}:")

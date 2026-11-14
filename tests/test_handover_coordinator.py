@@ -1,4 +1,5 @@
 import json
+from datetime import date
 from unittest.mock import MagicMock
 from apps.handovers.services.handover_coordinator import HandoverCoordinator
 from apps.handovers.services.llm_service import LLMService
@@ -64,7 +65,7 @@ def test_coordinator_review_handover_success_with_markdown_fences():
     ```
     """
     coordinator = HandoverCoordinator(llm_service=MockLLM(mock_response))
-    result = coordinator.review_handover("Raw handover document text")
+    result = coordinator.review_handover("Task 1:\nTask Name: Weekly health check\nTask Type: Recurring\nFrequency: weekly")
 
     assert result["success"] is True
     data = result["data"]
@@ -144,7 +145,7 @@ def test_strip_clarification_questions_and_process_with_handover_manager():
                 "owners": ["Bob"],
                 "owner_ids": [],
                 "frequency": "weekly",
-                "start_date": "01/11/2026",
+                "start_date": date.today().strftime("%d/%m/%Y"),
                 "end_date": None,
                 "clarification_questions": ["Where is RabbitMQ hosted?"]
             }
@@ -165,3 +166,24 @@ def test_strip_clarification_questions_and_process_with_handover_manager():
     assert processed["status"] == "complete"
     assert len(processed["outstanding_tasks"]) == 1
     assert len(processed["bau_tasks"]) == 1
+
+
+def test_ai_cannot_choose_missing_frequency():
+    response = json.dumps({
+        "outstanding_tasks": [],
+        "bau_tasks": [{"task": "Review access", "description": "Check access",
+                       "owners": ["Alice"], "frequency": "monthly",
+                       "start_date": "20/12/2026", "clarification_questions": []}],
+        "important_information": []
+    })
+    coordinator = HandoverCoordinator(llm_service=MockLLM(response))
+    document = "Task 1:\nTask Name: Review access\nTask Type: Recurring\nFrequency:"
+    result = coordinator.review_handover(document)
+    assert result["success"]
+    task = result["data"]["bau_tasks"][0]
+    assert task["frequency"] == ""
+    assert any("frequency" in question.lower() for question in task["clarification_questions"])
+    result = coordinator.review_handover(document, source_data={
+        "bau_tasks": [{"task": "Review access", "frequency": "weekly"}]
+    })
+    assert result["data"]["bau_tasks"][0]["frequency"] == "weekly"

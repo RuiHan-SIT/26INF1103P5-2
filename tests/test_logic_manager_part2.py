@@ -11,27 +11,27 @@ from apps.handovers.logic_manager.workload_validator import WorkloadValidator
 def test_bau_keeps_new_fields():
     task = BAUTask(
         "Review logs", "Check system logs", ["Alice Tan"],
-        frequency="weekly", start_date="01/11/2026", end_date="30/11/2026",
+        frequency="weekly", start_date=(date.today() + timedelta(days=1)).strftime("%d/%m/%Y"), end_date=(date.today() + timedelta(days=30)).strftime("%d/%m/%Y"),
         task_id="BAU-1", owner_ids=["EMP-1"]
     )
     assert task.to_dict() == {
         "task_id": "BAU-1", "task": "Review logs",
         "description": "Check system logs", "owners": ["Alice Tan"],
         "owner_ids": ["EMP-1"], "frequency": "weekly",
-        "start_date": "01/11/2026", "end_date": "30/11/2026"
+        "start_date": (date.today() + timedelta(days=1)).strftime("%d/%m/%Y"), "end_date": (date.today() + timedelta(days=30)).strftime("%d/%m/%Y")
     }
 
 
 def test_outstanding_defaults_and_bau_requires_frequency_and_start_date():
     deadline = (date.today() + timedelta(days=7)).strftime("%d/%m/%Y")
     outstanding = OutstandingTask("Report", "Prepare report", ["Alice"], deadline)
-    bau = BAUTask("Logs", "Review logs", ["Alice"], "weekly", "01/11/2026")
+    bau = BAUTask("Logs", "Review logs", ["Alice"], "weekly", (date.today() + timedelta(days=1)).strftime("%d/%m/%Y"))
     assert outstanding.to_dict()["task_id"] is None
     assert outstanding.to_dict()["owner_ids"] == []
     assert outstanding.to_dict()["subtasks"] == []
     assert bau.to_dict()["owner_ids"] == []
     assert bau.to_dict()["frequency"] == "weekly"
-    assert bau.to_dict()["start_date"] == "01/11/2026"
+    assert bau.to_dict()["start_date"] == (date.today() + timedelta(days=1)).strftime("%d/%m/%Y")
     assert bau.to_dict()["end_date"] is None
     assert outstanding.validate() == []
     assert bau.validate() == []
@@ -69,7 +69,7 @@ def test_handover_keeps_new_fields_dates_and_sorting():
         "bau_tasks": [
             {"task_id": "BAU-1", "task": "Logs", "description": "Review logs",
              "owners": ["Alice"], "owner_ids": [], "frequency": "weekly",
-             "start_date": "01/11/2026", "end_date": ""}
+             "start_date": (date.today() + timedelta(days=1)).strftime("%d/%m/%Y"), "end_date": ""}
         ],
         "important_information": ["Maintenance window"]
     }
@@ -83,7 +83,7 @@ def test_handover_keeps_new_fields_dates_and_sorting():
 
 
 def test_existing_required_field_checks_remain():
-    task = BAUTask("", "", [], "weekly", "01/11/2026")
+    task = BAUTask("", "", [], "weekly", (date.today() + timedelta(days=1)).strftime("%d/%m/%Y"))
     assert task.validate() == ["task", "description", "missing_owner(s)"]
     assert OutstandingTask("Report", "Prepare report", ["Alice"], "").validate() == ["missing_deadline"]
     past = (date.today() - timedelta(days=1)).strftime("%d/%m/%Y")
@@ -97,7 +97,7 @@ def test_empty_handover_is_still_incomplete():
 def test_bau_validation_accepts_valid_frequency_and_optional_end_date():
     task = BAUTask(
         "Review logs", "Check system logs", ["Alice"],
-        frequency="Weekly", start_date="01/11/2020", end_date=None
+        frequency="Weekly", start_date=date.today().strftime("%d/%m/%Y"), end_date=None
     )
     assert task.validate() == []
 
@@ -120,7 +120,7 @@ def test_bau_validation_rejects_invalid_frequency_and_dates():
 def test_bau_validation_rejects_end_date_before_start_date():
     task = BAUTask(
         "Review logs", "Check system logs", ["Alice"],
-        frequency="monthly", start_date="10/11/2026", end_date="09/11/2026"
+        frequency="monthly", start_date=(date.today() + timedelta(days=2)).strftime("%d/%m/%Y"), end_date=(date.today() + timedelta(days=1)).strftime("%d/%m/%Y")
     )
     assert task.validate() == ["end_date_before_start_date"]
 
@@ -473,7 +473,7 @@ def test_invalid_bau_edit_keeps_the_original_frequency():
             "task_id": "BAU-1", "task": "Review logs",
             "description": "Check system logs", "owners": ["Alice"],
             "owner_ids": ["E001"], "frequency": "weekly",
-            "start_date": "01/11/2026", "end_date": None
+            "start_date": (date.today() + timedelta(days=1)).strftime("%d/%m/%Y"), "end_date": None
         }],
         "important_information": []
     })
@@ -482,3 +482,13 @@ def test_invalid_bau_edit_keeps_the_original_frequency():
 
     assert result == {"status": "invalid", "errors": ["invalid_frequency"]}
     assert handover.process()["bau_tasks"][0]["frequency"] == "weekly"
+
+def test_bau_start_date_rejects_past_but_keeps_existing_schedule():
+    past = (date.today() - timedelta(days=1)).strftime("%d/%m/%Y")
+    task = BAUTask("Logs", "Review logs", ["Alice"], "weekly", past)
+    assert "past_start_date" in task.validate()
+    saved = BAUTask("Logs", "Review logs", ["Alice"], "weekly", past,
+                    original_start_date=past)
+    assert "past_start_date" not in saved.validate()
+    today = date.today().strftime("%d/%m/%Y")
+    assert BAUTask("Logs", "Review logs", ["Alice"], "weekly", today).validate() == []

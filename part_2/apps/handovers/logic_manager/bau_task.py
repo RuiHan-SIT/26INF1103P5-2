@@ -1,15 +1,31 @@
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from .task import Task
 
 class BAUTask(Task):
-    def __init__(self, name, description, owners, frequency, start_date, end_date=None, task_id=None, owner_ids=None):
+    def __init__(self, name: str, description: str, owners: list, frequency: str | None, start_date: str | None, end_date: str | None = None, task_id: str | None = None, owner_ids: list | None = None, original_start_date: str | None = None) -> None:
         super().__init__(name, description, owners, task_id, owner_ids)
         self.__frequency = frequency
         self.__start_date = start_date
         self.__end_date = end_date
+        self.__original_start_date = original_start_date
 
-    def validate(self):
-        errors = super().validate()
+    @classmethod
+    def from_dict(cls, data: dict) -> "BAUTask":
+        return cls(
+            name=data.get("task", data.get("name", "")),
+            description=data.get("description", ""),
+            owners=data.get("owners", []),
+            frequency=data.get("frequency"),
+            start_date=data.get("start_date"),
+            end_date=data.get("end_date"),
+            task_id=data.get("task_id"),
+            owner_ids=data.get("owner_ids"),
+            original_start_date=data.get("original_start_date"),
+        )
+
+    def validate(self) -> list:
+        errors = self._validate_base()
 
         # BAU tasks need a frequency and start date; the end date is optional.
         if not self.__frequency or not self.__frequency.strip():
@@ -23,6 +39,10 @@ class BAUTask(Task):
         else:
             try:
                 start_date = datetime.strptime(self.__start_date, "%d/%m/%Y").date()
+                today = datetime.now(ZoneInfo("Asia/Singapore")).date()
+                # Preserve an existing schedule when other details are edited.
+                if start_date < today and self.__start_date != self.__original_start_date:
+                    errors.append("past_start_date")
             except (ValueError, TypeError):
                 errors.append("invalid_start_date")
 
@@ -36,7 +56,7 @@ class BAUTask(Task):
 
         return errors
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
         data = super().to_dict()
         data["frequency"] = self.__frequency
         data["start_date"] = self.__start_date

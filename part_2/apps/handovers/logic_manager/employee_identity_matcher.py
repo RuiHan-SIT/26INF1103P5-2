@@ -3,15 +3,15 @@ from difflib import SequenceMatcher
 class EmployeeIdentityMatcher:
     FUZZY_THRESHOLD = 0.70
 
-    def __init__(self, employees):
+    def __init__(self, employees: list) -> None:
         self.__employees = employees
 
     # Ignore case and spaces during the first, exact matching level.
-    def normalize_name(self, name):
+    def normalize_name(self, name: str) -> str:
         return name.strip().lower().replace(" ", "")
 
     # Compare name words while allowing different order or missing parts.
-    def name_components_match(self, first_name, second_name):
+    def name_components_match(self, first_name: str, second_name: str) -> bool:
         first_parts = first_name.strip().lower().split()
         second_parts = second_name.strip().lower().split()
 
@@ -42,7 +42,7 @@ class EmployeeIdentityMatcher:
 
         return True
 
-    def create_match(self, employee, similarity=None):
+    def create_match(self, employee: dict, similarity: float | None = None) -> dict:
         match = {
             "employee_id": employee.get("employee_id"),
             "name": employee.get("name", ""),
@@ -54,14 +54,14 @@ class EmployeeIdentityMatcher:
 
         return match
 
-    def is_registered_employee(self, employee_id):
+    def is_registered_employee(self, employee_id: str) -> bool:
         """Check that a selected employee ID belongs to the supplied directory."""
         for employee in self.__employees:
             if employee.get("employee_id") == employee_id:
                 return True
         return False
 
-    def match_owners(self, owner_names):
+    def match_owners(self, owner_names: list) -> list:
         results = []
 
         for owner_name in owner_names:
