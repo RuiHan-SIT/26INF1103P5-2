@@ -37,3 +37,13 @@ def test_save_handover_database_error(mock_create, mock_atomic):
         HandoverRepository().save_handover(employee, upload, {"outstanding_tasks": [], "bau_tasks": []})
 
     upload.save.assert_not_called()
+
+
+# Searching with text that isn't a handover number, e.g a string, returns no handovers
+@patch("apps.handovers.data_manager.handover_query.Handover.objects.filter")
+def test_search_handovers_invalid_text(mock_filter):
+    employee = MagicMock()
+
+    result = HandoverQuery().search_handovers(employee, search_text="abc")
+
+    assert result == []
