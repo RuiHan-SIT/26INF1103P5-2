@@ -2,7 +2,7 @@ class FileValidator:
 
     def __init__(self, max_size=10 * 1024 * 1024):
         self.max_size = max_size  # Default max size is 10 MB
-        self.allowed_extensions = [".txt", ".docx"]
+        self.allowed_extensions = [".docx"]
 
     def validate_file(self, uploaded_file):
 
@@ -16,7 +16,7 @@ class FileValidator:
             for ext in self.allowed_extensions
         ):
             raise ValueError(
-                f"Invalid file type. Only TXT and DOCX are allowed."
+                f"Invalid file type. Only Word (.docx) files are allowed."
             )
 
         if uploaded_file.size == 0:
