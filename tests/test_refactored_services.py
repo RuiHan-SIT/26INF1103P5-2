@@ -357,3 +357,40 @@ def test_handover_controller_dependency_injection():
     resp_ok = controller.update_task_status(status_req, task_id=42)
     assert resp_ok.status_code == 200
     task_service.update_task_status.assert_called_once()
+
+
+def test_draft_and_clarification_services_delegate_to_handover_service():
+    handover_service = MagicMock()
+    handover_service.validate_draft.return_value = {
+        "validation": {"status": "complete", "outstanding_tasks": [], "bau_tasks": []},
+        "task_records": {"outstanding_tasks": [], "bau_tasks": [], "important_information": []},
+    }
+    repository = MagicMock()
+
+    draft_service = HandoverDraftService(
+        input_handler=MagicMock(),
+        handover_service=handover_service,
+        repository=repository,
+        query=MagicMock(all_employees=MagicMock(return_value=[])),
+        mapper=HandoverDraftMapper(),
+        cancellation_tracker=MagicMock(),
+    )
+    draft_service.save_draft(
+        SimpleNamespace(pk=1),
+        SimpleNamespace(pk=2),
+        {"outstanding_tasks": [], "bau_tasks": [], "important_information": []},
+        {},
+    )
+    handover_service.validate_draft.assert_called_once()
+    repository.save_handover.assert_called_once()
+
+    clarification_service = HandoverClarificationService(
+        handover_service=handover_service,
+        mapper=HandoverDraftMapper(),
+        repository=repository,
+        cancellation_tracker=MagicMock(),
+        document_generator=MagicMock(),
+    )
+    fake_handover = SimpleNamespace(pk=10, status="needs_clarification")
+    clarification_service.delete_handover(fake_handover)
+    repository.delete_handover.assert_called_once_with(fake_handover)

@@ -29,6 +29,7 @@ jobs:
 
       - name: Run Pytest Test Suite
         run: |
+          python part_2/manage.py migrate --noinput
           python -m pytest tests/
 
       - name: Run Django App Tests
