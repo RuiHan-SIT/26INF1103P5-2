@@ -6,14 +6,14 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db.models import Prefetch
-from django.http import FileResponse, HttpResponseServerError, JsonResponse
+from django.http import FileResponse, Http404, HttpResponseServerError, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from .data_manager.handover_query import HandoverQuery
 from .forms import HandoverUploadForm
-from .models import Employee, Handover, Subtask
+from .models import Handover, Subtask
 from .services.cancellation_tracker import CancellationTracker
 from .services.handover_clarification_service import HandoverClarificationService
 from .services.handover_draft_service import HandoverDraftService
@@ -332,13 +332,12 @@ class HandoverController:
         return redirect("handovers:handover_history")
 
     def download_completed_handover(self, request, handover_id):
-        employee = get_object_or_404(Employee, user=request.user)
-        handover = get_object_or_404(
-            Handover,
-            pk=handover_id,
-            created_by=employee,
-            status="completed",
-        )
+        employee = getattr(request.user, "employee", None)
+
+        # Only allow the logged-in employee to download their own completed handover
+        handover = self._query.downloadable_handover(handover_id, employee)
+        if handover is None:
+            raise Http404("Handover not found.")
 
         try:
             self._clarification_service.ensure_completed_document(handover)
