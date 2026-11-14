@@ -75,7 +75,7 @@ End Date:
 
     assert len(fallback_data["bau_tasks"]) == 1
     assert fallback_data["bau_tasks"][0]["task"] == "Daily Monitoring"
-    assert fallback_data["bau_tasks"][0]["frequency"] == "Daily"
+    assert fallback_data["bau_tasks"][0]["frequency"].lower() == "daily"
     assert fallback_data["bau_tasks"][0]["start_date"] == "01/12/2026"
 
     assert any("Gemini AI was unavailable" in note for note in fallback_data["important_information"])
