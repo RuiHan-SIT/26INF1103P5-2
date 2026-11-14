@@ -1,10 +1,10 @@
 import pytest
-from utils.json_helper import clean_llm_json
+from utils.json_helper import JsonHelper, clean_llm_json
 
 
 def test_clean_llm_json_valid_dictionary():
     raw = '{"outstanding_tasks": [], "bau_tasks": [], "important_information": []}'
-    result = clean_llm_json(raw)
+    result = JsonHelper.clean_llm_json(raw)
     assert result == {
         "outstanding_tasks": [],
         "bau_tasks": [],

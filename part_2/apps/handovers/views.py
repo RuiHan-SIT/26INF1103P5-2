@@ -1,609 +1,421 @@
 import json
 import logging
+from uuid import uuid4
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
+from django.db.models import Prefetch
 from django.http import FileResponse, Http404, HttpResponseServerError, JsonResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_POST
 
-from .data_manager.handover_repository import HandoverRepository
-from .forms import HandoverUploadForm
-from .logic_manager.employee_identity_matcher import EmployeeIdentityMatcher
-from .logic_manager.handover import Handover as LogicHandover
-from .logic_manager.outstanding_task import OutstandingTask
-from .data_manager.data_manager_error import DataManagerError
 from .data_manager.handover_query import HandoverQuery
-from .models import Handover
-from .output.word_document_generator import CompletedHandoverDocumentGenerator
-from .input_handler.handover_input_handler import HandoverInputHandler
-from .services.handover_coordinator import HandoverCoordinator
+from .forms import HandoverUploadForm
+from .models import Handover, Subtask
+from .services.cancellation_tracker import CancellationTracker
+from .services.handover_clarification_service import HandoverClarificationService
+from .services.handover_draft_service import HandoverDraftService
+from .services.pending_draft_session import PendingDraftSession
+from .services.task_execution_service import TaskExecutionService
 
 logger = logging.getLogger(__name__)
-
-
-PENDING_UPLOAD_KEY = "pending_handover_upload_id"
-PENDING_DATA_KEY = "pending_handover_data"
-
-
-def build_review_sections(data):
-    employees = HandoverQuery().employee_list()
-    matcher = EmployeeIdentityMatcher(employees)
-    sections = []
-
-    for task_type, data_key, section_title in [
-        ("outstanding", "outstanding_tasks", "One-off tasks"),
-        ("bau", "bau_tasks", "Recurring BAU tasks"),
-    ]:
-        reviewed_tasks = []
-        for task_index, task in enumerate(data.get(data_key, [])):
-            owner_names = task.get("owners", []) or [""]
-            owner_reviews = []
-
-            for owner_index, owner_name in enumerate(owner_names):
-                match_result = (
-                    matcher.match_owners([owner_name])[0]
-                    if owner_name else {"match_level": None, "matches": []}
-                )
-
-                matched_by_id = {
-                    match["employee_id"]: match
-                    for match in match_result["matches"]
-                }
-                directory_choices = []
-                suggested_choices = []
-                for employee in employees:
-                    match = matched_by_id.get(employee["employee_id"])
-                    choice = {
-                        **employee,
-                        "suggested": match is not None,
-                        "similarity": match.get("similarity") if match else None,
-                    }
-                    directory_choices.append(choice)
-                    if match is not None:
-                        suggested_choices.append(choice)
-                directory_choices.sort(key=lambda choice: choice["name"].lower())
-                suggested_choices.sort(key=lambda choice: choice["name"].lower())
-
-                level_labels = {
-                    "exact": "Exact name match",
-                    "components": "Name parts match",
-                    "fuzzy": "Possible spelling match",
-                }
-                owner_reviews.append({
-                    "owner_name": owner_name or "No owner was identified",
-                    "task_title": task.get("task", "Untitled task"),
-                    "task_type_label": "One-off task" if task_type == "outstanding" else "Recurring BAU task",
-                    "field_name": f"owner_{task_type}_{task_index}_{owner_index}",
-                    "confirmation_field": f"owner_confirmed_{task_type}_{task_index}_{owner_index}",
-                    "match_label": level_labels.get(match_result["match_level"], "Choose an employee"),
-                    "suggested_choices": suggested_choices,
-                    "directory_choices": directory_choices,
-                    "departments": sorted({employee["department"] for employee in employees}),
-                })
-
-            clarification_questions = []
-            for question_index, question in enumerate(task.get("clarification_questions", [])):
-                clarification_questions.append({
-                    "question": question,
-                    "field_name": f"clarification_{task_type}_{task_index}_{question_index}",
-                })
-
-            reviewed_tasks.append({
-                "title": task.get("task", "Untitled task"),
-                "description": task.get("description", ""),
-                "owner_reviews": owner_reviews,
-                "clarification_questions": clarification_questions,
-            })
-
-        if reviewed_tasks:
-            sections.append({"title": section_title, "tasks": reviewed_tasks})
-
-    return sections
-
-
-def collect_clarification_answers(data, post_data):
-    answers = []
-    for task_type, data_key in [
-        ("outstanding", "outstanding_tasks"),
-        ("bau", "bau_tasks"),
-    ]:
-        for task_index, task in enumerate(data.get(data_key, [])):
-            questions = task.get("clarification_questions", [])
-            for question_index, question in enumerate(questions):
-                answer = post_data.get(
-                    f"clarification_{task_type}_{task_index}_{question_index}", ""
-                ).strip()
-                if answer:
-                    answers.append({
-                        "task": task.get("task", "Untitled task"),
-                        "question": question,
-                        "answer": answer,
-                    })
-    return answers
-
-
-def apply_owner_selections(data, post_data):
-    employee_records = HandoverQuery().all_employees()
-    employees = {employee.employee_id: employee for employee in employee_records}
-    matcher = EmployeeIdentityMatcher([
-        {
-            "employee_id": employee.employee_id,
-            "name": employee.name,
-            "department": employee.department,
-        }
-        for employee in employee_records
-    ])
-
-    for task_type, data_key in [
-        ("outstanding", "outstanding_tasks"),
-        ("bau", "bau_tasks"),
-    ]:
-        for task_index, task in enumerate(data.get(data_key, [])):
-            owner_names = task.get("owners", []) or [""]
-            selected_employees = []
-
-            for owner_index, _ in enumerate(owner_names):
-                field_name = f"owner_{task_type}_{task_index}_{owner_index}"
-                selected_id = post_data.get(field_name, "")
-                if selected_id == "__directory__":
-                    return "Choose Neither and confirm to open the employee directory."
-                if not matcher.is_registered_employee(selected_id):
-                    return "Choose an employee from the registered directory."
-                employee = employees.get(selected_id)
-                if not employee:
-                    return "Choose an employee for every name before saving."
-                if selected_id and post_data.get(
-                    f"owner_confirmed_{task_type}_{task_index}_{owner_index}"
-                ) != "yes":
-                    return "Click Confirm for every extracted owner name before saving."
-                if employee not in selected_employees:
-                    selected_employees.append(employee)
-
-            task["owners"] = [employee.name for employee in selected_employees]
-            task["owner_ids"] = [employee.employee_id for employee in selected_employees]
-
-    return None
-
-
-def render_handover_review(request, employee, upload, data, error_message=None, preview_mode=False):
-    review_sections = build_review_sections(data)
-    return render(request, "handovers/home.html", {
-        "employee": employee,
-        "review_mode": True,
-        "preview_mode": preview_mode,
-        "review_sections": review_sections,
-        "has_clarifications": any(
-            task["clarification_questions"]
-            for section in review_sections
-            for task in section["tasks"]
-        ),
-        "review_error": error_message,
-        "uploaded_filename": upload.original_name if upload else (
-            "Sample handover.docx" if preview_mode else ""
-        ),
-        "important_information": data.get("important_information", []),
-    })
-
-
-@login_required(login_url="handovers:login")
-def create_handover(request):
-    employee = getattr(request.user, "employee", None)
-
-    if request.method == "POST":
-        action = request.POST.get("action", "upload")
-
-        if action == "preview_names":
-            owner_names = [
-                name.strip()
-                for name in request.POST.get("demo_names", "").splitlines()
-                if name.strip()
-            ]
-            if not owner_names:
-                return render(request, "handovers/home.html", {
-                    "form": HandoverUploadForm(),
-                    "employee": employee,
-                    "demo_names": request.POST.get("demo_names", ""),
-                    "demo_error": "Enter at least one name, with one name on each line.",
-                })
-
-            preview_data = {
-                "outstanding_tasks": [{
-                    "task": "Sample task for owner matching",
-                    "description": "Preview only. No AI call or handover save.",
-                    "owners": owner_names,
-                    "clarification_questions": [],
-                }],
-                "bau_tasks": [],
-                "important_information": [],
-            }
-            return render_handover_review(
-                request, employee, None, preview_data, preview_mode=True
-            )
-
-        if action == "demo_cancel":
-            return redirect("handovers:home")
-
-        if action == "demo_confirm":
-            owner_names = request.POST.getlist("demo_owner_name")
-            preview_data = {
-                "outstanding_tasks": [{
-                    "task": "Sample task for owner matching",
-                    "description": "Preview only. No AI call or handover save.",
-                    "owners": owner_names,
-                    "clarification_questions": [],
-                }],
-                "bau_tasks": [],
-                "important_information": [],
-            }
-            owner_error = apply_owner_selections(preview_data, request.POST)
-            if owner_error:
-                return render_handover_review(
-                    request, employee, None, preview_data, owner_error,
-                    preview_mode=True,
-                )
-
-            demo_result = [
-                {"extracted_name": source_name, "employee_name": selected_name}
-                for source_name, selected_name in zip(
-                    owner_names, preview_data["outstanding_tasks"][0]["owners"]
-                )
-            ]
-            return render(request, "handovers/home.html", {
-                "form": HandoverUploadForm(),
-                "employee": employee,
-                "demo_result": demo_result,
-            })
-
-        if action in {"refine", "save", "cancel"}:
-            upload_id = request.session.get(PENDING_UPLOAD_KEY)
-            data = request.session.get(PENDING_DATA_KEY)
-            upload = HandoverQuery().pending_upload(upload_id, employee)
-
-            if not upload or not data:
-                request.session.pop(PENDING_UPLOAD_KEY, None)
-                request.session.pop(PENDING_DATA_KEY, None)
-                return redirect("handovers:home")
-
-            if action == "cancel":
-                HandoverRepository().delete_upload(upload)
-                request.session.pop(PENDING_UPLOAD_KEY, None)
-                request.session.pop(PENDING_DATA_KEY, None)
-                return redirect("handovers:home")
-
-            if action == "refine":
-                answers = collect_clarification_answers(data, request.POST)
-                if not answers:
-                    return render_handover_review(
-                        request, employee, upload, data,
-                        "Answer at least one clarification question before asking AI to refine the handover.",
-                    )
-
-                try:
-
-                    input_handler = HandoverInputHandler()
-                    input_handler.validate_clarification_answers(answers)
-
-                    upload.file.open("rb")
-                    try:
-                        document_text = input_handler.process_upload(upload.file)
-                    finally:
-                        upload.file.close()
-
-                    answer_text = "\n".join(
-                        f"Task: {item['task']}\nQuestion: {item['question']}\nReviewer answer: {item['answer']}"
-                        for item in answers
-                    )
-                    refined_prompt = (
-                        f"{document_text}\n\n"
-                        "REVIEWER ANSWERS TO CLARIFICATION QUESTIONS:\n"
-                        f"{answer_text}\n\n"
-                        "Revise the matching tasks using these answers."
-                    )
-                    result = HandoverCoordinator().review_handover(refined_prompt)
-                except (ImportError, OSError, ValueError, RuntimeError, PermissionError) as error:
-                    return render_handover_review(
-                        request, employee, upload, data,
-                        f"Could not refine the handover: {error}",
-                    )
-
-                if not result["success"]:
-                    return render_handover_review(
-                        request, employee, upload, data,
-                        f"Could not refine the handover: {result['error_message']}",
-                    )
-
-                request.session[PENDING_DATA_KEY] = result["data"]
-                return redirect("handovers:home")
-
-            owner_error = apply_owner_selections(data, request.POST)
-            if owner_error:
-                return render_handover_review(request, employee, upload, data, owner_error)
-
-            logic_data = HandoverCoordinator.strip_clarification_questions(data)
-            logic = LogicHandover(logic_data)
-            processed = logic.process()
-
-            has_questions = any(
-                task.get("clarification_questions")
-                for task in data.get("outstanding_tasks", []) + data.get("bau_tasks", [])
-            )
-
-            if processed["status"] == "complete" and not has_questions:
-                try:
-                    handover = HandoverRepository().save_handover(
-                        employee, upload, processed, status="completed"
-                    )
-                except DataManagerError as error:
-                    return render_handover_review(request, employee, upload, data, str(error))
-
-                request.session.pop(PENDING_UPLOAD_KEY, None)
-                request.session.pop(PENDING_DATA_KEY, None)
-                messages.success(
-                    request,
-                    f"Handover H-{handover.pk:04d} was successfully marked as Complete and saved."
-                )
-                return redirect("handovers:handover_history")
-            else:
-                save_data = logic.get_task_records()
-                missing_reasons = []
-                if processed["status"] != "complete":
-                    for err in processed.get("errors", []):
-                        if isinstance(err, dict):
-                            task_name = err.get("task", f"Task {err.get('index', '')}")
-                            reasons = ", ".join(err.get("errors", []))
-                            missing_reasons.append(f"{task_name} ({reasons})")
-                        else:
-                            missing_reasons.append(str(err))
-                if has_questions:
-                    missing_reasons.append("Unanswered clarification questions remain")
-
-                if missing_reasons:
-                    save_data.setdefault("important_information", []).append(
-                        f"⚠️ Needs Clarification: Handover saved with pending items: {'; '.join(missing_reasons)}"
-                    )
-
-                try:
-                    handover = HandoverRepository().save_handover(
-                        employee, upload, save_data, status="needs_clarification"
-                    )
-                except DataManagerError as error:
-                    return render_handover_review(request, employee, upload, data, str(error))
-
-                request.session.pop(PENDING_UPLOAD_KEY, None)
-                request.session.pop(PENDING_DATA_KEY, None)
-                messages.warning(
-                    request,
-                    f"Handover H-{handover.pk:04d} was saved under 'Needs clarification' due to pending items ({'; '.join(missing_reasons)}). You can review it or download the draft document."
-                )
-                return redirect("handovers:handover_history")
-
-        form = HandoverUploadForm(request.POST, request.FILES)
-        if not form.is_valid():
-            return render(request, "handovers/home.html", {
-                "form": form,
-                "employee": employee,
-            })
-
-        if form.is_valid():
-            if not employee:
-                return render(request, "handovers/home.html", {
-                    "form": form,
-                    "employee": employee,
-                    "error_message": "Your employee profile could not be found.",
-                })
-
-            uploaded_file = form.cleaned_data["document"]
-            try:
-                document_text = HandoverInputHandler().process_upload(uploaded_file)
-                result = HandoverCoordinator().review_handover(document_text)
-            except (ImportError, OSError, ValueError, RuntimeError, PermissionError) as error:
-                result = {"success": False, "error_message": str(error)}
-
-            if not result.get("success"):
-                try:
-                    fallback_data = HandoverCoordinator.build_table_fallback_data(document_text)
-                    result = {
-                        "success": True,
-                        "data": fallback_data,
-                        "warning": f"Gemini AI is currently unavailable ({result.get('error_message', 'service offline')}). Tasks were extracted directly from the template tables. Please review and confirm all details manually.",
-                    }
-                except Exception as fallback_err:
-                    return render(request, "handovers/home.html", {
-                        "form": form,
-                        "employee": employee,
-                        "error_message": f"The document could not be reviewed: {result.get('error_message', fallback_err)}",
-                    })
-
-            uploaded_file.seek(0)
-            upload = HandoverRepository().create_upload(uploaded_file, employee)
-            request.session[PENDING_UPLOAD_KEY] = upload.pk
-            request.session[PENDING_DATA_KEY] = result["data"]
-            if result.get("warning"):
-                messages.warning(request, result["warning"])
-            return redirect("handovers:home")
-    else:
-        upload_id = request.session.get(PENDING_UPLOAD_KEY)
-        data = request.session.get(PENDING_DATA_KEY)
-        upload = HandoverQuery().pending_upload(upload_id, employee)
-        if upload and data:
-            return render_handover_review(request, employee, upload, data)
-
-    form = HandoverUploadForm()
-    return render(request, "handovers/home.html", {
-        "form": form,
-        "employee": employee,
-    })
-
-
-@login_required(login_url="handovers:login")
-def my_tasks(request):
-    employee = getattr(request.user, "employee", None)
-    calendar_tasks = []
-
-    if employee:
-        assigned_tasks = HandoverQuery().tasks_owned_by(employee)
-
-        for task in assigned_tasks:
-            handover_label = f"H-{task.handover_id:04d}"
-            if task.task_type == "bau":
-                calendar_tasks.append({
-                    "id": f"task-{task.pk}",
-                    "title": task.title,
-                    "handover": handover_label,
-                    "type": "bau",
-                    "startDate": task.start_date.isoformat() if task.start_date else None,
-                    "endDate": task.end_date.isoformat() if task.end_date else None,
-                    "frequency": task.frequency,
-                })
-                continue
-
-            for subtask in task.subtasks.all():
-                if subtask.planned_date:
-                    calendar_tasks.append({
-                        "id": f"subtask-{subtask.pk}",
-                        "subtaskId": subtask.pk,
-                        "title": f"{subtask.code} {subtask.title}",
-                        "handover": handover_label,
-                        "type": "planned",
-                        "date": subtask.planned_date.isoformat(),
-                        "completed": subtask.status == "done",
-                        "dependencies": [f"subtask-{dependency.pk}" for dependency in subtask.depends_on.all()],
-                    })
-
-            if task.deadline:
-                calendar_tasks.append({
-                    "id": f"deadline-{task.pk}",
-                    "title": task.title,
-                    "handover": handover_label,
-                    "type": "deadline",
-                    "date": task.deadline.isoformat(),
-                })
-
-    return render(request, "handovers/my_tasks.html", {
-        "employee": employee,
-        "calendar_tasks": calendar_tasks,
-    })
-
-
-@login_required(login_url="handovers:login")
-@require_POST
-def update_subtask_status(request, subtask_id):
-    employee = getattr(request.user, "employee", None)
-    if not employee:
-        return JsonResponse({"error": "Employee profile unavailable."}, status=403)
-
-    try:
-        payload = json.loads(request.body)
-        mark_done = payload.get("completed")
-    except (json.JSONDecodeError, AttributeError):
-        return JsonResponse({"error": "Invalid request."}, status=400)
-
-    if not isinstance(mark_done, bool):
-        return JsonResponse({"error": "Invalid completion value."}, status=400)
-
-    subtask = HandoverQuery().subtask_with_task(subtask_id)
-    if subtask is None:
-        return JsonResponse({"error": "Subtask not found."}, status=404)
-    if not subtask.task.owners.filter(pk=employee.pk).exists():
-        return JsonResponse({"error": "You are not assigned to this task."}, status=403)
-
-    if mark_done:
-        task_subtasks = list(subtask.task.subtasks.all())
-        logic_subtasks = []
-        for item in task_subtasks:
-            logic_subtasks.append({
-                "subtask_id": item.code,
-                "task": item.title,
-                "planned_date": item.planned_date.strftime("%d/%m/%Y"),
-                "dependencies": list(item.depends_on.values_list("code", flat=True)),
-            })
-
-        manager = OutstandingTask(
-            name=subtask.task.title,
-            description=subtask.task.description or "Task",
-            owners=list(subtask.task.owners.values_list("name", flat=True)),
-            owner_ids=list(subtask.task.owners.values_list("employee_id", flat=True)),
-            deadline=(subtask.task.deadline or subtask.planned_date).strftime("%d/%m/%Y"),
-            task_id=subtask.task_id,
-            subtasks=logic_subtasks,
-        )
-        completed_codes = set(
-            subtask.task.subtasks.filter(status="done").values_list("code", flat=True)
-        )
-        if not manager.can_complete_subtask(subtask.code, completed_codes):
-            return JsonResponse({
-                "error": "Complete the required earlier subtask(s) first."
-            }, status=409)
-    elif subtask.needed_by.filter(status="done").exists():
-        return JsonResponse({
-            "error": "A later dependent subtask is already complete. Undo that first."
-        }, status=409)
-
-    try:
-        HandoverRepository().update_subtask_status(subtask, mark_done)
-    except DataManagerError as error:
-        return JsonResponse({"error": str(error)}, status=503)
-    return JsonResponse({"completed": mark_done})
-
 
 HISTORY_PAGE_SIZE = 10
 
 
-@login_required(login_url="handovers:login")
-def handover_history(request):
-    """List the logged-in employee's handovers, with search, status filter and pages."""
-    query = request.GET.get("q", "").strip()
-    selected_status = request.GET.get("status", "").strip()
-    employee = getattr(request.user, "employee", None)
+class HandoverController:
+    """HTTP controller coordinating handover views with injected application services."""
 
-    handovers = HandoverQuery().search_handovers(employee, query, selected_status)
+    def __init__(
+        self,
+        draft_service=None,
+        clarification_service=None,
+        task_service=None,
+        query=None,
+        cancellation_tracker=None,
+        session_cls=PendingDraftSession,
+    ):
+        self._draft_service = draft_service or HandoverDraftService()
+        self._clarification_service = clarification_service or HandoverClarificationService()
+        self._task_service = task_service or TaskExecutionService()
+        self._query = query or HandoverQuery()
+        self._cancellation = cancellation_tracker or CancellationTracker()
+        self._session_cls = session_cls
 
-    total_count = len(handovers)
-    page_obj = Paginator(handovers, HISTORY_PAGE_SIZE).get_page(
-        request.GET.get("page", 1)
-    )
+    # ---- Draft & Upload endpoints ----------------------------------------
 
-    return render(request, "handovers/history.html", {
-        "handovers": page_obj.object_list,
-        "page_obj": page_obj,
-        "query": query,
-        "selected_status": selected_status,
-        "status_choices": Handover.STATUS_CHOICES,   # [("active","Active"), ("completed","Completed")]
-        "total_count": total_count,
-        "employee": employee,
-    })
+    def cancel_handover_processing(self, request):
+        employee = getattr(request.user, "employee", None)
+        request_token = request.POST.get("request_token", "")
+        if not self._cancellation.cancel(employee, request_token):
+            return JsonResponse({"cancelled": False}, status=400)
+        return JsonResponse({
+            "cancelled": True,
+            "redirect_url": reverse("handovers:home"),
+        })
 
+    def create_handover(self, request):
+        employee = getattr(request.user, "employee", None)
+        draft_session = self._session_cls(request, query=self._query)
 
-@login_required(login_url="handovers:login")
-def download_completed_handover(request, handover_id):
-    employee = getattr(request.user, "employee", None)
+        if request.method != "POST":
+            upload, data = draft_session.load(employee)
+            if upload and data:
+                return self._render_review_home(request, employee, upload, data)
+            return self._render_upload_home(request, employee)
 
-    # Only allow the logged-in employee to download their own handover
-    handover = HandoverQuery().downloadable_handover(handover_id, employee)
-    if handover is None:
-        raise Http404("Handover not found.")
+        action = request.POST.get("action", "upload")
+        if action in {"refine", "save", "cancel"}:
+            return self._dispatch_draft_action(request, employee, action, draft_session)
 
-    # Generate and store the document on its first download request
-    if not handover.completed_document:
-        try:
-            CompletedHandoverDocumentGenerator().save(handover)
-        except (OSError, ValueError):
-            logger.exception(
-                "Could not generate handover document %s",
-                handover.pk,
+        return self._handle_upload_action(request, employee, draft_session)
+
+    def _handle_upload_action(self, request, employee, draft_session):
+        form = HandoverUploadForm(request.POST, request.FILES)
+        if not form.is_valid():
+            return self._render_upload_home(request, employee, form=form)
+
+        request_token = request.POST.get("request_token", "")
+        result = self._draft_service.upload_and_review(
+            employee, form.cleaned_data["document"], request_token
+        )
+        if result["status"] == "cancelled":
+            return redirect("handovers:home")
+        if result["status"] == "error":
+            return self._render_upload_home(
+                request, employee, form=form, error_message=result["error_message"]
             )
+
+        draft_session.save(result["upload"], result["data"])
+        if result.get("warning"):
+            messages.warning(request, result["warning"])
+        return redirect("handovers:home")
+
+    def _dispatch_draft_action(self, request, employee, action, draft_session):
+        upload, data = draft_session.load(employee)
+        if not upload or not data:
+            return redirect("handovers:home")
+
+        handlers = {
+            "cancel": self._draft_cancel,
+            "refine": self._draft_refine,
+            "save": self._draft_save,
+        }
+        return handlers[action](request, employee, upload, data, draft_session)
+
+    def _draft_cancel(self, request, employee, upload, data, draft_session):
+        self._draft_service.cancel_draft(upload)
+        draft_session.clear()
+        return redirect("handovers:home")
+
+    def _draft_refine(self, request, employee, upload, data, draft_session):
+        request_token = request.POST.get("request_token", "")
+        result = self._draft_service.refine_draft(
+            employee, upload, data, request.POST, request_token
+        )
+        if result["status"] == "cancelled":
+            return self._draft_cancel(request, employee, upload, data, draft_session)
+        if result["status"] == "error":
+            return self._render_review_home(
+                request, employee, upload, data, result["error_message"]
+            )
+        draft_session.update_data(result["data"])
+        return redirect("handovers:home")
+
+    def _draft_save(self, request, employee, upload, data, draft_session):
+        result = self._draft_service.save_draft(employee, upload, data, request.POST)
+        if result["status"] in {"invalid", "error"}:
+            return self._render_review_home(
+                request, employee, upload, data, result["error_message"]
+            )
+        draft_session.clear()
+        if result["status"] == "completed":
+            messages.success(
+                request,
+                f"Handover H-{result['handover'].pk:04d} was successfully marked as Complete and saved.",
+            )
+        else:
+            messages.warning(
+                request,
+                f"Handover H-{result['handover'].pk:04d} was saved under 'Needs clarification' "
+                f"due to pending items ({'; '.join(result['missing_reasons'])}). "
+                "You can review it or download the draft document.",
+            )
+        return redirect("handovers:handover_history")
+
+    # ---- My Tasks & Execution endpoints ----------------------------------
+
+    def my_tasks(self, request):
+        employee = getattr(request.user, "employee", None)
+        context = self._task_service.build_my_tasks_context(employee)
+        context["employee"] = employee
+        return render(request, "handovers/my_tasks.html", context)
+
+    def update_task_status(self, request, task_id):
+        payload, error_response = self._parse_completed_payload(request)
+        if error_response:
+            return error_response
+
+        employee = getattr(request.user, "employee", None)
+        result = self._task_service.update_task_status(
+            employee=employee,
+            task_id=task_id,
+            mark_done=payload.get("completed"),
+            occurrence_date_str=payload.get("date", ""),
+        )
+        return self._status_json_response(result)
+
+    def update_subtask_status(self, request, subtask_id):
+        payload, error_response = self._parse_completed_payload(request)
+        if error_response:
+            return error_response
+
+        employee = getattr(request.user, "employee", None)
+        result = self._task_service.update_subtask_status(
+            employee=employee,
+            subtask_id=subtask_id,
+            mark_done=payload.get("completed"),
+        )
+        return self._status_json_response(result)
+
+    # ---- History, Detail & Export endpoints ------------------------------
+
+    def handover_history(self, request):
+        query = request.GET.get("q", "").strip()
+        selected_status = request.GET.get("status", "").strip()
+        employee = getattr(request.user, "employee", None)
+
+        handovers = self._query.search_handovers(employee, query, selected_status)
+        page_obj = Paginator(handovers, HISTORY_PAGE_SIZE).get_page(
+            request.GET.get("page", 1)
+        )
+
+        return render(request, "handovers/history.html", {
+            "handovers": page_obj.object_list,
+            "page_obj": page_obj,
+            "query": query,
+            "selected_status": selected_status,
+            "status_choices": Handover.STATUS_CHOICES,
+            "total_count": len(handovers),
+            "employee": employee,
+        })
+
+    def handover_detail(self, request, handover_id):
+        employee = getattr(request.user, "employee", None)
+        subtask_prefetch = Prefetch(
+            "tasks__subtasks",
+            queryset=Subtask.objects.order_by("code").prefetch_related("depends_on"),
+        )
+        handover = get_object_or_404(
+            Handover.objects.prefetch_related("tasks__owners", subtask_prefetch),
+            pk=handover_id,
+            created_by=employee,
+        )
+
+        detail_url = reverse("handovers:handover_detail", args=[handover.pk])
+        edit_url = f"{detail_url}?edit=1"
+        edit_mode = handover.status in ("completed", "needs_clarification") and (
+            request.GET.get("edit") == "1"
+            or (request.method == "POST" and request.POST.get("edit_mode") == "1")
+        )
+        tasks = list(handover.tasks.all())
+
+        if request.method == "POST":
+            if handover.status not in ("completed", "needs_clarification"):
+                messages.error(request, "This handover cannot be edited.")
+                return redirect(detail_url)
+            if not edit_mode:
+                messages.error(request, "Open Edit handover before making changes.")
+                return redirect(detail_url)
+
+            return self._dispatch_detail_post(
+                request, employee, handover, tasks, detail_url, edit_url
+            )
+
+        self._clarification_service.attach_detail_attention(handover, tasks)
+        return render(request, "handovers/handover_detail.html", {
+            "employee": employee,
+            "handover": handover,
+            "tasks": tasks,
+            "edit_errors": [],
+            "edit_mode": edit_mode,
+            "show_edit_shortcut": request.GET.get("rechecked") == "1",
+            "detail_url": detail_url,
+            "edit_url": edit_url,
+            "ai_suggestions": request.session.get(f"handover_ai_suggestions_{handover.pk}"),
+            "request_token": str(uuid4()),
+        })
+
+    def _dispatch_detail_post(
+        self, request, employee, handover, tasks, detail_url, edit_url
+    ):
+        action = request.POST.get("action", "save")
+        handlers = {
+            "discard_ai_suggestions": self._detail_discard_ai,
+            "apply_ai_suggestions": self._detail_apply_ai,
+            "ai_refine": self._detail_ai_refine,
+            "save": self._detail_save,
+        }
+        handler = handlers.get(action, self._detail_save)
+        return handler(request, employee, handover, tasks, detail_url, edit_url)
+
+    def _detail_discard_ai(self, request, employee, handover, tasks, detail_url, edit_url):
+        request.session.pop(f"handover_ai_suggestions_{handover.pk}", None)
+        return redirect(edit_url)
+
+    def _detail_apply_ai(self, request, employee, handover, tasks, detail_url, edit_url):
+        suggestion_key = f"handover_ai_suggestions_{handover.pk}"
+        result = self._clarification_service.apply_ai_suggestions(
+            handover, tasks, request.session.get(suggestion_key)
+        )
+        if result["clear_suggestions"]:
+            request.session.pop(suggestion_key, None)
+        (messages.success if result["success"] else messages.error)(request, result["message"])
+        return redirect(edit_url)
+
+    def _detail_ai_refine(self, request, employee, handover, tasks, detail_url, edit_url):
+        suggestion_key = f"handover_ai_suggestions_{handover.pk}"
+        request_token = request.POST.get("request_token", "")
+        result = self._clarification_service.request_ai_refinement(
+            employee, handover, tasks, request.POST, request_token
+        )
+        if result["status"] == "cancelled":
+            return redirect(edit_url)
+        if result["status"] == "ready":
+            request.session[suggestion_key] = result["suggestions"]
+            messages.info(request, result["message"])
+        elif result.get("message"):
+            messages.error(request, result["message"])
+        return redirect(edit_url)
+
+    def _detail_save(self, request, employee, handover, tasks, detail_url, edit_url):
+        suggestion_key = f"handover_ai_suggestions_{handover.pk}"
+        request.session.pop(suggestion_key, None)
+        result = self._clarification_service.save_clarification_edits(
+            handover, tasks, request.POST
+        )
+        if result["status"] == "invalid_dates":
+            messages.error(
+                request, "Some dates were invalid. Please correct them and save again."
+            )
+            self._clarification_service.attach_detail_attention(handover, tasks)
+            return render(request, "handovers/handover_detail.html", {
+                "employee": employee,
+                "handover": handover,
+                "tasks": tasks,
+                "edit_errors": result["edit_errors"],
+                "edit_mode": True,
+                "detail_url": detail_url,
+                "edit_url": edit_url,
+                "ai_suggestions": request.session.get(suggestion_key),
+                "request_token": str(uuid4()),
+            })
+        if result["status"] == "completed":
+            messages.success(
+                request, "The handover details are valid and the handover is now complete.",
+            )
+            return redirect(f"{detail_url}?rechecked=1")
+
+        warning = "Your edits were saved, but some required details still need attention."
+        if result["validation_messages"]:
+            warning += " " + " ".join(result["validation_messages"])
+        messages.warning(request, warning)
+        return redirect(edit_url)
+
+    def delete_handover(self, request, handover_id):
+        employee = getattr(request.user, "employee", None)
+        handover = get_object_or_404(Handover, pk=handover_id, created_by=employee)
+        self._clarification_service.delete_handover(handover)
+        messages.success(request, f"Handover H-{handover_id:04d} was deleted.")
+        return redirect("handovers:handover_history")
+
+    def download_completed_handover(self, request, handover_id):
+        employee = getattr(request.user, "employee", None)
+
+        # Only allow the logged-in employee to download their own completed handover
+        handover = self._query.downloadable_handover(handover_id, employee)
+        if handover is None:
+            raise Http404("Handover not found.")
+
+        try:
+            self._clarification_service.ensure_completed_document(handover)
+        except (OSError, ValueError):
+            logger.exception("Could not generate handover document %s", handover.pk)
             return HttpResponseServerError(
                 "Could not generate the Word document. Please try again later."
             )
 
-    return FileResponse(
-        handover.completed_document.open("rb"),
-        as_attachment=True,
-        filename=f"handover-{handover.pk:04d}.docx",
-        content_type=(
-            "application/vnd.openxmlformats-officedocument."
-            "wordprocessingml.document"
-        ),
-    )
+        return FileResponse(
+            handover.completed_document.open("rb"),
+            as_attachment=True,
+            filename=f"handover-{handover.pk:04d}.docx",
+            content_type=(
+                "application/vnd.openxmlformats-officedocument."
+                "wordprocessingml.document"
+            ),
+        )
+
+    # ---- Shared rendering & JSON helpers ---------------------------------
+
+    @staticmethod
+    def _render_upload_home(request, employee, form=None, error_message=None):
+        return render(request, "handovers/home.html", {
+            "form": form or HandoverUploadForm(),
+            "employee": employee,
+            "error_message": error_message,
+            "request_token": str(uuid4()),
+        })
+
+    def _render_review_home(self, request, employee, upload, data, error_message=None):
+        context = self._draft_service.build_review_context(
+            employee, upload, data, error_message
+        )
+        context["request_token"] = str(uuid4())
+        return render(request, "handovers/home.html", context)
+
+    @staticmethod
+    def _parse_completed_payload(request):
+        try:
+            payload = json.loads(request.body)
+            return payload, None
+        except (json.JSONDecodeError, AttributeError):
+            return None, JsonResponse({"error": "Invalid request."}, status=400)
+
+    @staticmethod
+    def _status_json_response(result):
+        if not result["success"]:
+            return JsonResponse({"error": result["error_message"]}, status=result["status_code"])
+        return JsonResponse({"completed": result["completed"]})
+
+
+_controller = HandoverController()
+
+cancel_handover_processing = login_required(login_url="handovers:login")(
+    require_POST(_controller.cancel_handover_processing)
+)
+create_handover = login_required(login_url="handovers:login")(
+    _controller.create_handover
+)
+my_tasks = login_required(login_url="handovers:login")(
+    _controller.my_tasks
+)
+update_task_status = login_required(login_url="handovers:login")(
+    require_POST(_controller.update_task_status)
+)
+update_subtask_status = login_required(login_url="handovers:login")(
+    require_POST(_controller.update_subtask_status)
+)
+handover_history = login_required(login_url="handovers:login")(
+    _controller.handover_history
+)
+handover_detail = login_required(login_url="handovers:login")(
+    _controller.handover_detail
+)
+delete_handover = login_required(login_url="handovers:login")(
+    require_POST(_controller.delete_handover)
+)
+download_completed_handover = login_required(login_url="handovers:login")(
+    _controller.download_completed_handover
+)

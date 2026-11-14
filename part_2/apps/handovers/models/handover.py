@@ -5,7 +5,6 @@ from .employee import Employee
 
 class Handover(models.Model):
     STATUS_CHOICES = [
-        ("active", "Active"),
         ("completed", "Completed"),
         ("needs_clarification", "Needs Clarification"),
     ]
@@ -23,8 +22,8 @@ class Handover(models.Model):
             blank=True,
         )
     
-    # It's either "active", "completed", or "needs_clarification"
-    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default="active")
+    # This status describes the handover review, separately from task completion.
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default="needs_clarification")
 
     # Stores extra notes from the handover that aren't tasks, then saved in a list
     important_information = models.JSONField(default=list, blank=True)

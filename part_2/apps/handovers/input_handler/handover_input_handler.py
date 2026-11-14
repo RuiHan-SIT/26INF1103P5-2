@@ -4,10 +4,15 @@ from .document_reader import DocumentReader
 
 class HandoverInputHandler:
 
-    def __init__(self):
-        self.input_validator = InputValidator()
-        self.file_validator = FileValidator()
-        self.document_reader = DocumentReader()
+    def __init__(
+        self,
+        input_validator=None,
+        file_validator=None,
+        document_reader=None,
+    ):
+        self.input_validator = input_validator or InputValidator()
+        self.file_validator = file_validator or FileValidator()
+        self.document_reader = document_reader or DocumentReader()
 
     def process_upload(self, uploaded_file):
 
@@ -38,7 +43,7 @@ class HandoverInputHandler:
                 raise ValueError(
                     "Sensitive information detected in clarification answer."
                 )
-            return True
+        return True
         
     def validate_manual_input(self, name, department, employee_id):
 

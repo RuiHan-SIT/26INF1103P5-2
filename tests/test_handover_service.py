@@ -1,3 +1,6 @@
+import json
+from datetime import timedelta
+from django.utils import timezone
 from unittest.mock import MagicMock
 from apps.handovers.services.handover_service import HandoverService
 from apps.handovers.services.handover_coordinator import HandoverCoordinator
@@ -42,7 +45,16 @@ def test_pass_1_review_document_success():
     coordinator = HandoverCoordinator(llm_service=MockLLM(ai_response))
     service = HandoverService(coordinator=coordinator)
 
-    result = service.review_document("Handover notes content")
+    response_data = json.loads(ai_response)
+    start = timezone.localdate() + timedelta(days=1)
+    response_data["bau_tasks"][0]["start_date"] = start.strftime("%d/%m/%Y")
+    response_data["bau_tasks"][0]["end_date"] = (start + timedelta(days=30)).strftime("%d/%m/%Y")
+    response_data["outstanding_tasks"][0]["deadline"] = (start + timedelta(days=7)).strftime("%d/%m/%Y")
+    coordinator = HandoverCoordinator(llm_service=MockLLM(json.dumps(response_data)))
+    service = HandoverService(coordinator=coordinator)
+    result = service.review_document(
+        "Task 1:\nTask Name: Weekly health check\nTask Type: Recurring\nFrequency: weekly"
+    )
 
     assert result["ai_success"] is True
     assert result["error_message"] is None

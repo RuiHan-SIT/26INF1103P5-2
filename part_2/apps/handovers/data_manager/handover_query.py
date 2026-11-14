@@ -22,7 +22,7 @@ class HandoverQuery:
             return list(
                 Task.objects.filter(owners=employee)
                 .select_related("handover")
-                .prefetch_related("subtasks__depends_on")
+                .prefetch_related("subtasks__depends_on", "completions")
                 .distinct()
             )
         except DatabaseError as error:
@@ -56,6 +56,18 @@ class HandoverQuery:
         except DatabaseError as error:
             logger.exception("Could not load upload %s", upload_id)
             raise DataManagerError("load your uploaded file") from error
+
+    # Gets one task owned by this employee, including its subtasks and recurring progress.
+    def task_with_progress(self, task_id, employee):
+        try:
+            return (
+                Task.objects.filter(pk=task_id, owners=employee)
+                .prefetch_related("subtasks__depends_on", "completions")
+                .first()
+            )
+        except DatabaseError as error:
+            logger.exception("Could not load task %s", task_id)
+            raise DataManagerError("load the task") from error
 
     # Gets one subtask with its task and the task's other subtasks (None if not found)
     def subtask_with_task(self, subtask_id):
@@ -100,7 +112,7 @@ class HandoverQuery:
             return Handover.objects.filter(
                 pk=handover_id,
                 created_by=employee,
-                status__in=["completed", "needs_clarification"],
+                status="completed",
             ).first()
         except DatabaseError as error:
             logger.exception("Could not load handover %s", handover_id)

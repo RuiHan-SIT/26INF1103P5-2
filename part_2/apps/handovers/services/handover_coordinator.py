@@ -5,7 +5,7 @@ from typing import Any, Dict, Optional
 from .llm_service import LLMService
 from .gemini import Gemini
 from utils.prompt import HANDOVER_REVIEW_PROMPT
-from utils.json_helper import clean_llm_json
+from utils.json_helper import JsonHelper
 from apps.schema import validate_and_normalize_handover
 
 logger = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ class HandoverCoordinator:
         """Returns the configured LLM service instance."""
         return self.__llm_service
 
-    def review_handover(self, handover_content: str) -> Dict[str, Any]:
+    def review_handover(self, handover_content: str, source_data=None) -> Dict[str, Any]:
         """
         Coordinates submitting sanitized handover text to Gemini for review,
         cleaning the response, and validating the schema.
@@ -64,10 +64,13 @@ class HandoverCoordinator:
             )
 
             # 2. Delegate JSON cleaning & repair
-            parsed_data = clean_llm_json(raw_response)
+            parsed_data = JsonHelper.clean_llm_json(raw_response)
 
             # 3. Delegate schema validation & normalization
             normalized_data = validate_and_normalize_handover(parsed_data)
+            if source_data is None:
+                source_data = self.build_table_fallback_data(handover_content)
+            self.preserve_bau_frequencies(normalized_data, source_data)
 
             return {
                 "success": True,
@@ -89,6 +92,21 @@ class HandoverCoordinator:
                 "data": copy.deepcopy(self.FALLBACK_DATA),
                 "error_message": f"An unexpected error occurred during handover processing: {err}"
             }
+
+    def preserve_bau_frequencies(self, data, source_data):
+        """Only accept recurrence frequencies supplied in the source or by the reviewer."""
+        source_tasks = source_data.get("bau_tasks", [])
+        for index, task in enumerate(data.get("bau_tasks", [])):
+            matching = [source for source in source_tasks
+                        if source.get("task", "").strip().lower() == task.get("task", "").strip().lower()]
+            source = matching[0] if len(matching) == 1 else None
+            if source is None and len(source_tasks) == len(data.get("bau_tasks", [])):
+                source = source_tasks[index]
+            task["frequency"] = str((source or {}).get("frequency") or "").strip().lower()
+            if not task["frequency"]:
+                questions = task.setdefault("clarification_questions", [])
+                if not any("frequency" in question.lower() for question in questions):
+                    questions.append("What frequency should this recurring task use: weekly, monthly, or yearly?")
 
     @staticmethod
     def strip_clarification_questions(data: Optional[Dict[str, Any]]) -> Dict[str, Any]:
@@ -144,7 +162,9 @@ class HandoverCoordinator:
         tasks = []
 
         for line in lines:
-            if line.lower().startswith("task ") and line.endswith(":"):
+            task_header = line[:-1].strip().lower() if line.endswith(":") else ""
+            task_number = task_header[5:].strip() if task_header.startswith("task ") else ""
+            if task_number and all(part.isdigit() for part in task_number.split(".")):
                 if current_task and current_task.get("task"):
                     tasks.append(current_task)
                 current_task = {}
@@ -174,16 +194,27 @@ class HandoverCoordinator:
             tasks.append(current_task)
 
         for t in tasks:
-            task_type = t.get("task_type", "").lower()
+            task_type = t.get("task_type", "").strip().lower()
             owners = t.get("owners", [])
+            start_date = t.get("start_date") or None
+            end_date = t.get("end_date") or None
+            frequency = (t.get("frequency") or "").strip().lower()
+
             if "bau" in task_type or "recur" in task_type:
+                is_bau = True
+            elif "one-off" in task_type or "one off" in task_type or "outstanding" in task_type:
+                is_bau = False
+            else:
+                is_bau = bool(frequency or start_date or end_date)
+
+            if is_bau:
                 data["bau_tasks"].append({
                     "task": t.get("task", "Untitled Task"),
                     "description": t.get("description", ""),
                     "owners": owners,
-                    "frequency": t.get("frequency") or "",
-                    "start_date": t.get("start_date") or None,
-                    "end_date": t.get("end_date") or None,
+                    "frequency": frequency,
+                    "start_date": start_date,
+                    "end_date": end_date,
                     "clarification_questions": [],
                 })
             else:

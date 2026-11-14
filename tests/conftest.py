@@ -9,5 +9,8 @@ if str(PART_2_DIR) not in sys.path:
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 import django
+from django.core.management import call_command
+
 django.setup()
+call_command("migrate", verbosity=0, interactive=False)
 
