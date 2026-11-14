@@ -1,10 +1,11 @@
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from django.db import OperationalError
 
 from apps.handovers.data_manager.data_manager_error import DataManagerError
 from apps.handovers.data_manager.handover_query import HandoverQuery
+from apps.handovers.data_manager.handover_repository import HandoverRepository
 
 
 # Tests that DataManagerError gives the right message and is a type of Exception
@@ -22,3 +23,17 @@ def test_all_employees_database_error(mock_all):
 
     with pytest.raises(DataManagerError):
         HandoverQuery().all_employees()
+
+
+# A locked or missing database while saving a handover gives a DataManagerError, and the upload is not linked
+@patch("apps.handovers.data_manager.handover_repository.transaction.atomic")
+@patch("apps.handovers.data_manager.handover_repository.Handover.objects.create")
+def test_save_handover_database_error(mock_create, mock_atomic):
+    mock_create.side_effect = OperationalError("database is locked")
+    employee = MagicMock()
+    upload = MagicMock()
+
+    with pytest.raises(DataManagerError):
+        HandoverRepository().save_handover(employee, upload, {"outstanding_tasks": [], "bau_tasks": []})
+
+    upload.save.assert_not_called()
