@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Handover H-{{ handover.pk|stringformat:"04d" }} | Handover Assistant</title>
     <link rel="stylesheet" href="{% static 'css/my_tasks.css' %}?v=9">
-    <link rel="stylesheet" href="{% static 'css/history.css' %}?v=13">
+    <link rel="stylesheet" href="{% static 'css/history.css' %}?v=15">
 </head>
 <body>
     <div class="app-shell">
@@ -50,7 +50,12 @@
                 </div>
                 <span class="status-badge status-{{ handover.status|slugify }}">{{ handover.get_status_display }}</span>
                 {% if handover.status == "completed" %}
-                <a class="create-button" href="{% url 'handovers:download_completed_handover' handover.pk %}">Download Word document</a>
+                <div class="detail-header-actions">
+                    {% if show_edit_shortcut and not edit_mode %}
+                    <a class="create-button detail-edit-shortcut" href="{{ edit_url }}">Edit handover</a>
+                    {% endif %}
+                    <a class="create-button" href="{% url 'handovers:download_completed_handover' handover.pk %}">Download Word document</a>
+                </div>
                 {% endif %}
             </header>
 

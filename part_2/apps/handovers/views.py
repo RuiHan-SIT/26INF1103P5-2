@@ -241,6 +241,7 @@ class HandoverController:
             "tasks": tasks,
             "edit_errors": [],
             "edit_mode": edit_mode,
+            "show_edit_shortcut": request.GET.get("rechecked") == "1",
             "detail_url": detail_url,
             "edit_url": edit_url,
             "ai_suggestions": request.session.get(f"handover_ai_suggestions_{handover.pk}"),
@@ -313,9 +314,9 @@ class HandoverController:
             })
         if result["status"] == "completed":
             messages.success(
-                request, "The handover details are valid and the handover is now complete."
+                request, "The handover details are valid and the handover is now complete.",
             )
-            return redirect(detail_url)
+            return redirect(f"{detail_url}?rechecked=1")
 
         warning = "Your edits were saved, but some required details still need attention."
         if result["validation_messages"]:

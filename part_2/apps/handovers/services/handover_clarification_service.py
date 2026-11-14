@@ -61,6 +61,8 @@ class HandoverClarificationService:
                 }
             for existing_task, suggested_task in zip(existing_tasks, suggested_tasks):
                 owners = list(existing_task.owners.all())
+                if spec["task_type"] == "bau":
+                    suggested_task["frequency"] = existing_task.frequency or ""
                 suggested_task["task_id"] = existing_task.code
                 suggested_task["owners"] = [owner.name for owner in owners]
                 suggested_task["owner_ids"] = [owner.employee_id for owner in owners]
@@ -101,7 +103,7 @@ class HandoverClarificationService:
             "handover JSON structure. Draft data:\n"
             f"{json.dumps(edit_data, ensure_ascii=False)}"
         )
-        result = self._coordinator.review_handover(prompt)
+        result = self._coordinator.review_handover(prompt, source_data=edit_data)
         if self._cancellation.is_cancelled(employee, request_token):
             return {"status": "cancelled"}
 

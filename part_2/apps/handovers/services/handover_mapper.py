@@ -2,6 +2,7 @@ from datetime import date, datetime
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 from django.db import transaction
+from django.utils import timezone
 
 from apps.handovers.logic_manager.employee_identity_matcher import EmployeeIdentityMatcher
 from apps.handovers.logic_manager.handover import Handover as LogicHandover
@@ -31,6 +32,7 @@ FIELD_ERROR_LABELS: Dict[str, Tuple[str, str]] = {
     "missing_frequency": ("frequency", "Choose a frequency for this BAU task."),
     "invalid_frequency": ("frequency", "Choose weekly, monthly, or yearly frequency."),
     "missing_start_date": ("start_date", "BAU task needs a start date."),
+    "past_start_date": ("start_date", "Start date must be today or later."),
     "invalid_start_date": ("start_date", "Enter a valid BAU start date."),
     "end_date_before_start_date": ("end_date", "End date must be on or after the start date."),
     "invalid_end_date": ("end_date", "Enter a valid BAU end date."),
@@ -287,6 +289,17 @@ class HandoverDraftMapper:
                         for dependency in subtask.get("dependencies", [])
                     ]
 
+    def original_bau_start_date(self, handover, task):
+        # Keep valid saved schedules, but do not exempt a date rejected on upload.
+        if not task.start_date:
+            return None
+        if handover.status == "completed" or (
+            isinstance(handover.created_at, datetime)
+            and task.start_date >= timezone.localdate(handover.created_at)
+        ):
+            return task.start_date.strftime("%d/%m/%Y")
+        return None
+
     def build_validation_attention(
         self,
         tasks: List[Any],
@@ -382,6 +395,7 @@ class HandoverDraftMapper:
                 "owner_ids": [owner.employee_id for owner in owners],
             }
             if task.task_type == "bau":
+                record["original_start_date"] = self.original_bau_start_date(handover, task)
                 record["frequency"] = task.frequency
                 record["start_date"] = task.start_date.strftime("%d/%m/%Y") if task.start_date else ""
                 record["end_date"] = task.end_date.strftime("%d/%m/%Y") if task.end_date else ""
@@ -479,6 +493,9 @@ class HandoverDraftMapper:
         finalize: bool = True,
     ) -> Tuple[bool, List[str]]:
         """Persist edited tasks to ORM, re-validate with LogicHandover, and update handover status."""
+        grouped = self.group_tasks_by_type(tasks)
+        for task, record in zip(grouped["bau"], data.get("bau_tasks", [])):
+            record["original_start_date"] = self.original_bau_start_date(handover, task)
         validation = LogicHandover(data).process()
         _, validation_messages = self.build_validation_attention(tasks, validation)
         grouped = self.group_tasks_by_type(tasks)

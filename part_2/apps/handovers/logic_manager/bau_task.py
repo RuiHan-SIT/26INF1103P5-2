@@ -1,12 +1,14 @@
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from .task import Task
 
 class BAUTask(Task):
-    def __init__(self, name, description, owners, frequency, start_date, end_date=None, task_id=None, owner_ids=None):
+    def __init__(self, name, description, owners, frequency, start_date, end_date=None, task_id=None, owner_ids=None, original_start_date=None):
         super().__init__(name, description, owners, task_id, owner_ids)
         self.__frequency = frequency
         self.__start_date = start_date
         self.__end_date = end_date
+        self.__original_start_date = original_start_date
 
     @classmethod
     def from_dict(cls, data: dict):
@@ -19,6 +21,7 @@ class BAUTask(Task):
             end_date=data.get("end_date"),
             task_id=data.get("task_id"),
             owner_ids=data.get("owner_ids"),
+            original_start_date=data.get("original_start_date"),
         )
 
     def validate(self):
@@ -36,6 +39,10 @@ class BAUTask(Task):
         else:
             try:
                 start_date = datetime.strptime(self.__start_date, "%d/%m/%Y").date()
+                today = datetime.now(ZoneInfo("Asia/Singapore")).date()
+                # Preserve an existing schedule when other details are edited.
+                if start_date < today and self.__start_date != self.__original_start_date:
+                    errors.append("past_start_date")
             except (ValueError, TypeError):
                 errors.append("invalid_start_date")
 

@@ -511,6 +511,17 @@
     font-size: 13px;
 }
 
+/* Keep native dropdown options readable in the dark theme. */
+.history-toolbar select,
+select.detail-edit-control {
+    color-scheme: dark;
+}
+
+.history-toolbar select option,
+select.detail-edit-control option {
+    color: var(--text);
+    background-color: var(--surface-raised);
+}
 .detail-edit-field textarea {
     resize: vertical;
 }
@@ -835,4 +846,22 @@
     color: #ff9ab0;
     font-size: 11px;
     line-height: 1.45;
+}
+
+.detail-header-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.detail-header-actions .detail-edit-shortcut {
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    color: var(--text);
+}
+
+.detail-header-actions .detail-edit-shortcut:hover {
+    border-color: var(--border);
+    background: rgba(255, 255, 255, 0.08);
 }

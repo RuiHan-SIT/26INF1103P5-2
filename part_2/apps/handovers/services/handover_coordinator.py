@@ -41,7 +41,7 @@ class HandoverCoordinator:
         """Returns the configured LLM service instance."""
         return self.__llm_service
 
-    def review_handover(self, handover_content: str) -> Dict[str, Any]:
+    def review_handover(self, handover_content: str, source_data=None) -> Dict[str, Any]:
         """
         Coordinates submitting sanitized handover text to Gemini for review,
         cleaning the response, and validating the schema.
@@ -68,6 +68,9 @@ class HandoverCoordinator:
 
             # 3. Delegate schema validation & normalization
             normalized_data = validate_and_normalize_handover(parsed_data)
+            if source_data is None:
+                source_data = self.build_table_fallback_data(handover_content)
+            self.preserve_bau_frequencies(normalized_data, source_data)
 
             return {
                 "success": True,
@@ -89,6 +92,21 @@ class HandoverCoordinator:
                 "data": copy.deepcopy(self.FALLBACK_DATA),
                 "error_message": f"An unexpected error occurred during handover processing: {err}"
             }
+
+    def preserve_bau_frequencies(self, data, source_data):
+        """Only accept recurrence frequencies supplied in the source or by the reviewer."""
+        source_tasks = source_data.get("bau_tasks", [])
+        for index, task in enumerate(data.get("bau_tasks", [])):
+            matching = [source for source in source_tasks
+                        if source.get("task", "").strip().lower() == task.get("task", "").strip().lower()]
+            source = matching[0] if len(matching) == 1 else None
+            if source is None and len(source_tasks) == len(data.get("bau_tasks", [])):
+                source = source_tasks[index]
+            task["frequency"] = str((source or {}).get("frequency") or "").strip().lower()
+            if not task["frequency"]:
+                questions = task.setdefault("clarification_questions", [])
+                if not any("frequency" in question.lower() for question in questions):
+                    questions.append("What frequency should this recurring task use: weekly, monthly, or yearly?")
 
     @staticmethod
     def strip_clarification_questions(data: Optional[Dict[str, Any]]) -> Dict[str, Any]:

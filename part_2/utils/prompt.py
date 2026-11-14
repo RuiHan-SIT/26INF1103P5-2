@@ -39,7 +39,7 @@ JSON STRUCTURE:
       "task": "Routine or recurring responsibility title",
       "description": "Procedures, steps, tools, or schedule details",
       "owners": ["Name of responsible person or team"],
-      "frequency": "weekly" | "monthly" | "yearly",
+      "frequency": "weekly, monthly, yearly, or empty string if not stated",
       "start_date": "DD/MM/YYYY or empty string if not stated",
       "end_date": "DD/MM/YYYY or empty string if ongoing",
       "clarification_questions": [
@@ -60,7 +60,7 @@ CLASSIFICATION RULES:
 
 2. BAU (BUSINESS AS USUAL) TASKS:
    - Ongoing or recurring operational responsibilities that must continue.
-   - Extract frequency strictly as "weekly", "monthly", or "yearly" (convert other frequencies to closest match, or flag in clarification questions if ambiguous).
+   - Extract frequency only when explicitly provided by the document or reviewer as "weekly", "monthly", or "yearly". If missing or ambiguous, use "" and ask the user to choose. Never guess a frequency or convert another frequency to a closest match.
    - Capture start_date and optional end_date in DD/MM/YYYY format.
 
 3. IMPORTANT INFORMATION:
@@ -81,7 +81,8 @@ CLASSIFICATION RULES:
      * Once a task has a title, owner, and valid deadline/frequency, set "clarification_questions": [].
 
 5. GENERAL INTEGRITY RULES:
-   - Do NOT invent fictional task owners or deadlines that were never mentioned.
+   - Do NOT invent fictional task owners, deadlines, or recurrence frequencies that were never mentioned.
+   - AI may propose subtasks and their plan; recurrence frequency must always come from the user.
    - Preserve names exactly as stated in the notes.
    - If no owner is specified, set "owners": [].
 """

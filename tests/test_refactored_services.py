@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -300,8 +300,8 @@ def test_task_from_dict_and_subclass_polymorphism():
         "owners": ["Bob Lim"],
         "owner_ids": ["EMP-002"],
         "frequency": "weekly",
-        "start_date": "01/11/2026",
-        "end_date": "30/11/2026",
+        "start_date": date.today().strftime("%d/%m/%Y"),
+        "end_date": (date.today() + timedelta(days=30)).strftime("%d/%m/%Y"),
     }
     task_bau = BAUTask.from_dict(data_bau)
     assert isinstance(task_bau, BAUTask)
@@ -310,8 +310,8 @@ def test_task_from_dict_and_subclass_polymorphism():
     exported_bau = task_bau.to_dict()
     assert exported_bau["task_id"] == "BAU-202"
     assert exported_bau["frequency"] == "weekly"
-    assert exported_bau["start_date"] == "01/11/2026"
-    assert exported_bau["end_date"] == "30/11/2026"
+    assert exported_bau["start_date"] == date.today().strftime("%d/%m/%Y")
+    assert exported_bau["end_date"] == (date.today() + timedelta(days=30)).strftime("%d/%m/%Y")
 
     # Concrete _validate_base via subclasses
     invalid_out = OutstandingTask.from_dict({"task": "", "description": "", "owners": []})

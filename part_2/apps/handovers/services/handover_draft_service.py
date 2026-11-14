@@ -149,7 +149,14 @@ class HandoverDraftService:
             if self._cancellation.is_cancelled(employee, request_token):
                 return {"status": "cancelled"}
 
-            result = self._coordinator.review_handover(refined_prompt)
+            source_data = HandoverCoordinator.build_table_fallback_data(document_text)
+            for task in source_data["bau_tasks"]:
+                for answer in answers:
+                    if answer["task"] == task["task"] and "frequency" in answer["question"].lower():
+                        frequency = answer["answer"].strip().lower()
+                        if frequency in ["weekly", "monthly", "yearly"]:
+                            task["frequency"] = frequency
+            result = self._coordinator.review_handover(refined_prompt, source_data=source_data)
         except (ImportError, OSError, ValueError, RuntimeError, PermissionError) as error:
             if self._cancellation.is_cancelled(employee, request_token):
                 return {"status": "cancelled"}
