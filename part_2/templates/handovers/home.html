@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create Handover | Handover Assistant</title>
     <link rel="stylesheet" href="{% static 'css/my_tasks.css' %}?v=9">
-    <link rel="stylesheet" href="{% static 'css/create_handover.css' %}?v=40">
+    <link rel="stylesheet" href="{% static 'css/create_handover.css' %}?v=47">
 </head>
 
 <body>
@@ -125,21 +125,46 @@
                         <article class="review-task">
                             <div class="review-task-heading">
                                 <h4>{{ task.title }}</h4>
-                                {% if task.description %}<p>{{ task.description }}</p>{% endif %}
+                                {% if task.description and not task.fields %}<p>{{ task.description }}</p>{% endif %}
                             </div>
                             {% if task.clarification_questions %}
-                            <div class="clarification-panel">
+                            <div class="clarification-panel" data-task-questions>
                                 <h5>AI needs a little more context</h5>
                                 {% for question in task.clarification_questions %}
                                 <label for="{{ question.field_name }}">{{ question.question }}</label>
                                 <textarea id="{{ question.field_name }}" name="{{ question.field_name }}" rows="2"
-                                    placeholder="Add the details you know"></textarea>
+                                    placeholder="Add the details you know">{{ question.answer }}</textarea>
                                 {% endfor %}
-                                <p>Answer any questions, then choose “Ask AI to refine” for another AI pass.</p>
+                                <p>Answer at least one question for this task, then choose “Refine with AI”.</p>
                             </div>
                             {% endif %}
 
+                            {% if task.fields %}
+                            <div class="draft-required-fields">
+                                {% for field in task.fields %}
+                                {% if not field.subtask_group %}
+                                {% include "handovers/draft_field.html" %}
+                                {% endif %}
+                                {% endfor %}
+                            </div>
+                            {% regroup task.fields by subtask_group as field_groups %}
+                            {% for group in field_groups %}
+                            {% if group.grouper %}
+                            {% ifchanged %}<h5 class="draft-subtasks-heading">Subtasks</h5>{% endifchanged %}
+                            <div class="draft-subtask-row">
+                                {% for field in group.list %}
+                                {% include "handovers/draft_field.html" %}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            {% endfor %}
+                            {% endif %}
                             {% for owner in task.owner_reviews %}
+                            {% if owner.confirmed %}
+                            <p class="review-confirmed-owner">Task owner: <strong>{{ owner.owner_name }}</strong> · Confirmed</p>
+                            <input type="hidden" name="{{ owner.field_name }}" value="{{ owner.selected_id }}">
+                            <input type="hidden" name="{{ owner.confirmation_field }}" value="yes">
+                            {% else %}
                             <fieldset class="owner-review">
                                 <legend>Verify task owner</legend>
 
@@ -226,6 +251,7 @@
                                 <button class="confirm-employee-button" type="button" data-confirm-owner
                                     disabled>Confirm</button>
                             </fieldset>
+                            {% endif %}
                             {% endfor %}
                         </article>
                         {% endfor %}
@@ -242,12 +268,27 @@
                     </section>
                     {% endif %}
 
+                    {% if workload_error %}<p class="review-error" role="alert">Workload could not be checked: {{ workload_error }}</p>{% endif %}
+                    {% if workload_warnings %}
+                    <section class="creator-workload-warning" aria-label="Employee workload warning" role="status">
+                        <h3>Review employee workload</h3>
+                        <p>{{ workload_warnings.0.employee_name }} has {{ workload_warnings.0.count }} scheduled work items on {{ workload_warnings.0.date }}, above the daily limit of {{ workload_warnings.0.limit }}.</p>
+                        <p>Adjust the planned dates or recurring schedule above, or acknowledge the warning to save anyway.</p>
+                        <details><summary>See affected dates and tasks ({{ workload_warnings|length }})</summary>
+                            <ul>{% for warning in workload_warnings %}<li><strong>{{ warning.employee_name }}</strong> · {{ warning.date }} · {{ warning.count }} items: {{ warning.tasks|join:", " }}</li>{% endfor %}</ul>
+                        </details>
+                        <small>Recurring checks cover one year from each task's next eligible start date; all specified subtask dates are checked.</small>
+                        <label><input type="checkbox" name="acknowledge_workload" value="{{ workload_review_token }}"> I have reviewed the workload warning and want to save this schedule.</label>
+                    </section>
+                    {% endif %}
+
                     <div class="review-actions">
                         {% if has_clarifications %}
                         <button class="extract-btn secondary-review-action" type="submit" name="action" value="refine"
-                            formnovalidate>✦&nbsp; Ask AI to refine</button>
+                            formnovalidate>✦&nbsp; Refine with AI</button>
+                        {% else %}
+                        <button class="extract-btn" type="submit" name="action" value="save" {% if ai_failed %}formnovalidate{% endif %}>{% if ai_failed %}Save handover{% else %}Confirm and save{% endif %}</button>
                         {% endif %}
-                        <button class="extract-btn" type="submit" name="action" value="save">Save handover</button>
                         <button class="review-cancel" type="submit" name="action" value="cancel" formnovalidate>Cancel
                             handover</button>
                     </div>
@@ -267,7 +308,7 @@
                         <div class="drop-overlay" id="dropOverlay" hidden>
                             <span class="drop-icon">&#x1F4C4;</span>
                             <h3>Drop your document here</h3>
-                            <p>TXT or DOCX · Maximum 10 MB</p>
+                            <p>Word (.docx) · Maximum 10 MB</p>
                         </div>
 
                         <div class="upload-template-row">
@@ -279,13 +320,13 @@
                                 Download template
                             </a>
                         </div>
-                        <input type="file" id="document" name="document" class="file-input" accept=".txt,.docx" required>
+                        <input type="file" id="document" name="document" class="file-input" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required>
                         <div class="upload-drop-zone">
                         <label for="document" class="chat-drop-hint" id="chatDropHint">
                             <span class="drop-icon" aria-hidden="true">⇧</span>
                             <strong>Drag and drop your document here</strong>
                             <span>or click to browse files</span>
-                            <small>Supported formats: TXT, DOCX · Maximum size: 10 MB</small>
+                            <small>Supported format: Word (.docx) · Maximum size: 10 MB</small>
                         </label>
 
 
@@ -320,7 +361,7 @@
             {% endif %}
         </main>
     </div>
-    <script src="{% static 'js/create_handover.js' %}?v=16" defer></script>
+    <script src="{% static 'js/create_handover.js' %}?v=20" defer></script>
 </body>
 
 </html>

@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Tasks | Handover Assistant</title>
-    <link rel="stylesheet" href="{% static 'css/my_tasks.css' %}?v=12">
+    <link rel="stylesheet" href="{% static 'css/my_tasks.css' %}?v=13">
 </head>
 <body>
     <div class="app-shell">
@@ -125,6 +125,6 @@
         </main>
     </div>
     {{ calendar_tasks|json_script:"calendar-tasks-data" }}
-    <script src="{% static 'js/my_tasks.js' %}?v=6" defer></script>
+    <script src="{% static 'js/my_tasks.js' %}?v=7" defer></script>
 </body>
 </html>

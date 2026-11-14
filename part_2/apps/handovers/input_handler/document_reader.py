@@ -13,28 +13,8 @@ class DocumentReader:
         #validate the file before reading
         self.file_validator.validate_file(uploaded_file)
 
-        filename = uploaded_file.name.lower()
-
-        #start reading from the beginnning
         uploaded_file.seek(0)
-
-        if filename.endswith(".txt"):
-            return self.read_txt(uploaded_file)
-        
-        if filename.endswith(".docx"):
-                    return self.read_docx(uploaded_file)
-
-    def read_txt(self, uploaded_file):
-
-        try:
-            content = uploaded_file.read().decode("utf-8")
-        except UnicodeDecodeError:
-            raise ValueError("The uploaded TXT file is not in UTF-8 encoding.")
-
-        if not content.strip():
-            raise ValueError("The uploaded TXT file is empty")
-
-        return content
+        return self.read_docx(uploaded_file)
 
     def _read_cell_value(self, cell):
         value = cell.text.strip()

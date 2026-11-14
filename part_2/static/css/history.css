@@ -493,8 +493,8 @@
 .detail-edit-field {
     display: grid;
     gap: 6px;
-    color: var(--soft);
-    font-size: 11px;
+    color: #bbb9cc;
+    font-size: 12px;
 }
 
 .detail-edit-field input,
@@ -864,4 +864,12 @@ select.detail-edit-control option {
 .detail-header-actions .detail-edit-shortcut:hover {
     border-color: var(--border);
     background: rgba(255, 255, 255, 0.08);
+}
+
+select.detail-edit-control, .history-toolbar select {
+    appearance: none;
+    padding-right: 42px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='m1 1 5 5 5-5' fill='none' stroke='%23aaa8bf' stroke-width='1.5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 18px center;
 }
