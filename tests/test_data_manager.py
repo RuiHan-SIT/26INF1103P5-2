@@ -47,3 +47,14 @@ def test_search_handovers_invalid_text(mock_filter):
     result = HandoverQuery().search_handovers(employee, search_text="abc")
 
     assert result == []
+
+
+# Searching "H-0007" is understood as handover number 7, so the query filters by that ID
+@patch("apps.handovers.data_manager.handover_query.Handover.objects.filter")
+def test_search_handovers_by_number(mock_filter):
+    employee = MagicMock()
+    handovers = mock_filter.return_value.annotate.return_value
+
+    HandoverQuery().search_handovers(employee, search_text="H-0007")
+
+    handovers.filter.assert_called_once_with(pk=7)
