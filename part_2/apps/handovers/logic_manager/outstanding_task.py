@@ -4,7 +4,7 @@ from .task import Task
 
 
 class OutstandingTask(Task):
-    def __init__(self, name, description, owners, deadline, task_id=None, owner_ids=None, subtasks=None):
+    def __init__(self, name: str, description: str, owners: list, deadline: str | None, task_id: str | None = None, owner_ids: list | None = None, subtasks: list | None = None) -> None:
         super().__init__(name, description, owners, task_id, owner_ids)
         self.__deadline = deadline
         if subtasks is None:
@@ -12,7 +12,7 @@ class OutstandingTask(Task):
         self.__subtasks = copy.deepcopy(subtasks)
 
     @classmethod
-    def from_dict(cls, data: dict):
+    def from_dict(cls, data: dict) -> "OutstandingTask":
         return cls(
             name=data.get("task", data.get("name", "")),
             description=data.get("description", ""),
@@ -23,7 +23,7 @@ class OutstandingTask(Task):
             subtasks=data.get("subtasks"),
         )
 
-    def validate(self):
+    def validate(self) -> list:
         errors = self._validate_base()
 
         # Outstanding tasks require a valid deadline.
@@ -35,14 +35,14 @@ class OutstandingTask(Task):
         errors.extend(self.validate_subtasks())
         return errors
 
-    def validate_deadline(self):
+    def validate_deadline(self) -> list:
         try:
             deadline_date = datetime.strptime(self.__deadline, "%d/%m/%Y").date()
             return deadline_date >= date.today()
         except (ValueError, TypeError):
             return False
 
-    def validate_subtasks(self):
+    def validate_subtasks(self) -> list:
         errors = []
         earlier_subtask_dates = {}
 
@@ -112,7 +112,7 @@ class OutstandingTask(Task):
         return errors
 
     # A subtask can be completed only after all its dependencies.
-    def can_complete_subtask(self, subtask_id, completed_subtask_ids):
+    def can_complete_subtask(self, subtask_id: str, completed_subtask_ids: list) -> bool:
         for subtask in self.__subtasks:
             if not isinstance(subtask, dict):
                 continue
@@ -130,7 +130,7 @@ class OutstandingTask(Task):
 
         return False
 
-    def get_deadline(self):
+    def get_deadline(self) -> datetime | None:
         if not self.__deadline:
             return None
         try:
@@ -138,7 +138,7 @@ class OutstandingTask(Task):
         except (ValueError, TypeError):
             return None
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
         data = super().to_dict()
         data["deadline"] = self.__deadline
         data["subtasks"] = copy.deepcopy(self.__subtasks)

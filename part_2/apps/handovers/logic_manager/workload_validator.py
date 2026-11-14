@@ -1,5 +1,5 @@
 from calendar import monthrange
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 BAU_FREQUENCY_RULES = {
     "weekly": lambda start, occ: (occ - start).days % 7 == 0,
@@ -9,10 +9,10 @@ BAU_FREQUENCY_RULES = {
 
 
 class WorkloadValidator:
-    def __init__(self, daily_limit=4):
+    def __init__(self, daily_limit: int = 4) -> None:
         self.__daily_limit = daily_limit
 
-    def check_workload(self, handovers, range_start, range_end):
+    def check_workload(self, handovers: list, range_start: str, range_end: str) -> list:
         range_start = datetime.strptime(range_start, "%d/%m/%Y").date()
         range_end = datetime.strptime(range_end, "%d/%m/%Y").date()
         workload = {}
@@ -64,7 +64,7 @@ class WorkloadValidator:
 
         return warnings
 
-    def add_work_item(self, workload, owner_ids, scheduled_date, task_name):
+    def add_work_item(self, workload: dict, owner_ids: list, scheduled_date: date, task_name: str) -> None:
         added_owner_ids = []
 
         for employee_id in owner_ids:
@@ -84,7 +84,7 @@ class WorkloadValidator:
             workload[employee_id][scheduled_date]["count"] += 1
             workload[employee_id][scheduled_date]["tasks"].append(task_name)
 
-    def get_bau_occurrence_dates(self, task, range_start, range_end):
+    def get_bau_occurrence_dates(self, task: dict, range_start: date, range_end: date) -> list:
         start_date_text = task.get("start_date")
         if not start_date_text:
             return []

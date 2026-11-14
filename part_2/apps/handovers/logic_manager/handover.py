@@ -9,7 +9,7 @@ TASK_CLASSES = {
 }
 
 class Handover:
-    def __init__(self, data):
+    def __init__(self, data: dict) -> None:
         self.__tasks = {
             task_type: [
                 cls.from_dict(task_data)
@@ -21,7 +21,7 @@ class Handover:
         self.__bau_tasks = self.__tasks["bau"]
         self.__important_information = copy.deepcopy(data.get("important_information", []))
 
-    def collect_task_errors(self, tasks, task_type):
+    def collect_task_errors(self, tasks: list, task_type: str) -> list:
         errors = []
 
         for index, task in enumerate(tasks, start=1):
@@ -37,7 +37,7 @@ class Handover:
 
         return errors
 
-    def update_task(self, task_type, task_id, task_changes):
+    def update_task(self, task_type: str, task_id: str, task_changes: dict) -> dict:
         task_cls = TASK_CLASSES.get(task_type)
         if not task_cls:
             return {"status": "invalid", "errors": ["invalid_task_type"]}
@@ -66,7 +66,7 @@ class Handover:
 
         return {"status": "not_found", "errors": ["task_not_found"]}
 
-    def validate(self):
+    def validate(self) -> list:
         errors = self.collect_task_errors(
             self.__outstanding_tasks, "outstanding"
         )
@@ -85,7 +85,7 @@ class Handover:
 
         return errors
 
-    def get_task_records(self):
+    def get_task_records(self) -> dict:
         """Returns normalized task records regardless of validation pass/fail."""
         outstanding_records = [task.to_dict() for task in self.__outstanding_tasks]
         bau_records = [task.to_dict() for task in self.__bau_tasks]
@@ -95,7 +95,7 @@ class Handover:
             "important_information": copy.deepcopy(self.__important_information),
         }
 
-    def process(self):
+    def process(self) -> dict:
         errors = self.validate()
 
         # Only create the final output when every task passes validation.

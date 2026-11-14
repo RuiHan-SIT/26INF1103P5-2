@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
 class Task(ABC):
-    def __init__(self, name, description, owners, task_id=None, owner_ids=None):
+    def __init__(self, name: str, description: str, owners: list, task_id: str | None = None, owner_ids: list | None = None) -> None:
         self.__name = name
         self.__description = description
         self.__owners = list(owners)
@@ -10,11 +10,11 @@ class Task(ABC):
             owner_ids = []
         self.__owner_ids = list(owner_ids)
 
-    def get_name(self):
+    def get_name(self) -> str:
         return self.__name
 
     # Concrete helper checking fields shared by every task.
-    def _validate_base(self):
+    def _validate_base(self) -> list:
         errors = []
 
         if not self.__name or not self.__name.strip():
@@ -29,10 +29,10 @@ class Task(ABC):
         return errors
 
     @abstractmethod
-    def validate(self):
+    def validate(self) -> list:
         return self._validate_base()
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
         return {
             "task_id": self.__task_id,
             "task": self.__name,

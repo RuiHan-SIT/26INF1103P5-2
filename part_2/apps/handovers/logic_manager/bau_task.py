@@ -3,7 +3,7 @@ from zoneinfo import ZoneInfo
 from .task import Task
 
 class BAUTask(Task):
-    def __init__(self, name, description, owners, frequency, start_date, end_date=None, task_id=None, owner_ids=None, original_start_date=None):
+    def __init__(self, name: str, description: str, owners: list, frequency: str | None, start_date: str | None, end_date: str | None = None, task_id: str | None = None, owner_ids: list | None = None, original_start_date: str | None = None) -> None:
         super().__init__(name, description, owners, task_id, owner_ids)
         self.__frequency = frequency
         self.__start_date = start_date
@@ -11,7 +11,7 @@ class BAUTask(Task):
         self.__original_start_date = original_start_date
 
     @classmethod
-    def from_dict(cls, data: dict):
+    def from_dict(cls, data: dict) -> "BAUTask":
         return cls(
             name=data.get("task", data.get("name", "")),
             description=data.get("description", ""),
@@ -24,7 +24,7 @@ class BAUTask(Task):
             original_start_date=data.get("original_start_date"),
         )
 
-    def validate(self):
+    def validate(self) -> list:
         errors = self._validate_base()
 
         # BAU tasks need a frequency and start date; the end date is optional.
@@ -56,7 +56,7 @@ class BAUTask(Task):
 
         return errors
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
         data = super().to_dict()
         data["frequency"] = self.__frequency
         data["start_date"] = self.__start_date
