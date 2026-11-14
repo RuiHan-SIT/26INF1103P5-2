@@ -26,7 +26,7 @@ class DocumentReader:
                     return self.read_docx(uploaded_file)
 
     def read_txt(self, uploaded_file: UploadedFile) -> str:
-
+        
         try:
             content = uploaded_file.read().decode("utf-8") #decodes the file contents into strings
         except UnicodeDecodeError:
@@ -96,3 +96,14 @@ class DocumentReader:
              )
 
         return content
+    
+    def _read_cell_value(self, cell):
+        value = cell.text.strip()
+        if not value:
+            dropdown_text = cell._tc.xpath(".//w:sdtContent//w:t")
+            value = "".join(part.text or "" for part in dropdown_text).strip()
+    
+        # Word displays these defaults until the user chooses a dropdown value.
+        if value.lower() in ("select type", "select frequency"):
+             return ""
+        return value
