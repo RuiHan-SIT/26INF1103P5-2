@@ -1,5 +1,8 @@
-import scrubadub
+import logging
 import re
+import scrubadub
+
+logger = logging.getLogger(__name__)
 
 class InputValidator:
 
@@ -48,8 +51,8 @@ class InputValidator:
                 detected_types.add(label)
 
         if detected_types:
-            print(
-                "\n" "Sensitive information detected in your input. Please remove the following types of sensitive information before proceeding: "
+            logger.warning(
+                "Sensitive information detected in your input. Please remove the following types of sensitive information before proceeding: "
                 f"{', '.join(sorted(detected_types))}."
             )
             return True

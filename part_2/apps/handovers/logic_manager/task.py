@@ -13,21 +13,24 @@ class Task(ABC):
     def get_name(self):
         return self.__name
 
-    # Child classes call this to check fields shared by every task.
-    @abstractmethod
-    def validate(self):
+    # Concrete helper checking fields shared by every task.
+    def _validate_base(self):
         errors = []
 
-        if not self.__name.strip():
+        if not self.__name or not self.__name.strip():
             errors.append("task")
 
-        if not self.__description.strip():
+        if not self.__description or not self.__description.strip():
             errors.append("description")
 
         if not self.__owners:
             errors.append("missing_owner(s)")
 
         return errors
+
+    @abstractmethod
+    def validate(self):
+        return self._validate_base()
 
     def to_dict(self):
         return {

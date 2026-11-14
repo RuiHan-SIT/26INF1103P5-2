@@ -11,8 +11,20 @@ class OutstandingTask(Task):
             subtasks = []
         self.__subtasks = copy.deepcopy(subtasks)
 
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(
+            name=data.get("task", data.get("name", "")),
+            description=data.get("description", ""),
+            owners=data.get("owners", []),
+            deadline=data.get("deadline", ""),
+            task_id=data.get("task_id"),
+            owner_ids=data.get("owner_ids"),
+            subtasks=data.get("subtasks"),
+        )
+
     def validate(self):
-        errors = super().validate()
+        errors = self._validate_base()
 
         # Outstanding tasks require a valid deadline.
         if not self.__deadline or not self.__deadline.strip():

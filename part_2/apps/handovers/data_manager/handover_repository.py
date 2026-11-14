@@ -1,9 +1,9 @@
 import logging
-from datetime import datetime
 
 from django.db import DatabaseError, transaction
 
 from apps.handovers.models import Handover, Subtask, Task, Upload
+from apps.handovers.services.handover_mapper import HandoverDraftMapper
 
 from .data_manager_error import DataManagerError
 
@@ -97,16 +97,9 @@ class HandoverRepository:
 
         for subtask_data in subtasks_data:
             original_id = subtask_data.get("subtask_id", f"S{fallback_index:03d}")
-            code = original_id
-
-            # If the AI's id is too long or repeated, give it a new one like "S002"
-            if len(code) > 10 or code in used_codes:
-                code = f"S{fallback_index:03d}"
-                while code in used_codes:
-                    fallback_index += 1
-                    code = f"S{fallback_index:03d}"
-                fallback_index += 1
-
+            code, fallback_index = HandoverDraftMapper.allocate_subtask_code(
+                original_id, used_codes, fallback_index
+            )
             used_codes.add(code)
             subtask_records[original_id] = Subtask.objects.create(
                 task=task,
@@ -150,11 +143,7 @@ class HandoverRepository:
             raise DataManagerError("delete the upload") from error
         
         
-    def _parse_date(self, value):
-        # Turns a written date (string) into a real date
-        if not value:
-            return None
-        try:
-            return datetime.strptime(value, "%d/%m/%Y").date()
-        except (ValueError, TypeError):
-            return None
+    @staticmethod
+    def _parse_date(value):
+        # Turns a written date (string) into a real date using shared mapper logic
+        return HandoverDraftMapper.parse_handover_date(value)

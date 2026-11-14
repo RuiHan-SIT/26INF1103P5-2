@@ -1,6 +1,12 @@
 from calendar import monthrange
 from datetime import datetime, timedelta
 
+BAU_FREQUENCY_RULES = {
+    "weekly": lambda start, occ: (occ - start).days % 7 == 0,
+    "monthly": lambda start, occ: occ.day == min(start.day, monthrange(occ.year, occ.month)[1]),
+    "yearly": lambda start, occ: occ.month == start.month and occ.day == min(start.day, monthrange(occ.year, start.month)[1]),
+}
+
 
 class WorkloadValidator:
     def __init__(self, daily_limit=4):
@@ -96,7 +102,8 @@ class WorkloadValidator:
                 end_date = None
 
         frequency = (task.get("frequency") or "").strip().lower()
-        if not frequency:
+        rule = BAU_FREQUENCY_RULES.get(frequency)
+        if not rule:
             return []
 
         occurrence_dates = []
@@ -104,23 +111,8 @@ class WorkloadValidator:
 
         while current_date <= range_end:
             if current_date >= start_date and (end_date is None or current_date <= end_date):
-                if frequency == "weekly":
-                    days_since_start = (current_date - start_date).days
-                    if days_since_start % 7 == 0:
-                        occurrence_dates.append(current_date)
-                # Use the last day when a month does not have the start day.
-                elif frequency == "monthly":
-                    last_day = monthrange(current_date.year, current_date.month)[1]
-                    if current_date.day == min(start_date.day, last_day):
-                        occurrence_dates.append(current_date)
-                # The same rule handles 29 February in non-leap years.
-                elif frequency == "yearly":
-                    last_day = monthrange(current_date.year, start_date.month)[1]
-                    if (
-                        current_date.month == start_date.month
-                        and current_date.day == min(start_date.day, last_day)
-                    ):
-                        occurrence_dates.append(current_date)
+                if rule(start_date, current_date):
+                    occurrence_dates.append(current_date)
 
             current_date += timedelta(days=1)
 

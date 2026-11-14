@@ -3,37 +3,23 @@ from datetime import datetime
 from .outstanding_task import OutstandingTask
 from .bau_task import BAUTask
 
+TASK_CLASSES = {
+    "outstanding": OutstandingTask,
+    "bau": BAUTask,
+}
+
 class Handover:
     def __init__(self, data):
-        self.__outstanding_tasks = []
-        self.__bau_tasks = []
-        self.__important_information = copy.deepcopy(data["important_information"])
-
-        # Create task objects so each task type can validate its own fields.
-        for task_data in data["outstanding_tasks"]:
-            task = OutstandingTask(
-                task_data["task"],
-                task_data["description"],
-                task_data["owners"],
-                task_data["deadline"],
-                task_id=task_data.get("task_id"),
-                owner_ids=task_data.get("owner_ids"),
-                subtasks=task_data.get("subtasks")
-            )
-            self.__outstanding_tasks.append(task)
-
-        for task_data in data["bau_tasks"]:
-            task = BAUTask(
-                task_data["task"],
-                task_data["description"],
-                task_data["owners"],
-                frequency=task_data.get("frequency"),
-                start_date=task_data.get("start_date"),
-                end_date=task_data.get("end_date"),
-                task_id=task_data.get("task_id"),
-                owner_ids=task_data.get("owner_ids")
-            )
-            self.__bau_tasks.append(task)
+        self.__tasks = {
+            task_type: [
+                cls.from_dict(task_data)
+                for task_data in data.get(f"{task_type}_tasks", [])
+            ]
+            for task_type, cls in TASK_CLASSES.items()
+        }
+        self.__outstanding_tasks = self.__tasks["outstanding"]
+        self.__bau_tasks = self.__tasks["bau"]
+        self.__important_information = copy.deepcopy(data.get("important_information", []))
 
     def collect_task_errors(self, tasks, task_type):
         errors = []
@@ -52,12 +38,11 @@ class Handover:
         return errors
 
     def update_task(self, task_type, task_id, task_changes):
-        if task_type == "outstanding":
-            tasks = self.__outstanding_tasks
-        elif task_type == "bau":
-            tasks = self.__bau_tasks
-        else:
+        task_cls = TASK_CLASSES.get(task_type)
+        if not task_cls:
             return {"status": "invalid", "errors": ["invalid_task_type"]}
+
+        tasks = self.__tasks[task_type]
 
         for index, current_task in enumerate(tasks):
             updated_data = current_task.to_dict()
@@ -70,27 +55,7 @@ class Handover:
                 updated_data["task_id"] = task_id
 
                 # Check an edited copy before replacing the current task.
-                if task_type == "outstanding":
-                    updated_task = OutstandingTask(
-                        updated_data["task"],
-                        updated_data["description"],
-                        updated_data["owners"],
-                        updated_data["deadline"],
-                        task_id=updated_data.get("task_id"),
-                        owner_ids=updated_data.get("owner_ids"),
-                        subtasks=updated_data.get("subtasks")
-                    )
-                else:
-                    updated_task = BAUTask(
-                        updated_data["task"],
-                        updated_data["description"],
-                        updated_data["owners"],
-                        frequency=updated_data.get("frequency"),
-                        start_date=updated_data.get("start_date"),
-                        end_date=updated_data.get("end_date"),
-                        task_id=updated_data.get("task_id"),
-                        owner_ids=updated_data.get("owner_ids")
-                    )
+                updated_task = task_cls.from_dict(updated_data)
 
                 errors = updated_task.validate()
                 if errors:

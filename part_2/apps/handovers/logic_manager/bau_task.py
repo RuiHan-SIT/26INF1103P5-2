@@ -8,8 +8,21 @@ class BAUTask(Task):
         self.__start_date = start_date
         self.__end_date = end_date
 
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(
+            name=data.get("task", data.get("name", "")),
+            description=data.get("description", ""),
+            owners=data.get("owners", []),
+            frequency=data.get("frequency"),
+            start_date=data.get("start_date"),
+            end_date=data.get("end_date"),
+            task_id=data.get("task_id"),
+            owner_ids=data.get("owner_ids"),
+        )
+
     def validate(self):
-        errors = super().validate()
+        errors = self._validate_base()
 
         # BAU tasks need a frequency and start date; the end date is optional.
         if not self.__frequency or not self.__frequency.strip():

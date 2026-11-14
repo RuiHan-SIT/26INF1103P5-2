@@ -1,5 +1,5 @@
 import pytest
-from datetime import date
+from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 from apps.handovers.logic_manager.handover import Handover
 from apps.handovers.logic_manager.outstanding_task import OutstandingTask
@@ -87,7 +87,7 @@ def test_word_export_supports_needs_clarification():
     mock_handover.pk = 42
     mock_handover.created_by.name = "Alice Tan"
     mock_handover.created_by.employee_id = "EMP-001"
-    mock_handover.created_at = date(2026, 11, 12)
+    mock_handover.created_at = datetime(2026, 11, 12, tzinfo=timezone.utc)
     mock_handover.important_information = ["⚠️ Needs Clarification: Missing deadline on Task 1"]
 
     task_mock = MagicMock()

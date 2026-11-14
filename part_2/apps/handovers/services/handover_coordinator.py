@@ -5,7 +5,7 @@ from typing import Any, Dict, Optional
 from .llm_service import LLMService
 from .gemini import Gemini
 from utils.prompt import HANDOVER_REVIEW_PROMPT
-from utils.json_helper import clean_llm_json
+from utils.json_helper import JsonHelper
 from apps.schema import validate_and_normalize_handover
 
 logger = logging.getLogger(__name__)
@@ -64,7 +64,7 @@ class HandoverCoordinator:
             )
 
             # 2. Delegate JSON cleaning & repair
-            parsed_data = clean_llm_json(raw_response)
+            parsed_data = JsonHelper.clean_llm_json(raw_response)
 
             # 3. Delegate schema validation & normalization
             normalized_data = validate_and_normalize_handover(parsed_data)
