@@ -1,6 +1,8 @@
 import io
 import json
 import tempfile
+from datetime import timedelta
+from django.utils import timezone
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
@@ -22,6 +24,8 @@ def _make_docx_bytes(text: str = "Handover notes for Q4.") -> bytes:
 
 class WebAppEndToEndTests(TestCase):
     def test_webapp_end_to_end_flows(self):
+        start_date = timezone.localdate() + timedelta(days=1)
+        next_occurrence = start_date + timedelta(days=7)
         media_root = tempfile.mkdtemp()
         with override_settings(
             MEDIA_ROOT=media_root,
@@ -81,7 +85,7 @@ class WebAppEndToEndTests(TestCase):
                         "owners": ["Test Alice"],
                         "owner_ids": [],
                         "frequency": "weekly",
-                        "start_date": "02/11/2026",
+                        "start_date": start_date.strftime("%d/%m/%Y"),
                         "end_date": None,
                         "clarification_questions": [],
                     }
@@ -160,7 +164,7 @@ class WebAppEndToEndTests(TestCase):
                     f"task_{bau_task.pk}_title": "Weekly Backup Check",
                     f"task_{bau_task.pk}_description": "Verify backups every Monday",
                     f"task_{bau_task.pk}_frequency": "weekly",
-                    f"task_{bau_task.pk}_start_date": "2026-11-02",
+                    f"task_{bau_task.pk}_start_date": start_date.isoformat(),
                     f"task_{bau_task.pk}_end_date": "",
                 },
             )
@@ -212,7 +216,7 @@ class WebAppEndToEndTests(TestCase):
             # Complete a BAU occurrence
             resp_bau_done = client.post(
                 reverse("handovers:update_task_status", args=[bau_task.pk]),
-                data=json.dumps({"completed": True, "date": "2026-11-09"}),
+                data=json.dumps({"completed": True, "date": next_occurrence.isoformat()}),
                 content_type="application/json",
             )
             assert resp_bau_done.status_code == 200
