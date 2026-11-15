@@ -7,15 +7,6 @@ class TestFileValidator(unittest.TestCase):
 
     def setUp(self) -> None:
         self.validator = FileValidator()
-
-    def test_valid_txt_file(self) -> None:
-        uploaded_file = BytesIO(b"Test handover document")
-        uploaded_file.name = "handover.txt"
-        uploaded_file.size = len(uploaded_file.getvalue())
-
-        result = self.validator.validate_file(uploaded_file)
-
-        self.assertTrue(result)
     
     def test_valid_docx_file(self) -> None:
         uploaded_file = BytesIO(b"Test document")
@@ -53,6 +44,13 @@ class TestFileValidator(unittest.TestCase):
     def test_missing_file(self) -> None:
         with self.assertRaises(ValueError):
             self.validator.validate_file(None)
+    
+    def test_txt_file_rejected(self) -> None:
+        uploaded_file = BytesIO(b"Test document")
+        uploaded_file.name = "handover.txt"
+        uploaded_file.size = len(uploaded_file.getvalue())
 
+        with self.assertRaises(ValueError):
+            self.validator.validate_file(uploaded_file)
 if __name__ == "__main__":
     unittest.main()
