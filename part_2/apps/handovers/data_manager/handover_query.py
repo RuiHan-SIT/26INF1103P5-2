@@ -16,7 +16,7 @@ class HandoverQuery:
     # Each read is wrapped so a missing, corrupt or locked database gives a DataManagerError
 
     # Gets every task an employee owns, with its handover and subtasks loaded in one go
-    def tasks_owned_by(self, employee):
+    def tasks_owned_by(self, employee: Employee) -> list[Task]:
         try:
             # list() runs the query now, so any database error is caught here
             return list(
@@ -30,7 +30,7 @@ class HandoverQuery:
             raise DataManagerError("load your tasks") from error
 
     # Gets every employee as simple dicts (ID, name, department) for owner name matching
-    def employee_list(self):
+    def employee_list(self) -> list[dict]:
         try:
             return list(Employee.objects.values("employee_id", "name", "department"))
         except DatabaseError as error:
@@ -38,7 +38,7 @@ class HandoverQuery:
             raise DataManagerError("load the employee list") from error
 
     # Gets every employee record and it's only used when the user selects task owners
-    def all_employees(self):
+    def all_employees(self) -> list[Employee]:
         try:
             return list(Employee.objects.all())
         except DatabaseError as error:
@@ -46,7 +46,7 @@ class HandoverQuery:
             raise DataManagerError("load the employee list") from error
 
     # Gets an upload this employee hasn't saved as a handover yet (None if there isn't one)
-    def pending_upload(self, upload_id, employee):
+    def pending_upload(self, upload_id: int, employee: Employee) -> Upload | None:
         try:
             return Upload.objects.filter(
                 pk=upload_id,
@@ -58,7 +58,7 @@ class HandoverQuery:
             raise DataManagerError("load your uploaded file") from error
 
     # Gets one task owned by this employee, including its subtasks and recurring progress.
-    def task_with_progress(self, task_id, employee):
+    def task_with_progress(self, task_id: int, employee: Employee) -> Task | None:
         try:
             return (
                 Task.objects.filter(pk=task_id, owners=employee)
@@ -70,7 +70,7 @@ class HandoverQuery:
             raise DataManagerError("load the task") from error
 
     # Gets one subtask with its task and the task's other subtasks (None if not found)
-    def subtask_with_task(self, subtask_id):
+    def subtask_with_task(self, subtask_id: int) -> Subtask | None:
         try:
             return (
                 Subtask.objects.select_related("task")
@@ -83,7 +83,7 @@ class HandoverQuery:
             raise DataManagerError("load the subtask") from error
 
     # Searches an employee's handovers by ID , filters them by status
-    def search_handovers(self, employee, search_text="", status=""):
+    def search_handovers(self, employee: Employee | None, search_text: str = "", status: str = "") -> list[Handover]:
         if employee is None:
             return []
 
@@ -107,7 +107,7 @@ class HandoverQuery:
             raise DataManagerError("load your handovers") from error
 
     # Gets one of this employee's handovers that can be downloaded. Conversely, None is returned if not found
-    def downloadable_handover(self, handover_id, employee):
+    def downloadable_handover(self, handover_id: int, employee: Employee) -> Handover | None:
         try:
             return Handover.objects.filter(
                 pk=handover_id,

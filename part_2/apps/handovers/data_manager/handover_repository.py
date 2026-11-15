@@ -1,10 +1,10 @@
 import logging
 from datetime import date, datetime
-from typing import Any, Dict, List, Optional, Tuple
 
+from django.core.files.uploadedfile import UploadedFile
 from django.db import DatabaseError, transaction
 
-from apps.handovers.models import Handover, Subtask, Task, Upload
+from apps.handovers.models import Employee, Handover, Subtask, Task, Upload
 
 from .data_manager_error import DataManagerError
 
@@ -18,7 +18,7 @@ class HandoverRepository:
     # ---- 1. CREATE ---------------------------------
 
     # Saves a newly uploaded file and its details, before it becomes a handover
-    def create_upload(self, uploaded_file, employee):
+    def create_upload(self, uploaded_file: UploadedFile, employee: Employee) -> Upload:
         try:
             return Upload.objects.create(
                 file=uploaded_file,
@@ -31,7 +31,7 @@ class HandoverRepository:
             raise DataManagerError("save the uploaded file") from error
 
     # Essentially saves a h/over, completed or needs clarification, with all its tasks and subtasks, then links its upload
-    def save_handover(self, employee, upload, processed_data, status="completed"):
+    def save_handover(self, employee: Employee, upload: Upload, processed_data: dict, status: str = "completed") -> Handover:
         # After the logic manager has validated, the said h/over will be saved
         # with 'with', everything inside the block is saved together, or nothing is saved if an error happens
         try:
@@ -60,7 +60,7 @@ class HandoverRepository:
     # ---- private methods
 
     # Saves one outstanding task with a deadline along with its subtasks
-    def _save_outstanding_task(self, handover, index, task_data):
+    def _save_outstanding_task(self, handover: Handover, index: int, task_data: dict) -> None:
         task = Task.objects.create(
             handover=handover,
             code=f"OUT-{index:03d}",
@@ -73,7 +73,7 @@ class HandoverRepository:
         self._save_subtasks(task, task_data.get("subtasks", []))
 
     # Saves one BAU routine task with its recurring frequency and dates
-    def _save_bau_task(self, handover, index, task_data):
+    def _save_bau_task(self, handover: Handover, index: int, task_data: dict) -> None:
         task = Task.objects.create(
             handover=handover,
             code=f"BAU-{index:03d}",
@@ -87,7 +87,7 @@ class HandoverRepository:
         task.owners.set(task_data.get("owner_ids", []))
 
     # Saves a task's subtasks, then links whichever subtask depends on which
-    def _save_subtasks(self, task, subtasks_data):
+    def _save_subtasks(self, task: Task, subtasks_data: list[dict]) -> None:
         if not subtasks_data:
             return
         # Saving the subtask
@@ -120,7 +120,7 @@ class HandoverRepository:
     # ---- 2. UPDATE -------------------------------------------------------
 
     # Ticks a subtask as done, or back to to-do
-    def update_subtask_status(self, subtask, is_done):
+    def update_subtask_status(self, subtask: Subtask, is_done: bool) -> Subtask:
         subtask.status = "done" if is_done else "todo"
         try:
             subtask.save(update_fields=["status"])
@@ -132,9 +132,9 @@ class HandoverRepository:
     # Saves the user's  edits to an existing saved h/over, then re-checks if it's completed
     def update_handover_tasks(
         self,
-        handover: Any,
-        grouped_tasks: Dict[str, List[Any]],
-        data: Dict[str, Any],
+        handover: Handover,
+        grouped_tasks: dict[str, list[Task]],
+        data: dict,
         is_complete: bool,
     ) -> None:
         """Atomically update saved task/subtask rows and handover status."""
@@ -173,7 +173,7 @@ class HandoverRepository:
             raise DataManagerError("save your handover edits") from error
 
     # Copies the edited fields onto one saved task, deadline for outstanding, schedule for BAU
-    def _update_task_from_record(self, task: Any, record: Dict[str, Any]) -> None:
+    def _update_task_from_record(self, task: Task, record: dict) -> None:
         task.title = record.get("task", "")
         task.description = record.get("description", "")
 
@@ -189,9 +189,9 @@ class HandoverRepository:
             self._replace_task_subtasks(task, record.get("subtasks", []))
 
     # Makes the saved subtasks match the edited list: updates existing, adds new, deletes removed
-    def _replace_task_subtasks(self, task: Any, subtask_data: List[Dict[str, Any]]) -> None:
+    def _replace_task_subtasks(self, task: Task, subtask_data: list[dict]) -> None:
         existing = {subtask.code: subtask for subtask in task.subtasks.all()}
-        updated: Dict[str, Any] = {}
+        updated: dict[str, Subtask] = {}
 
         for index, item in enumerate(subtask_data, start=1):
             code = item.get("subtask_id") or f"S{index:03d}"
@@ -217,7 +217,7 @@ class HandoverRepository:
     # ---- 3. DELETE -------------------------------------------------------
 
     # Deletes a cancelled upload: removes the file from media/ and its database row
-    def delete_upload(self, upload):
+    def delete_upload(self, upload: Upload) -> None:
         upload.file.delete(save=False)
         try:
             upload.delete()
@@ -226,7 +226,7 @@ class HandoverRepository:
             raise DataManagerError("delete the upload") from error
 
     # Deletes a handover, its tasks and subtasks go with it via cascade, then its files in media/
-    def delete_handover(self, handover: Any) -> None:
+    def delete_handover(self, handover: Handover) -> None:
         """Delete a handover row and remove its associated upload/completed files."""
         handover_id = handover.pk
         try:
@@ -251,7 +251,7 @@ class HandoverRepository:
     # ---- Shared Persistence Helpers ------------------
 
     @staticmethod
-    def _parse_date(value: Any) -> Optional[date]:
+    def _parse_date(value: str | None) -> date | None:
         # Turns a written date, a string, into a real date
         if not value:
             return None
@@ -263,9 +263,9 @@ class HandoverRepository:
     @staticmethod
     def allocate_subtask_code(
         candidate_code: str,
-        used_codes: set,
+        used_codes: set[str],
         next_code: int,
-    ) -> Tuple[str, int]:
+    ) -> tuple[str, int]:
         """Ensure subtask code is <=10 chars and unique within used_codes."""
         code = str(candidate_code or f"S{next_code:03d}")
         # If the AI's id is too long or repeated, give it a new one like "S002"
