@@ -11,6 +11,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
+from .data_manager.data_manager_error import DataManagerError
 from .data_manager.handover_query import HandoverQuery
 from .forms import HandoverUploadForm
 from .models import Handover, Subtask
@@ -293,9 +294,13 @@ class HandoverController:
     def _detail_save(self, request, employee, handover, tasks, detail_url, edit_url):
         suggestion_key = f"handover_ai_suggestions_{handover.pk}"
         request.session.pop(suggestion_key, None)
-        result = self._clarification_service.save_clarification_edits(
-            handover, tasks, request.POST
-        )
+        try:
+            result = self._clarification_service.save_clarification_edits(
+                handover, tasks, request.POST
+            )
+        except DataManagerError as error:
+            messages.error(request, str(error))
+            return redirect(edit_url)
         if result["status"] == "invalid_dates":
             messages.error(
                 request, "Some dates were invalid. Please correct them and save again."
@@ -327,7 +332,11 @@ class HandoverController:
     def delete_handover(self, request, handover_id):
         employee = getattr(request.user, "employee", None)
         handover = get_object_or_404(Handover, pk=handover_id, created_by=employee)
-        self._clarification_service.delete_handover(handover)
+        try:
+            self._clarification_service.delete_handover(handover)
+        except DataManagerError as error:
+            messages.error(request, str(error))
+            return redirect("handovers:handover_history")
         messages.success(request, f"Handover H-{handover_id:04d} was deleted.")
         return redirect("handovers:handover_history")
 
