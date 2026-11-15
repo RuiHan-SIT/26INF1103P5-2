@@ -11,11 +11,13 @@ from .data_manager_error import DataManagerError
 logger = logging.getLogger(__name__)
 
 
+# Implementation of Create, Update & Delete: turns the shared dictionary into rows prior to saving
 class HandoverRepository:
-    """Implementation of Create, Update & Delete for Handover, Upload, Task, and Subtask rows."""
+    # Saves handovers into the database
 
-    # ---- 1. CREATE -------------------------------------------------------
+    # ---- 1. CREATE ---------------------------------
 
+    # Saves a newly uploaded file and its details, before it becomes a handover
     def create_upload(self, uploaded_file, employee):
         try:
             return Upload.objects.create(
@@ -28,7 +30,10 @@ class HandoverRepository:
             logger.exception("Could not save upload %s", uploaded_file.name)
             raise DataManagerError("save the uploaded file") from error
 
+    # Essentially saves a h/over, completed or needs clarification, with all its tasks and subtasks, then links its upload
     def save_handover(self, employee, upload, processed_data, status="completed"):
+        # After the logic manager has validated, the said h/over will be saved
+        # with 'with', everything inside the block is saved together, or nothing is saved if an error happens
         try:
             with transaction.atomic():
                 handover = Handover.objects.create(
@@ -46,11 +51,15 @@ class HandoverRepository:
                 upload.handover = handover
                 upload.save(update_fields=["handover"])
         except DatabaseError as error:
+            # Nothing was saved 
             logger.exception("Could not save handover for employee %s", employee.pk)
             raise DataManagerError("save the handover") from error
 
         return handover
 
+    # ---- private methods
+
+    # Saves one outstanding task with a deadline along with its subtasks
     def _save_outstanding_task(self, handover, index, task_data):
         task = Task.objects.create(
             handover=handover,
@@ -63,6 +72,7 @@ class HandoverRepository:
         task.owners.set(task_data.get("owner_ids", []))
         self._save_subtasks(task, task_data.get("subtasks", []))
 
+    # Saves one BAU routine task with its recurring frequency and dates
     def _save_bau_task(self, handover, index, task_data):
         task = Task.objects.create(
             handover=handover,
@@ -76,9 +86,11 @@ class HandoverRepository:
         )
         task.owners.set(task_data.get("owner_ids", []))
 
+    # Saves a task's subtasks, then links whichever subtask depends on which
     def _save_subtasks(self, task, subtasks_data):
         if not subtasks_data:
             return
+        # Saving the subtask
         subtask_records = {}
         used_codes = set()
         fallback_index = 1
@@ -96,6 +108,7 @@ class HandoverRepository:
                 planned_date=self._parse_date(subtask_data.get("planned_date")),
             )
 
+        # Then link the dependencies, now that every subtask exists
         for subtask_data in subtasks_data:
             original_id = subtask_data.get("subtask_id")
             if original_id in subtask_records:
@@ -106,6 +119,7 @@ class HandoverRepository:
 
     # ---- 2. UPDATE -------------------------------------------------------
 
+    # Ticks a subtask as done, or back to to-do
     def update_subtask_status(self, subtask, is_done):
         subtask.status = "done" if is_done else "todo"
         try:
@@ -115,6 +129,7 @@ class HandoverRepository:
             raise DataManagerError("update the subtask") from error
         return subtask
 
+    # Saves the user's  edits to an existing saved h/over, then re-checks if it's completed
     def update_handover_tasks(
         self,
         handover: Any,
@@ -131,16 +146,18 @@ class HandoverRepository:
             for task_type, data_key in task_keys:
                 for task, record in zip(grouped_tasks.get(task_type, []), data.get(data_key, [])):
                     self._update_task_from_record(task, record)
-
-            if handover.completed_document:
+                
+            # The old Word doc is out of date after edits, thus it gets deleted
                 handover.completed_document.delete(save=False)
 
+            # Remove old "Needs Clarification" notes so they don't pile up after each edit
             handover.important_information = [
                 item
                 for item in (handover.important_information or [])
                 if not str(item).startswith("⚠️ Needs Clarification:")
             ]
             if is_complete:
+                
                 handover.status = "completed"
             else:
                 handover.status = "needs_clarification"
@@ -150,6 +167,7 @@ class HandoverRepository:
 
             handover.save(update_fields=["status", "important_information", "completed_document"])
 
+    # Copies the edited fields onto one saved task, deadline for outstanding, schedule for BAU
     def _update_task_from_record(self, task: Any, record: Dict[str, Any]) -> None:
         task.title = record.get("task", "")
         task.description = record.get("description", "")
@@ -165,6 +183,7 @@ class HandoverRepository:
         if task.task_type == "outstanding":
             self._replace_task_subtasks(task, record.get("subtasks", []))
 
+    # Makes the saved subtasks match the edited list: updates existing, adds new, deletes removed
     def _replace_task_subtasks(self, task: Any, subtask_data: List[Dict[str, Any]]) -> None:
         existing = {subtask.code: subtask for subtask in task.subtasks.all()}
         updated: Dict[str, Any] = {}
@@ -192,6 +211,7 @@ class HandoverRepository:
 
     # ---- 3. DELETE -------------------------------------------------------
 
+    # Deletes a cancelled upload: removes the file from media/ and its database row
     def delete_upload(self, upload):
         upload.file.delete(save=False)
         try:
@@ -200,6 +220,7 @@ class HandoverRepository:
             logger.exception("Could not delete upload %s", upload.pk)
             raise DataManagerError("delete the upload") from error
 
+    # Deletes a handover, its tasks and subtasks go with it via cascade, then its files in media/
     def delete_handover(self, handover: Any) -> None:
         """Delete a handover row and remove its associated upload/completed files."""
         handover_id = handover.pk
@@ -207,6 +228,7 @@ class HandoverRepository:
         if handover.completed_document:
             stored_files.append(handover.completed_document)
 
+        # Delete the row first, so files are only removed once the database delete succeeded
         handover.delete()
         for stored_file in stored_files:
             try:
@@ -216,10 +238,11 @@ class HandoverRepository:
                     "Could not remove a stored file for deleted handover %s", handover_id
                 )
 
-    # ---- Shared Persistence Helpers --------------------------------------
+    # ---- Shared Persistence Helpers ------------------
 
     @staticmethod
     def _parse_date(value: Any) -> Optional[date]:
+        # Turns a written date, a string, into a real date
         if not value:
             return None
         try:
@@ -235,6 +258,7 @@ class HandoverRepository:
     ) -> Tuple[str, int]:
         """Ensure subtask code is <=10 chars and unique within used_codes."""
         code = str(candidate_code or f"S{next_code:03d}")
+        # If the AI's id is too long or repeated, give it a new one like "S002"
         if len(code) > 10 or code in used_codes:
             code = f"S{next_code:03d}"
             while code in used_codes:
