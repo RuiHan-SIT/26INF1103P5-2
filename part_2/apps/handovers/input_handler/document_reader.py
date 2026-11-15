@@ -14,8 +14,15 @@ class DocumentReader:
         #validate the file before reading
         self.file_validator.validate_file(uploaded_file)
 
+        filename: str = uploaded_file.name.lower()
+
         uploaded_file.seek(0)
-        return self.read_docx(uploaded_file)
+
+        if filename.endswith(".docx"):
+            return self.read_docx(uploaded_file)
+
+        raise ValueError("Unsupported file type.")
+    
 
     def read_docx(self, uploaded_file: UploadedFile) -> str:
 

@@ -49,7 +49,7 @@ class InputValidator:
                 detected_types.add("Sensitive Keyword")
 
         for label, pattern in sensitive_patterns.items():
-            if re.search(pattern, text):
+            if re.search(pattern, text, re.IGNORECASE):
                 detected_types.add(label)
 
         if detected_types:
