@@ -12,7 +12,7 @@ const chatForm = document.getElementById("chat-form");
 const chatMessages = document.getElementById("chatMessages");
 const sendButton = chatForm ? chatForm.querySelector(".send-btn") : null;
 
-const allowedExtensions = [".txt", ".docx"];
+const allowedExtensions = [".docx"];
 const maxSize = 10 * 1024 * 1024;
 
 function displayFile(file) {
@@ -26,7 +26,7 @@ function displayFile(file) {
         .toLowerCase();
 
     if (!allowedExtensions.includes(extension)) {
-        alert("Only TXT and DOCX files are allowed.");
+        alert("Only Word (.docx) files are allowed.");
         clearFile();
         return;
     }
@@ -289,15 +289,46 @@ if (chatForm && chatMessages) {
 }
 
 document.querySelectorAll(".review-form").forEach((form) => {
+    form.addEventListener("input", (event) => {
+        const panel = event.target.closest("[data-task-questions]");
+        if (panel && [...panel.querySelectorAll("textarea")].some((input) => input.value.trim())) {
+            panel.querySelector(".question-error")?.remove();
+        }
+    });
     form.addEventListener("submit", (event) => {
         if (!event.submitter || event.submitter.value !== "refine") return;
         event.preventDefault();
+        let missingAnswers = false;
+        form.querySelectorAll("[data-task-questions]").forEach((panel) => {
+            panel.querySelector(".question-error")?.remove();
+            if (![...panel.querySelectorAll("textarea")].some((input) => input.value.trim())) {
+                const error = document.createElement("p");
+                error.className = "question-error";
+                error.setAttribute("role", "alert");
+                error.textContent = "Answer at least one question for this task.";
+                panel.append(error);
+                missingAnswers = true;
+            }
+        });
+        if (missingAnswers) {
+            form.querySelector(".question-error")?.scrollIntoView({block: "center", behavior: "smooth"});
+            return;
+        }
         const formData = new FormData(form);
         formData.set("action", "refine");
         const status = document.createElement("div");
         status.className = "review-ai-progress";
         status.setAttribute("role", "status");
         status.append("AI is reviewing your answers. This may take a little while. ");
+        const dots = document.createElement("span");
+        dots.className = "extract-loading-dots";
+        dots.setAttribute("aria-hidden", "true");
+        for (let index = 0; index < 3; index += 1) {
+            const dot = document.createElement("span");
+            dot.textContent = "•";
+            dots.append(dot);
+        }
+        status.append(dots);
         form.querySelector(".review-actions").prepend(status);
         sendInBackground(form, formData, status, event.submitter);
     });

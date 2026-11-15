@@ -114,6 +114,24 @@ class WebAppEndToEndTests(TestCase):
             assert "Deploy Release" in review_html
             assert "What is the exact release deadline?" in review_html
 
+            # Required AI review cannot be bypassed by posting Save directly.
+            bypass = client.post(reverse("handovers:create_handover"), {"action": "save"})
+            assert bypass.status_code == 200
+            assert Handover.objects.filter(created_by=emp).count() == 0
+
+            # If refinement fails, the draft stays usable through field-validation fallback.
+            with patch("apps.handovers.services.handover_coordinator.HandoverCoordinator.review_handover",
+                       side_effect=RuntimeError("AI unavailable")):
+                refined = client.post(reverse("handovers:create_handover"), {
+                    "action": "refine", "clarification_outstanding_0_0": "The deadline is not confirmed yet",
+                    "owner_outstanding_0_0": "9999991", "owner_confirmed_outstanding_0_0": "yes",
+                    "owner_bau_0_0": "9999991", "owner_confirmed_bau_0_0": "yes",
+                })
+            assert refined.status_code == 302
+            fallback_page = client.get(reverse("handovers:home"))
+            assert "One-off tasks need a deadline." in fallback_page.content.decode()
+            assert "Verify task owner" not in fallback_page.content.decode()
+
             # 6. POST /create-handover/ (save with missing deadline & unanswered question -> needs_clarification)
             resp_save = client.post(
                 reverse("handovers:create_handover"),
@@ -221,6 +239,41 @@ class WebAppEndToEndTests(TestCase):
             )
             assert resp_bau_done.status_code == 200
             assert resp_bau_done.json() == {"completed": True}
+
+            # Creator reviews a fifth work item before saving; recipient calendar has no warning.
+            assert 'id="workload-warning"' not in client.get(reverse("handovers:my_tasks")).content.decode()
+            for number in range(3):
+                extra = Task.objects.create(handover=handover, code=f"EX-{number}",
+                                            title=f"Existing weekly task {number}", description="Review checks",
+                                            task_type="bau", frequency="weekly", start_date=start_date)
+                extra.owners.add(emp)
+            candidate = {
+                "outstanding_tasks": [{"task": "New review", "description": "Prepare review",
+                                       "owners": ["Test Alice"], "deadline": "31/12/2099",
+                                       "subtasks": [{"subtask_id": "S001", "task": "Review evidence",
+                                                     "planned_date": next_occurrence.strftime("%d/%m/%Y"), "dependencies": []}],
+                                       "clarification_questions": []}],
+                "bau_tasks": [], "important_information": []
+            }
+            with patch("apps.handovers.services.handover_coordinator.HandoverCoordinator.review_handover",
+                       return_value={"success": True, "data": candidate, "error_message": None}):
+                client.post(reverse("handovers:create_handover"), {
+                    "action": "upload", "document": SimpleUploadedFile("another.docx", _make_docx_bytes("Prepare review"),
+                    content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+                })
+            count_before = Handover.objects.filter(created_by=emp).count()
+            save_payload = {"action": "save", "owner_outstanding_0_0": "9999991", "owner_confirmed_outstanding_0_0": "yes"}
+            warning_page = client.post(reverse("handovers:create_handover"), save_payload)
+            assert warning_page.status_code == 200
+            warning_html = warning_page.content.decode()
+            assert "Test Alice has 5 scheduled work items" in warning_html
+            assert Handover.objects.filter(created_by=emp).count() == count_before
+            import re
+            token = re.search(r'name="acknowledge_workload" value="([^"]+)"', warning_html).group(1)
+            save_payload["acknowledge_workload"] = token
+            saved_anyway = client.post(reverse("handovers:create_handover"), save_payload)
+            assert saved_anyway.status_code == 302
+            assert Handover.objects.filter(created_by=emp).count() == count_before + 1
 
             # 11. POST /history/<id>/delete/ deletes the handover
             resp_del = client.post(

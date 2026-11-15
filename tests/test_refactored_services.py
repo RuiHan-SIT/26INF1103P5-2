@@ -113,7 +113,7 @@ def test_draft_service_upload_uses_table_fallback_when_ai_offline():
     repository.create_upload.assert_called_once()
 
 
-def test_draft_service_save_marks_needs_clarification_when_questions_remain():
+def test_draft_service_blocks_save_when_questions_have_not_been_refined():
     employee = SimpleNamespace(employee_id="E001", name="Alice Tan", department="IT")
     query = MagicMock()
     query.all_employees.return_value = [employee]
@@ -153,10 +153,9 @@ def test_draft_service_save_marks_needs_clarification_when_questions_remain():
 
     result = service.save_draft(employee, SimpleNamespace(pk=5), data, post_data)
 
-    assert result["status"] == "needs_clarification"
-    assert result["handover"] is saved_handover
-    assert "Unanswered clarification questions remain" in result["missing_reasons"]
-    assert repository.save_handover.call_args.kwargs["status"] == "needs_clarification"
+    assert result["status"] == "invalid"
+    assert "refine with AI" in result["error_message"]
+    repository.save_handover.assert_not_called()
 
 
 def test_clarification_service_rejects_mismatched_ai_suggestion_counts():
@@ -394,3 +393,55 @@ def test_draft_and_clarification_services_delegate_to_handover_service():
     fake_handover = SimpleNamespace(pk=10, status="needs_clarification")
     clarification_service.delete_handover(fake_handover)
     repository.delete_handover.assert_called_once_with(fake_handover)
+
+
+def test_home_review_requires_answers_per_task_and_keeps_confirmed_owners():
+    from copy import deepcopy
+    employee = SimpleNamespace(employee_id="E001", name="Alice Tan", department="IT")
+    data = {"outstanding_tasks": [
+        {"task": "Report", "description": "Prepare report", "owners": ["Alice"],
+         "deadline": "", "subtasks": [], "clarification_questions": ["Who receives it?"]},
+        {"task": "Audit", "description": "Review audit", "owners": ["Alice"],
+         "deadline": "31/12/2099", "subtasks": [], "clarification_questions": ["Which audit?"]},
+    ], "bau_tasks": [], "important_information": []}
+    query = MagicMock()
+    query.all_employees.return_value = [employee]
+    query.employee_list.return_value = [{"employee_id": "E001", "name": "Alice Tan", "department": "IT"}]
+    coordinator = MagicMock()
+    proposed = deepcopy(data)
+    proposed["outstanding_tasks"][0]["owners"] = ["Wrong owner"]
+    coordinator.review_handover.return_value = {"success": True, "data": proposed}
+    handler = MagicMock()
+    handler.process_upload.return_value = "Report and Audit"
+    cancellation = MagicMock()
+    cancellation.is_cancelled.return_value = False
+    service = HandoverDraftService(input_handler=handler, coordinator=coordinator,
+                                  query=query, cancellation_tracker=cancellation)
+    post = {"clarification_outstanding_0_0": "Finance team"}
+    result = service.refine_draft(employee, MagicMock(), data, post)
+    assert result["status"] == "error"
+    assert "Audit" in result["error_message"]
+    coordinator.review_handover.assert_not_called()
+    post.update({"clarification_outstanding_1_0": "Annual audit",
+                 "owner_outstanding_0_0": "E001", "owner_confirmed_outstanding_0_0": "yes",
+                 "owner_outstanding_1_0": "E001", "owner_confirmed_outstanding_1_0": "yes"})
+    result = service.refine_draft(employee, MagicMock(), data, post)
+    assert result["status"] == "refined"
+    refined = result["data"]
+    assert refined["outstanding_tasks"][0]["owners"] == ["Alice Tan"]
+    assert refined["outstanding_tasks"][0]["owner_ids"] == ["E001"]
+    context = service.build_review_context(employee, None, refined)
+    task = context["review_sections"][0]["tasks"][0]
+    assert task["owner_reviews"][0]["confirmed"]
+    assert any(field["label"] == "Deadline" and field["errors"] for field in task["fields"])
+    assert not context["has_clarifications"]
+    assert not context["validation_passed"]
+    blocked = service.save_draft(employee, MagicMock(), refined, {})
+    assert blocked["status"] == "invalid"
+    repository = MagicMock()
+    service._repository = repository
+    saved = service.save_draft(employee, MagicMock(), refined, {
+        "draft_outstanding_0_deadline": "2099-12-31"
+    })
+    assert saved["status"] == "completed"
+    repository.save_handover.assert_called_once()

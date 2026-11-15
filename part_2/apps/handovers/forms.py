@@ -3,14 +3,14 @@ from django import forms
 class HandoverUploadForm(forms.Form):
     document = forms.FileField(
         label="Word handover document",
-        help_text="Upload a .txt or .docx file.(Max 10 MB)"
+        help_text="Upload a Word (.docx) file. Maximum size: 10 MB."
     )
 
     def clean_document(self):
         document = self.cleaned_data["document"]
 
-        if not document.name.lower().endswith((".txt",".docx")):
-            raise forms.ValidationError("Please upload a .txt or .docx Word document.")
+        if not document.name.lower().endswith(".docx"):
+            raise forms.ValidationError("Please upload a Word (.docx) document.")
 
         if document.size == 0:
             raise forms.ValidationError(

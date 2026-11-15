@@ -1,0 +1,16 @@
+<label class="draft-field{% if field.key == 'task' or field.key == 'description' %} draft-field-wide{% endif %}{% if field.errors %} has-error{% endif %}">
+    <span>{{ field.label }}</span>
+    {% if field.kind == "select" %}
+    <select name="{{ field.name }}" {% if not ai_failed %}required{% endif %}>
+        <option value="">Choose frequency</option>
+        <option value="weekly" {% if field.value == "weekly" %}selected{% endif %}>Weekly</option>
+        <option value="monthly" {% if field.value == "monthly" %}selected{% endif %}>Monthly</option>
+        <option value="yearly" {% if field.value == "yearly" %}selected{% endif %}>Yearly</option>
+    </select>
+    {% elif field.key == "description" %}
+    <textarea name="{{ field.name }}" rows="3" {% if not ai_failed %}required{% endif %}>{{ field.value }}</textarea>
+    {% else %}
+    <input type="{{ field.kind }}" name="{{ field.name }}" value="{{ field.value }}" {% if not ai_failed and field.key != "end_date" %}required{% endif %}>
+    {% endif %}
+    {% for error in field.errors %}<small role="alert">{{ error }}</small>{% endfor %}
+</label>

@@ -73,6 +73,7 @@ class HandoverDraftMapper:
         self,
         data: Dict[str, Any],
         employees: List[Dict[str, Any]],
+        validation: Optional[Dict[str, Any]] = None,
     ) -> List[Dict[str, Any]]:
         """Build UI review sections with employee match suggestions and clarification questions."""
         matcher = EmployeeIdentityMatcher(employees)
@@ -94,6 +95,7 @@ class HandoverDraftMapper:
                 clarification_questions = [
                     {
                         "question": question,
+                        "answer": task.get("_answers", [])[q_index] if q_index < len(task.get("_answers", [])) else "",
                         "field_name": f"clarification_{task_type}_{task_index}_{q_index}",
                     }
                     for q_index, question in enumerate(task.get("clarification_questions", []))
@@ -102,7 +104,8 @@ class HandoverDraftMapper:
                     "title": task.get("task", "Untitled task"),
                     "description": task.get("description", ""),
                     "owner_reviews": owner_reviews,
-                    "clarification_questions": clarification_questions,
+                    "clarification_questions": clarification_questions if not data.get("_refined") and not data.get("_ai_failed") else [],
+                    "fields": self.draft_fields(task, task_type, task_index, validation or {}, data),
                 })
 
             if reviewed_tasks:
@@ -150,6 +153,8 @@ class HandoverDraftMapper:
             suggested_choices.sort(key=lambda choice: choice["name"].lower())
 
             owner_reviews.append({
+                "confirmed": bool(task.get("_owners_confirmed")),
+                "selected_id": (task.get("owner_ids") or [""])[owner_index] if task.get("_owners_confirmed") else "",
                 "owner_name": owner_name or "No owner was identified",
                 "task_title": task.get("task", "Untitled task"),
                 "task_type_label": spec["type_label"],
@@ -164,6 +169,69 @@ class HandoverDraftMapper:
             })
 
         return owner_reviews
+
+    def draft_fields(self, task, task_type, task_index, validation, data):
+        errors = []
+        for issue in validation.get("errors", []):
+            if issue.get("type") == task_type and issue.get("index") == task_index + 1:
+                errors = issue.get("errors", [])
+        prefix = f"draft_{task_type}_{task_index}_"
+        specs = [("task", "Task name", "text"), ("description", "Description", "text")]
+        if task_type == "bau":
+            specs += [("frequency", "Frequency", "select"), ("start_date", "Start date", "date"), ("end_date", "End date (optional)", "date")]
+        else:
+            specs += [("deadline", "Deadline", "date")]
+        fields = []
+        for key, label, kind in specs:
+            messages = [message for code, (field, message) in FIELD_ERROR_LABELS.items()
+                        if code in errors and field == ("title" if key == "task" else key)]
+            value = task.get(key) or ""
+            if kind == "date" and value:
+                try:
+                    value = datetime.strptime(value, "%d/%m/%Y").date().isoformat()
+                except ValueError:
+                    pass
+            if messages or data.get("_show_fields"):
+                fields.append({"name": prefix + key, "key": key, "subtask_group": "", "label": label, "kind": kind,
+                               "value": value, "errors": messages})
+        for index, subtask in enumerate(task.get("subtasks", [])):
+            for key, label, kind in [("task", "name", "text"), ("planned_date", "planned date", "date")]:
+                messages = []
+                for code in errors:
+                    start = f"subtask_{index + 1}_"
+                    if code.startswith(start):
+                        field, message = SUBTASK_ERROR_LABELS.get(code[len(start):], ("planned_date", "Check this subtask."))
+                        if field == ("title" if key == "task" else key):
+                            messages.append(message)
+                value = subtask.get(key) or ""
+                if kind == "date" and value:
+                    try:
+                        value = datetime.strptime(value, "%d/%m/%Y").date().isoformat()
+                    except ValueError:
+                        pass
+                if messages or data.get("_show_fields"):
+                    fields.append({"name": prefix + f"subtask_{index}_" + key, "key": key, "subtask_group": index + 1,
+                                   "label": f"{subtask.get('subtask_id', index + 1)} {label}",
+                                   "kind": kind, "value": value, "errors": messages})
+        return fields
+
+    def apply_draft_fields(self, data, post_data):
+        for spec in TASK_TYPE_SPECS:
+            for index, task in enumerate(data.get(spec["data_key"], [])):
+                prefix = f"draft_{spec['task_type']}_{index}_"
+                records = [(task, prefix)] + [(subtask, prefix + f"subtask_{i}_")
+                           for i, subtask in enumerate(task.get("subtasks", []))]
+                for record, field_prefix in records:
+                    for key in ["task", "description", "deadline", "frequency", "start_date", "end_date", "planned_date"]:
+                        if field_prefix + key not in post_data:
+                            continue
+                        value = str(post_data[field_prefix + key]).strip()
+                        if key in ["deadline", "start_date", "end_date", "planned_date"] and value:
+                            try:
+                                value = date.fromisoformat(value).strftime("%d/%m/%Y")
+                            except ValueError:
+                                pass
+                        record[key] = value
 
     def collect_clarification_answers(
         self,
@@ -211,7 +279,9 @@ class HandoverDraftMapper:
 
                 for owner_index, _ in enumerate(owner_names):
                     field_name = f"owner_{task_type}_{task_index}_{owner_index}"
-                    selected_id = post_data.get(field_name, "")
+                    stored_ids = task.get("owner_ids", [])
+                    already_confirmed = task.get("_owners_confirmed") and owner_index < len(stored_ids)
+                    selected_id = post_data.get(field_name, stored_ids[owner_index] if already_confirmed else "")
                     if selected_id == "__directory__":
                         return "Choose Neither and confirm to open the employee directory."
                     if not matcher.is_registered_employee(selected_id):
@@ -220,13 +290,14 @@ class HandoverDraftMapper:
                     if not employee:
                         return "Choose an employee for every name before saving."
                     confirmation_field = f"owner_confirmed_{task_type}_{task_index}_{owner_index}"
-                    if selected_id and post_data.get(confirmation_field) != "yes":
+                    if selected_id and post_data.get(confirmation_field) != "yes" and not already_confirmed:
                         return "Click Confirm for every extracted owner name before saving."
                     if employee not in selected_employees:
                         selected_employees.append(employee)
 
                 task["owners"] = [emp.name for emp in selected_employees]
                 task["owner_ids"] = [emp.employee_id for emp in selected_employees]
+                task["_owners_confirmed"] = True
 
         return None
 
