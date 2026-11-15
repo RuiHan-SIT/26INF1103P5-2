@@ -8,7 +8,7 @@ from apps.handovers.data_manager.handover_query import HandoverQuery
 from apps.handovers.data_manager.handover_repository import HandoverRepository
 
 
-# Tests that DataManagerError gives the right message and is a type of Exception
+# Tests that DataManagerError gives the right message and is a type of Exception (Inheritance)
 def test_data_manager_error_message():
     error = DataManagerError("save the handover")
 
@@ -58,3 +58,13 @@ def test_search_handovers_by_number(mock_filter):
     HandoverQuery().search_handovers(employee, search_text="H-0007")
 
     handovers.filter.assert_called_once_with(pk=7)
+
+
+# A download only looks for the employee's own completed handover, hence another person's ID won't match
+@patch("apps.handovers.data_manager.handover_query.Handover.objects.filter")
+def test_downloadable_handover_only_own_completed(mock_filter):
+    employee = MagicMock()
+
+    HandoverQuery().downloadable_handover(5, employee)
+
+    mock_filter.assert_called_once_with(pk=5, created_by=employee, status="completed")
