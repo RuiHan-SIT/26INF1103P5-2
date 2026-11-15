@@ -142,30 +142,35 @@ class HandoverRepository:
             ("outstanding", "outstanding_tasks"),
             ("bau", "bau_tasks"),
         )
-        with transaction.atomic():
-            for task_type, data_key in task_keys:
-                for task, record in zip(grouped_tasks.get(task_type, []), data.get(data_key, [])):
-                    self._update_task_from_record(task, record)
-                
-            # The old Word doc is out of date after edits, thus it gets deleted
-                handover.completed_document.delete(save=False)
+        try:
+            with transaction.atomic():
+                for task_type, data_key in task_keys:
+                    for task, record in zip(grouped_tasks.get(task_type, []), data.get(data_key, [])):
+                        self._update_task_from_record(task, record)
 
-            # Remove old "Needs Clarification" notes so they don't pile up after each edit
-            handover.important_information = [
-                item
-                for item in (handover.important_information or [])
-                if not str(item).startswith("⚠️ Needs Clarification:")
-            ]
-            if is_complete:
-                
-                handover.status = "completed"
-            else:
-                handover.status = "needs_clarification"
-                handover.important_information.append(
-                    "⚠️ Needs Clarification: Some task details still need review."
-                )
+                # The old Word doc is out of date after edits, thus it gets deleted
+                if handover.completed_document:
+                    handover.completed_document.delete(save=False)
 
-            handover.save(update_fields=["status", "important_information", "completed_document"])
+                # Remove old "Needs Clarification" notes so they don't pile up after each edit
+                handover.important_information = [
+                    item
+                    for item in (handover.important_information or [])
+                    if not str(item).startswith("⚠️ Needs Clarification:")
+                ]
+                if is_complete:
+                    handover.status = "completed"
+                else:
+                    handover.status = "needs_clarification"
+                    handover.important_information.append(
+                        "⚠️ Needs Clarification: Some task details still need review."
+                    )
+
+                handover.save(update_fields=["status", "important_information", "completed_document"])
+        except DatabaseError as error:
+            # Nothing was saved, the "with" block rolled everything back
+            logger.exception("Could not update handover %s", handover.pk)
+            raise DataManagerError("save your handover edits") from error
 
     # Copies the edited fields onto one saved task, deadline for outstanding, schedule for BAU
     def _update_task_from_record(self, task: Any, record: Dict[str, Any]) -> None:
@@ -224,12 +229,17 @@ class HandoverRepository:
     def delete_handover(self, handover: Any) -> None:
         """Delete a handover row and remove its associated upload/completed files."""
         handover_id = handover.pk
-        stored_files = [upload.file for upload in handover.uploads.all() if upload.file]
-        if handover.completed_document:
-            stored_files.append(handover.completed_document)
+        try:
+            stored_files = [upload.file for upload in handover.uploads.all() if upload.file]
+            if handover.completed_document:
+                stored_files.append(handover.completed_document)
 
-        # Delete the row first, so files are only removed once the database delete succeeded
-        handover.delete()
+            # Delete the row first, so files are only removed once the database delete succeeded
+            handover.delete()
+        except DatabaseError as error:
+            logger.exception("Could not delete handover %s", handover_id)
+            raise DataManagerError("delete the handover") from error
+
         for stored_file in stored_files:
             try:
                 stored_file.delete(save=False)
