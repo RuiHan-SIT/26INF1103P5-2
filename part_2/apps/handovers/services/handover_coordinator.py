@@ -1,6 +1,6 @@
 import copy
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from .llm_service import LLMService
 from .gemini import Gemini
@@ -23,13 +23,13 @@ class HandoverCoordinator:
     - Returns a clean fallback structure if AI extraction fails.
     """
 
-    FALLBACK_DATA = {
+    FALLBACK_DATA: Dict[str, Any] = {
         "outstanding_tasks": [],
         "bau_tasks": [],
         "important_information": []
     }
 
-    def __init__(self, llm_service: Optional[LLMService] = None):
+    def __init__(self, llm_service: Optional[LLMService] = None) -> None:
         """
         Dependency injection for LLM service.
         Defaults to Gemini if none is provided.
@@ -41,7 +41,11 @@ class HandoverCoordinator:
         """Returns the configured LLM service instance."""
         return self.__llm_service
 
-    def review_handover(self, handover_content: str, source_data=None) -> Dict[str, Any]:
+    def review_handover(
+        self,
+        handover_content: str,
+        source_data: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         """
         Coordinates submitting sanitized handover text to Gemini for review,
         cleaning the response, and validating the schema.
@@ -93,7 +97,11 @@ class HandoverCoordinator:
                 "error_message": f"An unexpected error occurred during handover processing: {err}"
             }
 
-    def preserve_bau_frequencies(self, data, source_data):
+    def preserve_bau_frequencies(
+        self,
+        data: Dict[str, Any],
+        source_data: Dict[str, Any],
+    ) -> None:
         """Only accept recurrence frequencies supplied in the source or by the reviewer."""
         source_tasks = source_data.get("bau_tasks", [])
         for index, task in enumerate(data.get("bau_tasks", [])):
@@ -146,7 +154,7 @@ class HandoverCoordinator:
         Parses structured task fields from DocumentReader text output
         when Gemini AI service is unavailable.
         """
-        data = {
+        data: Dict[str, Any] = {
             "outstanding_tasks": [],
             "bau_tasks": [],
             "important_information": [
@@ -158,8 +166,8 @@ class HandoverCoordinator:
             return data
 
         lines = [line.strip() for line in document_text.splitlines() if line.strip()]
-        current_task = {}
-        tasks = []
+        current_task: Dict[str, Any] = {}
+        tasks: List[Dict[str, Any]] = []
 
         for line in lines:
             task_header = line[:-1].strip().lower() if line.endswith(":") else ""
