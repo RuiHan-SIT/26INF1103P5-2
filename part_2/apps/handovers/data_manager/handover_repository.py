@@ -67,7 +67,7 @@ class HandoverRepository:
             task_type="outstanding",
             title=task_data.get("task", ""),
             description=task_data.get("description", ""),
-            deadline=self._parse_date(task_data.get("deadline")),
+            deadline=self.parse_date(task_data.get("deadline")),
         )
         task.owners.set(task_data.get("owner_ids", []))
         self._save_subtasks(task, task_data.get("subtasks", []))
@@ -81,8 +81,8 @@ class HandoverRepository:
             title=task_data.get("task", ""),
             description=task_data.get("description", ""),
             frequency=task_data.get("frequency") or "",
-            start_date=self._parse_date(task_data.get("start_date")),
-            end_date=self._parse_date(task_data.get("end_date")),
+            start_date=self.parse_date(task_data.get("start_date")),
+            end_date=self.parse_date(task_data.get("end_date")),
         )
         task.owners.set(task_data.get("owner_ids", []))
 
@@ -105,7 +105,7 @@ class HandoverRepository:
                 task=task,
                 code=code,
                 title=subtask_data.get("task", ""),
-                planned_date=self._parse_date(subtask_data.get("planned_date")),
+                planned_date=self.parse_date(subtask_data.get("planned_date")),
             )
 
         # Then link the dependencies, now that every subtask exists
@@ -137,7 +137,6 @@ class HandoverRepository:
         data: dict,
         is_complete: bool,
     ) -> None:
-        """Atomically update saved task/subtask rows and handover status."""
         task_keys = (
             ("outstanding", "outstanding_tasks"),
             ("bau", "bau_tasks"),
@@ -168,7 +167,7 @@ class HandoverRepository:
 
                 handover.save(update_fields=["status", "important_information", "completed_document"])
         except DatabaseError as error:
-            # Nothing was saved, the "with" block rolled everything back
+            # Nothing was saved
             logger.exception("Could not update handover %s", handover.pk)
             raise DataManagerError("save your handover edits") from error
 
@@ -178,11 +177,11 @@ class HandoverRepository:
         task.description = record.get("description", "")
 
         if task.task_type == "outstanding":
-            task.deadline = self._parse_date(record.get("deadline"))
+            task.deadline = self.parse_date(record.get("deadline"))
         else:
             task.frequency = record.get("frequency", "")
-            task.start_date = self._parse_date(record.get("start_date"))
-            task.end_date = self._parse_date(record.get("end_date"))
+            task.start_date = self.parse_date(record.get("start_date"))
+            task.end_date = self.parse_date(record.get("end_date"))
         task.save()
 
         if task.task_type == "outstanding":
@@ -197,7 +196,7 @@ class HandoverRepository:
             code = item.get("subtask_id") or f"S{index:03d}"
             subtask = existing.get(code) or Subtask(task=task, code=code)
             subtask.title = item.get("task", "")
-            subtask.planned_date = self._parse_date(item.get("planned_date"))
+            subtask.planned_date = self.parse_date(item.get("planned_date"))
             subtask.save()
             updated[code] = subtask
 
@@ -226,8 +225,8 @@ class HandoverRepository:
             raise DataManagerError("delete the upload") from error
 
     # Deletes a handover, its tasks and subtasks go with it via cascade, then its files in media/
+    # Delete a handover row and remove its associated upload/completed files.
     def delete_handover(self, handover: Handover) -> None:
-        """Delete a handover row and remove its associated upload/completed files."""
         handover_id = handover.pk
         try:
             stored_files = [upload.file for upload in handover.uploads.all() if upload.file]
@@ -250,8 +249,9 @@ class HandoverRepository:
 
     # ---- Shared Persistence Helpers ------------------
 
+    # The handover mapper uses this too
     @staticmethod
-    def _parse_date(value: str | None) -> date | None:
+    def parse_date(value: str | None) -> date | None:
         # Turns a written date, a string, into a real date
         if not value:
             return None
@@ -266,7 +266,7 @@ class HandoverRepository:
         used_codes: set[str],
         next_code: int,
     ) -> tuple[str, int]:
-        """Ensure subtask code is <=10 chars and unique within used_codes."""
+        # Ensure subtask code is <=10 chars and unique within used_codes.
         code = str(candidate_code or f"S{next_code:03d}")
         # If the AI's id is too long or repeated, give it a new one like "S002"
         if len(code) > 10 or code in used_codes:
