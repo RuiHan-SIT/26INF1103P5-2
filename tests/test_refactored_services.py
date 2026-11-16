@@ -327,8 +327,8 @@ def test_handover_mapper_allocate_subtask_code_and_repo_parse_date():
     assert code == "S002"
     assert next_code == 3
 
-    assert HandoverRepository._parse_date("15/11/2026") == date(2026, 11, 15)
-    assert HandoverRepository._parse_date("invalid") is None
+    assert HandoverRepository.parse_date("15/11/2026") == date(2026, 11, 15)
+    assert HandoverRepository.parse_date("invalid") is None
 
 
 def test_handover_controller_dependency_injection():

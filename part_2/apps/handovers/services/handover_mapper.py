@@ -58,7 +58,7 @@ MATCH_LEVEL_LABELS: Dict[str, str] = {
 class HandoverDraftMapper:
     """Pure in-memory translator between AI/session dicts, LogicHandover, forms, and ORM objects."""
 
-    parse_handover_date = staticmethod(HandoverRepository._parse_date)
+    parse_handover_date = staticmethod(HandoverRepository.parse_date)
     allocate_subtask_code = staticmethod(HandoverRepository.allocate_subtask_code)
 
     @staticmethod

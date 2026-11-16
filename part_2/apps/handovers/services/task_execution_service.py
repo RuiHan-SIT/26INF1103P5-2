@@ -6,7 +6,6 @@ from apps.handovers.data_manager.handover_query import HandoverQuery
 from apps.handovers.data_manager.handover_repository import HandoverRepository
 from apps.handovers.logic_manager.outstanding_task import OutstandingTask
 from apps.handovers.logic_manager.workload_validator import BAU_FREQUENCY_RULES
-from apps.handovers.models import TaskCompletion
 
 
 class TaskExecutionService:
@@ -160,8 +159,10 @@ class TaskExecutionService:
                 "error_message": "Complete all subtasks before marking this task complete.",
             }
 
-        task.is_completed = mark_done
-        task.save(update_fields=["is_completed"])
+        try:
+            self._repository.update_task_completion(task, mark_done)
+        except DataManagerError as error:
+            return {"success": False, "status_code": 503, "error_message": str(error)}
         return {"success": True, "status_code": 200, "completed": mark_done}
 
     def _update_bau_occurrence(
@@ -182,10 +183,10 @@ class TaskExecutionService:
                 "error_message": "That date is not a scheduled occurrence of this BAU task.",
             }
 
-        if mark_done:
-            TaskCompletion.objects.get_or_create(task=task, completion_date=occurrence_date)
-        else:
-            TaskCompletion.objects.filter(task=task, completion_date=occurrence_date).delete()
+        try:
+            self._repository.update_bau_completion(task, occurrence_date, mark_done)
+        except DataManagerError as error:
+            return {"success": False, "status_code": 503, "error_message": str(error)}
         return {"success": True, "status_code": 200, "completed": mark_done}
 
     def update_subtask_status(
@@ -223,8 +224,7 @@ class TaskExecutionService:
         try:
             self._repository.update_subtask_status(subtask, mark_done)
             if not mark_done and subtask.task.is_completed:
-                subtask.task.is_completed = False
-                subtask.task.save(update_fields=["is_completed"])
+                self._repository.update_task_completion(subtask.task, False)
         except DataManagerError as error:
             return {"success": False, "status_code": 503, "error_message": str(error)}
 

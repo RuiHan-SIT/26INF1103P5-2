@@ -1,7 +1,7 @@
 import logging
 
 from django.db import DatabaseError
-from django.db.models import Count
+from django.db.models import Count, Prefetch
 
 from apps.handovers.models import Employee, Handover, Subtask, Task, Upload
 
@@ -18,7 +18,7 @@ class HandoverQuery:
     # Gets every task an employee owns, with its handover and subtasks loaded in one go
     def tasks_owned_by(self, employee: Employee) -> list[Task]:
         try:
-            # list() runs the query now, so any database error is caught here
+            # Load them now so a database problem gets caught here
             return list(
                 Task.objects.filter(owners=employee)
                 .select_related("handover")
@@ -100,7 +100,7 @@ class HandoverQuery:
             handovers = handovers.filter(status=status)
 
         try:
-            # list() runs the query now, so any database error is caught here
+            # Load them now so a database problem gets caught here
             return list(handovers)
         except DatabaseError as error:
             logger.exception("Could not search handovers for employee %s", employee.pk)
@@ -114,6 +114,31 @@ class HandoverQuery:
                 created_by=employee,
                 status="completed",
             ).first()
+        except DatabaseError as error:
+            logger.exception("Could not load handover %s", handover_id)
+            raise DataManagerError("load the handover") from error
+
+    # Grabs one of this employee's handovers along with its tasks, owners and subtasks, None if it's not there
+    def handover_with_tasks(self, handover_id: int, employee: Employee) -> Handover | None:
+        # Subtasks get sorted by code, and each one comes with whatever it depends on
+        subtask_prefetch = Prefetch(
+            "tasks__subtasks",
+            queryset=Subtask.objects.order_by("code").prefetch_related("depends_on"),
+        )
+        try:
+            return (
+                Handover.objects.prefetch_related("tasks__owners", subtask_prefetch)
+                .filter(pk=handover_id, created_by=employee)
+                .first()
+            )
+        except DatabaseError as error:
+            logger.exception("Could not load handover %s", handover_id)
+            raise DataManagerError("load the handover") from error
+
+    # Grabs one of this employee's own handovers, None if it doesn't exist or isn't theirs
+    def own_handover(self, handover_id: int, employee: Employee) -> Handover | None:
+        try:
+            return Handover.objects.filter(pk=handover_id, created_by=employee).first()
         except DatabaseError as error:
             logger.exception("Could not load handover %s", handover_id)
             raise DataManagerError("load the handover") from error
