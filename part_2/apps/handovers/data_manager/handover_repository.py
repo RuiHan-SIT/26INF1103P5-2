@@ -4,7 +4,7 @@ from datetime import date, datetime
 from django.core.files.uploadedfile import UploadedFile
 from django.db import DatabaseError, transaction
 
-from apps.handovers.models import Employee, Handover, Subtask, Task, Upload
+from apps.handovers.models import Employee, Handover, Subtask, Task, TaskCompletion, Upload
 
 from .data_manager_error import DataManagerError
 
@@ -128,6 +128,27 @@ class HandoverRepository:
             logger.exception("Could not update subtask %s", subtask.pk)
             raise DataManagerError("update the subtask") from error
         return subtask
+
+    # Ticks an outstanding task as done, or back to not done
+    def update_task_completion(self, task: Task, is_done: bool) -> Task:
+        task.is_completed = is_done
+        try:
+            task.save(update_fields=["is_completed"])
+        except DatabaseError as error:
+            logger.exception("Could not update task %s", task.pk)
+            raise DataManagerError("update the task") from error
+        return task
+
+    # Ticks a BAU task as done for one day by adding a completion row, or unticks it by removing that row
+    def update_bau_completion(self, task: Task, completion_date: date, is_done: bool) -> None:
+        try:
+            if is_done:
+                TaskCompletion.objects.get_or_create(task=task, completion_date=completion_date)
+            else:
+                TaskCompletion.objects.filter(task=task, completion_date=completion_date).delete()
+        except DatabaseError as error:
+            logger.exception("Could not update BAU task %s for %s", task.pk, completion_date)
+            raise DataManagerError("update the task") from error
 
     # Saves the user's  edits to an existing saved h/over, then re-checks if it's completed
     def update_handover_tasks(
