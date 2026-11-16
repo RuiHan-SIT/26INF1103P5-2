@@ -17,7 +17,7 @@ class HandoverService:
       task and re-validates via Handover logic manager without re-calling AI.
     """
 
-    def __init__(self, coordinator: Optional[HandoverCoordinator] = None):
+    def __init__(self, coordinator: Optional[HandoverCoordinator] = None) -> None:
         """
         Dependency injection for HandoverCoordinator.
         Defaults to a standard HandoverCoordinator instance if none is provided.
@@ -29,7 +29,11 @@ class HandoverService:
         """Returns the configured HandoverCoordinator instance."""
         return self.__coordinator
 
-    def review_document(self, handover_text: str, source_data=None) -> Dict[str, Any]:
+    def review_document(
+        self,
+        handover_text: str,
+        source_data: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         """
         Pass 1: Extracts tasks via HandoverCoordinator and validates them
         with Handover logic manager.
