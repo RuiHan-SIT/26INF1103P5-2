@@ -1,7 +1,7 @@
 import logging
 
 from django.db import DatabaseError
-from django.db.models import Count
+from django.db.models import Count, Prefetch
 
 from apps.handovers.models import Employee, Handover, Subtask, Task, Upload
 
@@ -114,6 +114,31 @@ class HandoverQuery:
                 created_by=employee,
                 status="completed",
             ).first()
+        except DatabaseError as error:
+            logger.exception("Could not load handover %s", handover_id)
+            raise DataManagerError("load the handover") from error
+
+    # Gets one of this employee's handovers with its tasks, owners and subtasks loaded, None if not found
+    def handover_with_tasks(self, handover_id: int, employee: Employee) -> Handover | None:
+        # Subtasks come sorted by code, each with the subtasks it depends on
+        subtask_prefetch = Prefetch(
+            "tasks__subtasks",
+            queryset=Subtask.objects.order_by("code").prefetch_related("depends_on"),
+        )
+        try:
+            return (
+                Handover.objects.prefetch_related("tasks__owners", subtask_prefetch)
+                .filter(pk=handover_id, created_by=employee)
+                .first()
+            )
+        except DatabaseError as error:
+            logger.exception("Could not load handover %s", handover_id)
+            raise DataManagerError("load the handover") from error
+
+    # Gets one of this employee's handovers, None if not found or it belongs to someone else
+    def own_handover(self, handover_id: int, employee: Employee) -> Handover | None:
+        try:
+            return Handover.objects.filter(pk=handover_id, created_by=employee).first()
         except DatabaseError as error:
             logger.exception("Could not load handover %s", handover_id)
             raise DataManagerError("load the handover") from error

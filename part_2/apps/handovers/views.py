@@ -5,16 +5,15 @@ from uuid import uuid4
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.db.models import Prefetch
 from django.http import FileResponse, Http404, HttpResponseServerError, JsonResponse
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from .data_manager.data_manager_error import DataManagerError
 from .data_manager.handover_query import HandoverQuery
 from .forms import HandoverUploadForm
-from .models import Handover, Subtask
+from .models import Handover
 from .services.cancellation_tracker import CancellationTracker
 from .services.handover_clarification_service import HandoverClarificationService
 from .services.handover_draft_service import HandoverDraftService
@@ -205,15 +204,9 @@ class HandoverController:
 
     def handover_detail(self, request, handover_id):
         employee = getattr(request.user, "employee", None)
-        subtask_prefetch = Prefetch(
-            "tasks__subtasks",
-            queryset=Subtask.objects.order_by("code").prefetch_related("depends_on"),
-        )
-        handover = get_object_or_404(
-            Handover.objects.prefetch_related("tasks__owners", subtask_prefetch),
-            pk=handover_id,
-            created_by=employee,
-        )
+        handover = self._query.handover_with_tasks(handover_id, employee)
+        if handover is None:
+            raise Http404("Handover not found.")
 
         detail_url = reverse("handovers:handover_detail", args=[handover.pk])
         edit_url = f"{detail_url}?edit=1"
@@ -331,7 +324,9 @@ class HandoverController:
 
     def delete_handover(self, request, handover_id):
         employee = getattr(request.user, "employee", None)
-        handover = get_object_or_404(Handover, pk=handover_id, created_by=employee)
+        handover = self._query.own_handover(handover_id, employee)
+        if handover is None:
+            raise Http404("Handover not found.")
         try:
             self._clarification_service.delete_handover(handover)
         except DataManagerError as error:
