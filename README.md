@@ -1,151 +1,315 @@
-# AI Handover Assistant
+# AI Handover Management System
 
 > **INF1103 Programming Project (Group P5-2)**  
-> An intelligent system for processing, sanitizing, and tracking employee work handovers using Gemini AI.
+> An intelligent system for extracting, sanitizing, validating, and tracking employee work handovers using Google Gemini AI.
 
 ---
 
 ## 📖 About the Project
 
-When an employee resigns, takes extended leave, or transfers roles, they prepare a handover for the colleague taking over their responsibilities. These notes often arrive as unstructured text missing critical details such as task ownership, deadlines, or dependencies.
+When an employee resigns, goes on temporary reassignment, or takes extended leave, they prepare a handover document for the colleagues taking over their responsibilities. In practice, handover notes are often unstructured or incomplete—missing critical details such as task owners, deadlines, recurring frequencies, or subtask dependencies, or inadvertently containing sensitive personal data (PII).
 
-This project uses Gemini AI and natural language processing to:
-- Extract and categorize **Outstanding Tasks** vs. **Routine (BAU) Tasks**.
-- Validate task owners, deadlines, and priorities.
-- Sanitize sensitive personal data (NRIC, passport numbers, passwords).
-- Offer both a **CLI prototype (Part 1)** and a **Django Web Application (Part 2)**.
+This repository encompasses **both phases** of the project:
+- **Part 1 (`part_1 (old)/`)**: An interactive **Terminal / CLI Prototype** that validates user inputs, scrubs PII, extracts tasks via Gemini AI, checks business rules in memory, and persists records to flat JSON files with audit logs.
+- **Part 2 (`part_2/`)**: A full-featured **Django Web Application** backed by **SQLite**, featuring Word (`.docx`) template parsing, a 2-pass AI clarification workflow, deterministic offline table fallback, 3-tier employee identity matching, daily workload conflict detection, interactive calendar task execution with subtask dependency enforcement, and `.docx` handover export.
 
 ---
 
-## 🗂 Project Structure
+## 🔄 Evolution: Part 1 (CLI) vs. Part 2 (Django Web App)
+
+| Capability | Part 1: CLI Prototype (`part_1 (old)/`) | Part 2: Django Web Application (`part_2/`) |
+| :--- | :--- | :--- |
+| **Interface** | Interactive terminal menu (`main.py`) | Multi-page responsive Django web UI with session state & AJAX status updates |
+| **Authentication** | Manual entry of Name, Department & 7-digit Employee ID per session | Django authentication linked 1-to-1 with `Employee` profiles (`load_employees`) |
+| **Supported Input** | Free-form terminal text or `.txt` files (`<= 5 MB`) | Word `.docx` handover documents (`<= 10 MB`, paragraphs + structured tables) |
+| **PII Sanitization** | `scrubadub` + regex checks (`NRIC/FIN`, `Passport`, sensitive keywords) | `InputValidator` (`scrubadub` + regex checks) on both `.docx` uploads and clarification answers |
+| **AI Integration** | Single-pass Gemini extraction (`gemini_router.py`) + `json-repair` + Pydantic | 2-pass `HandoverCoordinator` & `Gemini` (`LLMService`) + `JsonHelper` + Pydantic schemas (`apps/schema/`) |
+| **Offline / AI Outage Handling** | Raises error / halts creation if API fails | Deterministic **Table Fallback Parser** extracts tasks directly from `.docx` tables + allows saving as `Needs Clarification` |
+| **Clarification Workflow** | Terminal prompt loop (`fill_missing_information`) for missing fields | Interactive **AI Clarification Q&A** (`Refine with AI`) during draft review and on saved handovers |
+| **Owner Matching** | Exact/fuzzy matching against `data/employees.json` in CLI | **3-Tier `EmployeeIdentityMatcher`** (Exact $\rightarrow$ Name Components $\rightarrow$ Fuzzy $\ge 70\%$) with mandatory reviewer confirmation |
+| **Task Breakdown & Dependencies** | Flat `outstanding_tasks` (with deadlines) and `bau_tasks` (with frequencies) | Parent `Task` + ordered `Subtask` graph (`depends_on` M2M) with topological & chronological validation |
+| **Workload Validation** | Not available | **`WorkloadValidator`** flags any employee assigned $> 4$ items on a single day across existing + proposed handovers |
+| **Task Execution Tracking** | Read-only terminal view | Interactive **"My Tasks" Calendar** projecting one-off deadlines, planned subtasks, and recurring BAU dates (`TaskCompletion`) |
+| **Data Persistence** | Local JSON files (`data/completed/*.json`) | Relational **SQLite** database (`Employee`, `Handover`, `Upload`, `Task`, `Subtask`, `TaskCompletion`) via CQRS (`HandoverRepository` & `HandoverQuery`) |
+| **Document Export** | Formatted console report (`output.py`) | Downloadable formatted Word document (`CompletedHandoverDocumentGenerator` $\rightarrow$ `.docx`) |
+
+---
+
+## 🗂 Repository Structure
 
 ```text
 26INF1103P5-2/
 │
-├── part_2/                      # 🌟 Part 2: Django Web Application (SQLite)
-│   ├── manage.py                # Django CLI tool
-│   ├── config/                  # Django project configuration & settings
-│   ├── apps/handovers/          # Handover features (models, views, services, urls)
-│   ├── templates/               # Web layout and page templates
-│   ├── static/                  # CSS, JS, and image assets
-│   ├── media/                   # Uploaded handover files
-│   └── README.md                # Detailed guide for Part 2 web application
+├── part_2/                                  # 🌟 Part 2: Django Web Application (SQLite)
+│   ├── manage.py                            # Django management CLI
+│   ├── requirements.txt                     # Part 2 Python dependencies
+│   ├── .env.example                         # Environment template (DEBUG, SECRET_KEY, GEMINI_API_KEY, DISABLE_AI)
+│   ├── config/                              # Django project settings, URLs, WSGI/ASGI
+│   ├── apps/
+│   │   ├── handovers/                       # Core handover web application
+│   │   │   ├── views.py                     # HandoverController HTTP endpoints
+│   │   │   ├── forms.py                     # HandoverUploadForm (.docx validation)
+│   │   │   ├── urls.py                      # App routing
+│   │   │   ├── input_handler/               # FileValidator, DocumentReader (.docx), InputValidator (PII)
+│   │   │   ├── services/                    # Draft, Clarification, TaskExecution, Workload, Coordinator, Gemini
+│   │   │   ├── logic_manager/               # Pure-Python domain rules (Handover, Task, Matcher, WorkloadValidator)
+│   │   │   ├── data_manager/                # CQRS persistence (HandoverRepository, HandoverQuery, DataManagerError)
+│   │   │   ├── models/                      # ORM models (Employee, Handover, Upload, Task, Subtask, TaskCompletion)
+│   │   │   ├── output/                      # CompletedHandoverDocumentGenerator (.docx export)
+│   │   │   ├── fixtures/employees.json      # Pre-configured employee directory for demo accounts
+│   │   │   └── management/commands/         # `load_employees` management command
+│   │   └── schema/                          # Pydantic schemas (HandoverSchema, OutstandingTaskSchema, BAUTaskSchema, SubtaskSchema)
+│   ├── utils/                               # JsonHelper (json-repair) & HANDOVER_REVIEW_PROMPT
+│   ├── templates/                           # HTML templates (home/review, my_tasks, history, handover_detail, login)
+│   └── static/                              # CSS, JS, and downloadable template assets
 │
-├── src/                         # Part 1: Terminal / CLI Prototype
-│   ├── main.py                  # CLI entry point
-│   ├── offline_demo.py          # Offline demonstration script
-│   ├── modules/                 # Handlers for inputs, gemini router, logic, & storage
-│   ├── model/                   # Pydantic schemas for AI output
-│   └── utils/                   # Config, logger, and Gemini client
+├── part_1 (old)/                            # 💻 Part 1: Terminal / CLI Prototype
+│   ├── src/
+│   │   ├── main.py                          # Interactive CLI entry point
+│   │   ├── model/handover_model.py          # Part 1 Pydantic schemas
+│   │   ├── modules/                         # input_handler, gemini_router, logic_manager, data_manager, output
+│   │   └── utils/                           # config, logger, gemini_client, llm_prompt
+│   └── tests/                               # Part 1 unit & integration tests + text fixtures
 │
-├── data/                        # Sample data, employees, & mock responses
-├── tests/                       # Unit and integration test suites
-│
-├── requirements.txt             # Python dependencies (Django, Gemini, Pydantic, etc.)
-├── .env.example                 # Template for environment variables (API keys)
-├── .gitignore                   # Ignore rules for virtualenvs, keys, SQLite, and media
-├── Dockerfile                   # Docker container configuration
-└── update.ps1                   # Docker build & test script
+├── tests/                                   # 🧪 Comprehensive pytest suite for Part 2 & core modules
+├── data/                                    # Data directory used by Part 1 CLI storage
+├── Handover_Template.docx                   # Sample Word handover template for testing uploads
+├── requirements.txt                         # Root Python dependencies
+├── .env.example                             # Root environment variables template
+├── Dockerfile                               # Container definition
+└── update.ps1                               # Helper script to pull latest changes and build Docker image
 ```
 
 ---
 
-## 🚀 Quick Start Guide
+## ⚙️ Prerequisites & Initial Setup
 
-### 1. Initial Setup
+### 1. Prerequisites
+- **Python 3.11+** (tested up to Python 3.14)
+- **Google Gemini API Key** (optional if testing Offline Fallback Mode via `DISABLE_AI=True`)
+- **Git** and (optional) **Docker Desktop**
 
-1. **Clone the repository and enter the directory**:
-   ```powershell
-   git clone https://github.com/RuiHan-SIT/26INF1103P5-2.git
-   cd 26INF1103P5-2
-   ```
+### 2. Clone & Virtual Environment Setup
 
-2. **Create and activate a virtual environment**:
-   ```powershell
-   python -m venv .venv
-   .\.venv\Scripts\activate
-   ```
+From PowerShell or your terminal at the repository root:
 
-3. **Install dependencies**:
-   ```powershell
-   pip install -r requirements.txt
-   ```
+```powershell
+# 1. Clone the repository
+git clone https://github.com/RuiHan-SIT/26INF1103P5-2.git
+cd 26INF1103P5-2
 
-4. **Set up API Key**:
-   Create a `.env` file in the project root (or inside `part_2/`):
-   ```env
-   GEMINI_API_KEY=your-gemini-api-key-here
-   ```
+# 2. Create and activate a virtual environment
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+
+# 3. Install dependencies
+pip install -r requirements.txt
+pip install -r part_2/requirements.txt
+```
+
+### 3. Configure Environment Variables (`.env`)
+
+Create a `.env` file in the root directory **and** inside `part_2/` (or copy from `.env.example`):
+
+```powershell
+Copy-Item .env.example .env
+Copy-Item part_2\.env.example part_2\.env
+```
+
+Edit `part_2/.env` (and root `.env` for Part 1):
+
+```env
+DEBUG=True
+SECRET_KEY=change-this-in-production-to-a-secure-random-key
+GEMINI_API_KEY=your-actual-gemini-api-key
+DISABLE_AI=False
+```
+
+> [!TIP]
+> Set `DISABLE_AI=True` in `part_2/.env` at any time to simulate a Gemini API outage and test the deterministic table fallback workflow without making external API calls.
 
 ---
 
-## 🌐 Running Part 2: Django Web Application (Recommended)
+## 🌐 Part 2 Guide: Django Web Application
 
-Part 2 is the full-featured web app using **Django** and a local **SQLite** database.
+### 1. Initialize the SQLite Database & Demo Accounts
+
+Navigate into `part_2/`, run migrations, and seed the employee accounts from `apps/handovers/fixtures/employees.json`:
 
 ```powershell
-# 1. Navigate into part_2
 cd part_2
 
-# 2. Run database migrations (creates SQLite tables)
+# 1. Create/update SQLite database tables
 python manage.py migrate
 
-# 3. (Optional) Create an admin superuser
-python manage.py createsuperuser
+# 2. Seed registered employees and their login accounts (default password: handover123)
+python manage.py load_employees
 
-# 4. Start the Django web server
+# 3. (Optional) Create a Django admin superuser
+python manage.py createsuperuser
+```
+
+#### Pre-configured Demo Employee Logins
+Running `python manage.py load_employees` creates the following login accounts (all using the default password **`handover123`**, or a custom password via `python manage.py load_employees --password <your_password>`):
+
+| Username (Employee ID) | Employee Name | Department | Default Password |
+| :--- | :--- | :--- | :--- |
+| `2604707` | Goh Rui Han | Information Technology | `handover123` |
+| `2601624` | Lim Ti Seng | Finance | `handover123` |
+| `2604218` | Nur Shakira Binte Jamil | Human Resources | `handover123` |
+| `2604249` | Rania Binte Mohammad Fadli | Marketing | `handover123` |
+| `2603056` | Muhammad Haziq Bin Hamkah | Operations | `handover123` |
+| `2601532` | Aqmar Haziq So Mohamed Kassim | Sales | `handover123` |
+
+### 2. Start the Web Server
+
+```powershell
 python manage.py runserver
 ```
 
-Open your browser and visit:
-- **Web App**: [http://127.0.0.1:8000/](http://127.0.0.1:8000/)
-- **Admin Panel**: [http://127.0.0.1:8000/admin/](http://127.0.0.1:8000/admin/)
-
-👉 *For detailed architecture, model details, and app guidelines, see [**`part_2/README.md`**](file:///D:/Project/School/26INF1103P5-2/part_2/README.md).*
+- **Web Application**: [http://127.0.0.1:8000/](http://127.0.0.1:8000/)
+- **Django Admin**: [http://127.0.0.1:8000/admin/](http://127.0.0.1:8000/admin/)
 
 ---
 
-## 💻 Running Part 1: Terminal / CLI Prototype
+### 🧭 Part 2 Full Demo Walkthrough
 
-To run the interactive command-line interface:
+#### Step 1: Log In & Upload a `.docx` Handover Document
+1. Sign in at `http://127.0.0.1:8000/accounts/login/` using one of the 7-digit Employee IDs above (e.g., `2604707` / `handover123`).
+2. On the **Home** page, download the blank Word template if needed, or upload `Handover_Template.docx` (must be `.docx`, non-empty, $\le 10\text{ MB}$).
+3. **PII Guardrail**: `HandoverInputHandler` scans the document text using `scrubadub` and custom regex detectors (`NRIC/FIN`, `Passport`, `"password"`). If sensitive data is present, the upload is immediately blocked with an actionable error message before reaching Gemini AI.
+4. **In-Flight Cancellation**: While Gemini is analyzing the document, clicking **Cancel** sends the request UUID token to `CancellationTracker` to abort processing and clean up any temporary upload.
+
+#### Step 2: AI Extraction, Clarification Questions & Refinement (`Pass 1` $\rightarrow$ `Pass 2`)
+1. Once extracted, the draft is stored in `PendingDraftSession` and displayed in the **Review Handover** screen, split into **One-off tasks** (`outstanding_tasks`) and **Recurring BAU tasks** (`bau_tasks`).
+2. **BAU Frequency Protection**: If a recurring task had no frequency selected in the source Word table, `HandoverCoordinator.preserve_bau_frequencies()` prevents the AI from guessing one and prompts: *"What frequency should this recurring task use: weekly, monthly, or yearly?"*
+3. Answer at least one clarification question per flagged task and click **Refine with AI**. Gemini updates the draft using your answers (after checking your answers for PII) while preserving task order and owner selections.
+
+#### Step 3: 3-Tier Employee Identity Matching
+1. For every owner name extracted from the document, `EmployeeIdentityMatcher` searches the employee directory across 3 levels:
+   - **Level 1 (`Exact name match`)**: Case- and space-insensitive full name match.
+   - **Level 2 (`Name parts match`)**: Matches all name components in any word order.
+   - **Level 3 (`Possible spelling match`)**: Fuzzy `SequenceMatcher` ratio $\ge 70\%$.
+2. Confirm the suggested employee or select a registered employee from the department/employee dropdowns. Every task must have at least one confirmed registered owner.
+
+#### Step 4: Daily Workload Warning Check
+1. `WorkloadReviewService` compares the proposed schedule (planned subtask dates for one-off tasks + recurring occurrences for BAU tasks over the next 365 days) against each owner's existing database tasks.
+2. If any assigned owner exceeds **4 scheduled tasks on the same date**, a warning banner lists the overloaded dates and tasks. You can either adjust the dates or tick the **Acknowledge workload warning** checkbox (validated via a SHA-256 `workload_review_token`) to proceed.
+
+#### Step 5: Offline / AI Fallback Mode & `Needs Clarification` Status
+1. To demo AI failure resilience, set `DISABLE_AI=True` in `part_2/.env` and upload a `.docx` file.
+2. `HandoverCoordinator.build_table_fallback_data()` automatically extracts tasks directly from the Word document tables and displays a warning banner.
+3. If fields are still incomplete when saving during an AI outage, the handover is saved under **`Needs clarification`** status (instead of blocking submission) so work is never lost.
+
+#### Step 6: Handover History, Detail Editing & `.docx` Export
+1. Navigate to **Handover History** (`/history/`) to search handovers by ID (e.g., `H-0001`) or filter by status (`Completed` vs. `Needs Clarification`).
+2. Click any handover to open its **Detail View**:
+   - Click **Edit handover** to modify task fields, deadlines, BAU schedules, or subtasks.
+   - Click **Ask AI to refine** to generate non-destructive AI suggestions (`request_ai_refinement`) that you can preview and either **Apply** or **Discard**.
+   - Click **Save and recheck** to re-run `LogicHandover` validation; once all required fields are valid, a `Needs Clarification` handover automatically transitions to `Completed`.
+3. Click **Download Word document** to generate and download `handover-XXXX.docx` via `CompletedHandoverDocumentGenerator`.
+
+#### Step 7: Executing Assigned Tasks in "My Tasks" Calendar
+1. Log in as an assigned task owner and visit **My Tasks** (`/my-tasks/`).
+2. View scheduled items on the interactive calendar:
+   - **Planned Subtasks** (`planned_date`)
+   - **One-off Task Deadlines** (`deadline`)
+   - **Recurring BAU Tasks** (projected dynamically by `weekly`, `monthly`, or `yearly` rules)
+3. **Dependency Enforcement**:
+   - Attempting to mark a subtask as complete before its prerequisite `depends_on` subtask(s) are complete returns a `409 Conflict` error.
+   - Attempting to uncheck a prerequisite subtask while a later dependent subtask is still marked complete is also blocked.
+   - Attempting to mark a parent one-off task complete before all of its subtasks are complete is blocked.
+
+---
+
+## 💻 Part 1 Guide: Terminal / CLI Prototype (`part_1 (old)/`)
+
+Part 1 is preserved in `part_1 (old)/` and provides a self-contained command-line interface backed by JSON file storage.
+
+### Running the CLI
+
+From the repository root (with your virtual environment activated and `GEMINI_API_KEY` set in root `.env`):
 
 ```powershell
-python src/main.py
+python "part_1 (old)/src/main.py"
 ```
 
-### CLI Menu Options:
-1. **Create a new handover** — Enter employee ID, enter notes or load a `.txt` file from `data/handovers/`.
-2. **View a handover** — Search and view handovers by employee ID with audit history.
-3. **Delete a handover** — Remove previously saved records.
+### CLI Menu Workflows
+1. **Option 1 — Create a new handover**:
+   - Prompts for your **Full Name**, **Department**, and **7-digit Employee ID**.
+   - Accepts handover notes via **manual terminal input** (type `END` on a new line to finish) or by **loading a `.txt` file** from `data/handovers/`.
+   - Validates input for sensitive PII (`scrubadub`, NRIC/FIN, Passport, passwords).
+   - Sends text to Gemini AI, repairs/validates JSON against Pydantic schemas, and interactively prompts you to fill in any missing task fields, owners, or deadlines (`DD/MM/YYYY`), plus matches owner names against `data/employees.json`.
+   - Saves completed records to `data/completed/handover_<employee_id>_<timestamp>.json`.
+2. **Option 2 — View a handover**:
+   - Look up saved handovers by 7-digit Employee ID, view formatted task details, and optionally edit tasks (recording a timestamped audit trail).
+3. **Option 3 — Delete a handover**:
+   - Select and permanently delete a saved handover JSON file by Employee ID.
 
 ---
 
-## 🧪 Running Tests
+## 🧪 Running Automated Tests
 
-To run the test suite across the project:
+### Run the Primary Test Suite (Root / Part 2)
+
+From the project root:
 
 ```powershell
 python -m pytest -v
 ```
 
----
-
-## 🐳 Docker (CLI Prototype)
-
-To build and run the CLI application via Docker:
+Or using Django's test runner from inside `part_2/`:
 
 ```powershell
-# Build image
-powershell -ExecutionPolicy Bypass -File .\update.ps1
+cd part_2
+python manage.py test apps.handovers
+```
 
-# Run with persistent data
-docker run --rm -it --env-file .env -v "${PWD}/data:/app/data" handover-app
+The root `tests/` suite covers:
+- `test_file_validator.py`, `test_document_reader.py`, `test_input_validator.py`, `test_handover_input_handler.py` (Upload & PII guardrails)
+- `test_json_helper.py`, `test_handover_schema.py`, `test_handover_coordinator.py` (AI parsing, schema normalization & table fallback)
+- `test_logic_manager_part2.py`, `test_handover_service.py` (Pure domain rules, subtask dependencies, employee matching & workload validation)
+- `test_data_manager.py` (Repository & Query CRUD operations and `DataManagerError` handling)
+- `test_refactored_services.py`, `test_needs_clarification_flow.py`, `test_webapp_views.py` (End-to-end service and controller flows)
+
+### Run Part 1 Legacy Tests
+
+To run the Part 1 test suite inside `part_1 (old)/tests`:
+
+```powershell
+python -m pytest "part_1 (old)/tests" -v
+```
+
+---
+
+## 🐳 Docker Instructions
+
+### Running Part 2 (Django Web Application) in Docker
+
+You can run the Part 2 Django web server inside a container from the project root:
+
+```powershell
+# 1. Build the image
+docker build -t handover-app .
+
+# 2. Run migrations, load demo employees, and launch the Django server on port 8000
+docker run --rm -it -p 8000:8000 --env-file part_2/.env -w /app/part_2 handover-app sh -c "python manage.py migrate && python manage.py load_employees && python manage.py runserver 0.0.0.0:8000"
+```
+
+Then open [http://localhost:8000/](http://localhost:8000/) in your browser.
+
+### Running Part 1 (CLI Prototype) in Docker
+
+To run the interactive Part 1 CLI inside the container with persistent `data/` volume mounting:
+
+```powershell
+docker run --rm -it --env-file .env -v "${PWD}/data:/app/data" handover-app python "part_1 (old)/src/main.py"
 ```
 
 ---
 
 ## 🔒 Security & Git Hygiene
 
-- **API Keys**: Never commit `.env` files to git.
-- **Databases**: SQLite databases (`*.sqlite3`) are ignored by [`.gitignore`](file:///D:/Project/School/26INF1103P5-2/.gitignore) and kept local.
-- **Uploads**: User media (`media/`) is ignored to prevent cluttering version control.
+- **API Keys & Secrets**: Never commit `.env` or `part_2/.env` to version control. Always use `.env.example` as the template.
+- **PII Protection**: Both Part 1 and Part 2 enforce strict pre-LLM PII detection (`NRIC/FIN`, `Passport`, passwords, and `scrubadub` detectors) so sensitive personal identifiers are blocked before any external API call or database write.
+- **Local Databases & Uploads**: SQLite database files (`*.sqlite3`) and uploaded/generated documents (`part_2/media/`) are excluded via `.gitignore`.
