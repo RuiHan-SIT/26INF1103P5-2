@@ -10,7 +10,7 @@
 When an employee resigns, goes on temporary reassignment, or takes extended leave, they prepare a handover document for the colleagues taking over their responsibilities. In practice, handover notes are often unstructured or incomplete—missing critical details such as task owners, deadlines, recurring frequencies, or subtask dependencies, or inadvertently containing sensitive personal data (PII).
 
 This repository encompasses **both phases** of the project:
-- **Part 1**: An interactive **Terminal / CLI Prototype** that validates user inputs, scrubs PII, extracts tasks via Gemini AI, checks business rules in memory, and persists records to flat JSON files with audit logs. Its code has been removed from this branch and remains available in the Git history.
+- **Part 1 (`part_1/`)**: An interactive **Terminal / CLI Prototype** (`part_1/src/main.py`) that validates user inputs, scrubs PII, extracts tasks via Gemini AI, checks business rules in memory, and persists records to flat JSON files with audit logs.
 - **Part 2 (`part_2/`)**: A full-featured **Django Web Application** backed by **SQLite**, featuring Word (`.docx`) template parsing, a 2-pass AI clarification workflow, deterministic offline table fallback, 3-tier employee identity matching, daily workload conflict detection, interactive calendar task execution with subtask dependency enforcement, and `.docx` handover export.
 
 ---
@@ -40,6 +40,14 @@ This repository encompasses **both phases** of the project:
 ```text
 26INF1103P5-2/
 │
+├── part_1/                                  # Part 1: Terminal / CLI Prototype
+│   ├── src/
+│   │   ├── main.py                          # Interactive CLI entry point
+│   │   ├── model/                           # Handover data model
+│   │   ├── modules/                         # Input handler, Gemini router, logic manager, data manager, output
+│   │   └── utils/                           # Config, Gemini client, LLM prompt, logger
+│   └── tests/                               # Part 1 pytest suite & sample .txt fixtures
+│
 ├── part_2/                                  # 🌟 Part 2: Django Web Application (SQLite)
 │   ├── manage.py                            # Django management CLI
 │   ├── requirements.txt                     # Part 2 Python dependencies
@@ -47,7 +55,7 @@ This repository encompasses **both phases** of the project:
 │   ├── config/                              # Django project settings, URLs, WSGI/ASGI
 │   ├── apps/
 │   │   ├── handovers/                       # Core handover web application
-│   │   │   ├── views.py                     # HandoverController HTTP endpoints
+│   │   │   ├── views.py                     # Django HTTP views (upload, review, history, my-tasks)
 │   │   │   ├── forms.py                     # HandoverUploadForm (.docx validation)
 │   │   │   ├── urls.py                      # App routing
 │   │   │   ├── input_handler/               # FileValidator, DocumentReader (.docx), InputValidator (PII)
@@ -60,14 +68,13 @@ This repository encompasses **both phases** of the project:
 │   │   │   └── management/commands/         # `load_employees` management command
 │   │   └── schema/                          # Pydantic schemas (HandoverSchema, OutstandingTaskSchema, BAUTaskSchema, SubtaskSchema)
 │   ├── utils/                               # JsonHelper (json-repair) & HANDOVER_REVIEW_PROMPT
-│   ├── templates/                           # HTML templates (home/review, my_tasks, history, handover_detail, login)
+│   ├── templates/                           # HTML templates (handovers/, registration/, partials/, base.html)
 │   └── static/                              # CSS, JS, and downloadable template assets
 │
 ├── tests/                                   # 🧪 Comprehensive pytest suite for Part 2 & core modules
 ├── requirements.txt                         # Root Python dependencies
 ├── .env.example                             # Root environment variables template
-├── Dockerfile                               # Container definition
-└── update.ps1                               # Helper script to pull latest changes and build Docker image
+└── Dockerfile                               # Container definition
 ```
 
 ---
@@ -165,7 +172,7 @@ python manage.py runserver
 ### 🧭 Part 2 Full Demo Walkthrough
 
 #### Step 1: Log In & Upload a `.docx` Handover Document
-1. Sign in at `http://127.0.0.1:8000/accounts/login/` using one of the 7-digit Employee IDs above (e.g., `2604707` / `handover123`).
+1. Sign in at `http://127.0.0.1:8000/login/` (visiting `/` also redirects here) using one of the 7-digit Employee IDs above (e.g., `2604707` / `handover123`).
 2. On the **Home** page, download the blank Word template if needed (`part_2/static/documents/Handover_Template.docx`), fill it in and upload it (must be `.docx`, non-empty, $\le 10\text{ MB}$).
 3. **PII Guardrail**: `HandoverInputHandler` scans the document text using `scrubadub` and custom regex detectors (`NRIC/FIN`, `Passport`, `"password"`). If sensitive data is present, the upload is immediately blocked with an actionable error message before reaching Gemini AI.
 4. **In-Flight Cancellation**: While Gemini is analyzing the document, clicking **Cancel** sends the request UUID token to `CancellationTracker` to abort processing and clean up any temporary upload.
@@ -196,7 +203,7 @@ python manage.py runserver
 2. Click any handover to open its **Detail View**:
    - Click **Edit handover** to modify task fields, deadlines, BAU schedules, or subtasks.
    - Click **Ask AI to refine** to generate non-destructive AI suggestions (`request_ai_refinement`) that you can preview and either **Apply** or **Discard**.
-   - Click **Save and recheck** to re-run `LogicHandover` validation; once all required fields are valid, a `Needs Clarification` handover automatically transitions to `Completed`.
+   - Click **Save and recheck** to re-run `Handover` domain validation (`logic_manager/handover.py`); once all required fields are valid, a `Needs Clarification` handover automatically transitions to `Completed`.
 3. Click **Download Word document** to generate and download `handover-XXXX.docx` via `CompletedHandoverDocumentGenerator`.
 
 #### Step 7: Executing Assigned Tasks in "My Tasks" Calendar
@@ -219,7 +226,7 @@ python manage.py runserver
 From the project root:
 
 ```powershell
-python -m pytest -v
+python -m pytest tests -v
 ```
 
 Or using Django's test runner from inside `part_2/`:
@@ -235,6 +242,18 @@ The root `tests/` suite covers:
 - `test_logic_manager_part2.py`, `test_handover_service.py` (Pure domain rules, subtask dependencies, employee matching & workload validation)
 - `test_data_manager.py` (Repository & Query CRUD operations and `DataManagerError` handling)
 - `test_refactored_services.py`, `test_needs_clarification_flow.py`, `test_webapp_views.py` (End-to-end service and controller flows)
+
+### Run Part 1 (CLI Prototype & Tests)
+
+From the project root:
+
+```powershell
+# Run the Part 1 interactive CLI
+python part_1/src/main.py
+
+# Run Part 1 unit & integration tests
+python -m pytest part_1/tests -v
+```
 
 ---
 
