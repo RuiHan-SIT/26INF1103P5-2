@@ -10,14 +10,14 @@
 When an employee resigns, goes on temporary reassignment, or takes extended leave, they prepare a handover document for the colleagues taking over their responsibilities. In practice, handover notes are often unstructured or incomplete—missing critical details such as task owners, deadlines, recurring frequencies, or subtask dependencies, or inadvertently containing sensitive personal data (PII).
 
 This repository encompasses **both phases** of the project:
-- **Part 1 (`part_1 (old)/`)**: An interactive **Terminal / CLI Prototype** that validates user inputs, scrubs PII, extracts tasks via Gemini AI, checks business rules in memory, and persists records to flat JSON files with audit logs.
+- **Part 1**: An interactive **Terminal / CLI Prototype** that validates user inputs, scrubs PII, extracts tasks via Gemini AI, checks business rules in memory, and persists records to flat JSON files with audit logs. Its code has been removed from this branch and remains available in the Git history.
 - **Part 2 (`part_2/`)**: A full-featured **Django Web Application** backed by **SQLite**, featuring Word (`.docx`) template parsing, a 2-pass AI clarification workflow, deterministic offline table fallback, 3-tier employee identity matching, daily workload conflict detection, interactive calendar task execution with subtask dependency enforcement, and `.docx` handover export.
 
 ---
 
 ## 🔄 Evolution: Part 1 (CLI) vs. Part 2 (Django Web App)
 
-| Capability | Part 1: CLI Prototype (`part_1 (old)/`) | Part 2: Django Web Application (`part_2/`) |
+| Capability | Part 1: CLI Prototype | Part 2: Django Web Application (`part_2/`) |
 | :--- | :--- | :--- |
 | **Interface** | Interactive terminal menu (`main.py`) | Multi-page responsive Django web UI with session state & AJAX status updates |
 | **Authentication** | Manual entry of Name, Department & 7-digit Employee ID per session | Django authentication linked 1-to-1 with `Employee` profiles (`load_employees`) |
@@ -63,17 +63,7 @@ This repository encompasses **both phases** of the project:
 │   ├── templates/                           # HTML templates (home/review, my_tasks, history, handover_detail, login)
 │   └── static/                              # CSS, JS, and downloadable template assets
 │
-├── part_1 (old)/                            # 💻 Part 1: Terminal / CLI Prototype
-│   ├── src/
-│   │   ├── main.py                          # Interactive CLI entry point
-│   │   ├── model/handover_model.py          # Part 1 Pydantic schemas
-│   │   ├── modules/                         # input_handler, gemini_router, logic_manager, data_manager, output
-│   │   └── utils/                           # config, logger, gemini_client, llm_prompt
-│   └── tests/                               # Part 1 unit & integration tests + text fixtures
-│
 ├── tests/                                   # 🧪 Comprehensive pytest suite for Part 2 & core modules
-├── data/                                    # Data directory used by Part 1 CLI storage
-├── Handover_Template.docx                   # Sample Word handover template for testing uploads
 ├── requirements.txt                         # Root Python dependencies
 ├── .env.example                             # Root environment variables template
 ├── Dockerfile                               # Container definition
@@ -176,7 +166,7 @@ python manage.py runserver
 
 #### Step 1: Log In & Upload a `.docx` Handover Document
 1. Sign in at `http://127.0.0.1:8000/accounts/login/` using one of the 7-digit Employee IDs above (e.g., `2604707` / `handover123`).
-2. On the **Home** page, download the blank Word template if needed, or upload `Handover_Template.docx` (must be `.docx`, non-empty, $\le 10\text{ MB}$).
+2. On the **Home** page, download the blank Word template if needed (`part_2/static/documents/Handover_Template.docx`), fill it in and upload it (must be `.docx`, non-empty, $\le 10\text{ MB}$).
 3. **PII Guardrail**: `HandoverInputHandler` scans the document text using `scrubadub` and custom regex detectors (`NRIC/FIN`, `Passport`, `"password"`). If sensitive data is present, the upload is immediately blocked with an actionable error message before reaching Gemini AI.
 4. **In-Flight Cancellation**: While Gemini is analyzing the document, clicking **Cancel** sends the request UUID token to `CancellationTracker` to abort processing and clean up any temporary upload.
 
@@ -222,32 +212,6 @@ python manage.py runserver
 
 ---
 
-## 💻 Part 1 Guide: Terminal / CLI Prototype (`part_1 (old)/`)
-
-Part 1 is preserved in `part_1 (old)/` and provides a self-contained command-line interface backed by JSON file storage.
-
-### Running the CLI
-
-From the repository root (with your virtual environment activated and `GEMINI_API_KEY` set in root `.env`):
-
-```powershell
-python "part_1 (old)/src/main.py"
-```
-
-### CLI Menu Workflows
-1. **Option 1 — Create a new handover**:
-   - Prompts for your **Full Name**, **Department**, and **7-digit Employee ID**.
-   - Accepts handover notes via **manual terminal input** (type `END` on a new line to finish) or by **loading a `.txt` file** from `data/handovers/`.
-   - Validates input for sensitive PII (`scrubadub`, NRIC/FIN, Passport, passwords).
-   - Sends text to Gemini AI, repairs/validates JSON against Pydantic schemas, and interactively prompts you to fill in any missing task fields, owners, or deadlines (`DD/MM/YYYY`), plus matches owner names against `data/employees.json`.
-   - Saves completed records to `data/completed/handover_<employee_id>_<timestamp>.json`.
-2. **Option 2 — View a handover**:
-   - Look up saved handovers by 7-digit Employee ID, view formatted task details, and optionally edit tasks (recording a timestamped audit trail).
-3. **Option 3 — Delete a handover**:
-   - Select and permanently delete a saved handover JSON file by Employee ID.
-
----
-
 ## 🧪 Running Automated Tests
 
 ### Run the Primary Test Suite (Root / Part 2)
@@ -272,14 +236,6 @@ The root `tests/` suite covers:
 - `test_data_manager.py` (Repository & Query CRUD operations and `DataManagerError` handling)
 - `test_refactored_services.py`, `test_needs_clarification_flow.py`, `test_webapp_views.py` (End-to-end service and controller flows)
 
-### Run Part 1 Legacy Tests
-
-To run the Part 1 test suite inside `part_1 (old)/tests`:
-
-```powershell
-python -m pytest "part_1 (old)/tests" -v
-```
-
 ---
 
 ## 🐳 Docker Instructions
@@ -298,18 +254,10 @@ docker run --rm -it -p 8000:8000 --env-file part_2/.env -w /app/part_2 handover-
 
 Then open [http://localhost:8000/](http://localhost:8000/) in your browser.
 
-### Running Part 1 (CLI Prototype) in Docker
-
-To run the interactive Part 1 CLI inside the container with persistent `data/` volume mounting:
-
-```powershell
-docker run --rm -it --env-file .env -v "${PWD}/data:/app/data" handover-app python "part_1 (old)/src/main.py"
-```
-
 ---
 
 ## 🔒 Security & Git Hygiene
 
 - **API Keys & Secrets**: Never commit `.env` or `part_2/.env` to version control. Always use `.env.example` as the template.
-- **PII Protection**: Both Part 1 and Part 2 enforce strict pre-LLM PII detection (`NRIC/FIN`, `Passport`, passwords, and `scrubadub` detectors) so sensitive personal identifiers are blocked before any external API call or database write.
+- **PII Protection**: The application enforces strict pre-LLM PII detection (`NRIC/FIN`, `Passport`, passwords, and `scrubadub` detectors) so sensitive personal identifiers are blocked before any external API call or database write.
 - **Local Databases & Uploads**: SQLite database files (`*.sqlite3`) and uploaded/generated documents (`part_2/media/`) are excluded via `.gitignore`.
