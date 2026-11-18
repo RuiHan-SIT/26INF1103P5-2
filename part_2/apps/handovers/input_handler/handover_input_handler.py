@@ -5,10 +5,6 @@ from .document_reader import DocumentReader
 
 class HandoverInputHandler:
 
-    def __init__(self) -> None:
-        self.input_validator = InputValidator()
-        self.file_validator = FileValidator()
-        self.document_reader = DocumentReader()
     def __init__(
         self,
         input_validator=None,
