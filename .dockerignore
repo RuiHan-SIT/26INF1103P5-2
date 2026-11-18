@@ -1,16 +1,17 @@
 # keep secrets, local data and dev clutter out of the image
-.env
-.env.*
-!.env.example
+# ** means any folder, so part_2/.env and part_2/db.sqlite3 are caught too
+**/.env
+**/.env.*
+!**/.env.example
 .venv/
 venv/
 .git/
 .github/
-.pytest_cache/
+**/.pytest_cache/
 **/__pycache__/
-*.py[cod]
-*.sqlite3
-*.log
+**/*.py[cod]
+**/*.sqlite3
+**/*.log
 part_2/media/
 part_2/staticfiles/
 part_1/
