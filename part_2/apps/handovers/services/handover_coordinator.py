@@ -11,6 +11,8 @@ from apps.schema import validate_and_normalize_handover
 logger = logging.getLogger(__name__)
 
 
+#Sole job is to handle take user string and pass to AI and clean the data 
+
 class HandoverCoordinator:
     """
     Coordinates AI-driven review and normalization of handover documents.

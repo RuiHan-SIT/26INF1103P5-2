@@ -4,7 +4,8 @@ from typing import Any, Dict, Optional
 from apps.handovers.services.handover_coordinator import HandoverCoordinator
 from apps.handovers.logic_manager.handover import Handover
 
-
+# The Service that handles the true Pipeline... 
+#creates Coordinator as a compositition and does things...
 class HandoverService:
     """
     Coordinates the 2-pass Handover Review & Clarification lifecycle.
