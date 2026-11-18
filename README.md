@@ -70,12 +70,6 @@ This repository encompasses **both phases** of the project:
 │   ├── utils/                               # JsonHelper (json-repair) & HANDOVER_REVIEW_PROMPT
 │   ├── templates/                           # HTML templates (handovers/, registration/, partials/, base.html)
 │   └── static/                              # CSS, JS, and downloadable template assets
-│
-├── part_1/                                  # 💻 Part 1 CLI prototype, kept for reference only (not part of the Part 2 app)
-├── tests/                                   # 🧪 Comprehensive pytest suite for Part 2 & core modules
-├── requirements.txt                         # Root Python dependencies
-├── .env.example                             # Root environment variables template
-└── Dockerfile                               # Container definition
 ```
 
 ---
