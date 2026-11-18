@@ -10,7 +10,7 @@
 When an employee resigns, goes on temporary reassignment, or takes extended leave, they prepare a handover document for the colleagues taking over their responsibilities. In practice, handover notes are often unstructured or incomplete—missing critical details such as task owners, deadlines, recurring frequencies, or subtask dependencies, or inadvertently containing sensitive personal data (PII).
 
 This repository encompasses **both phases** of the project:
-- **Part 1**: An interactive **Terminal / CLI Prototype** that validates user inputs, scrubs PII, extracts tasks via Gemini AI, checks business rules in memory, and persists records to flat JSON files with audit logs. Its code has been removed from this branch and remains available in the Git history.
+- **Part 1**: An interactive **Terminal / CLI Prototype** that validates user inputs, scrubs PII, extracts tasks via Gemini AI, checks business rules in memory, and persists records to flat JSON files with audit logs. Its code is kept in `part_1/` for reference only and is not part of the running Part 2 application.
 - **Part 2 (`part_2/`)**: A full-featured **Django Web Application** backed by **SQLite**, featuring Word (`.docx`) template parsing, a 2-pass AI clarification workflow, deterministic offline table fallback, 3-tier employee identity matching, daily workload conflict detection, interactive calendar task execution with subtask dependency enforcement, and `.docx` handover export.
 
 ---
@@ -63,6 +63,7 @@ This repository encompasses **both phases** of the project:
 │   ├── templates/                           # HTML templates (home/review, my_tasks, history, handover_detail, login)
 │   └── static/                              # CSS, JS, and downloadable template assets
 │
+├── part_1/                                  # 💻 Part 1 CLI prototype, kept for reference only (not part of the Part 2 app)
 ├── tests/                                   # 🧪 Comprehensive pytest suite for Part 2 & core modules
 ├── requirements.txt                         # Root Python dependencies
 ├── .env.example                             # Root environment variables template
